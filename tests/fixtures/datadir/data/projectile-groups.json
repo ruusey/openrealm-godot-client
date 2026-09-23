@@ -1,0 +1,342 @@
+[
+  {
+    "projectileGroupId": 10,
+    "spriteKey": "atlas.png",
+    "row": 3,
+    "col": 2,
+    "spriteSize": 8,
+    "projectiles": [
+      {
+        "projectileId": 0,
+        "positionMode": 0,
+        "angle": "0",
+        "range": 512,
+        "size": 8,
+        "magnitude": 6,
+        "damage": 10,
+        "flags": [
+          10
+        ]
+      }
+    ]
+  },
+  {
+    "projectileGroupId": 11,
+    "spriteKey": "atlas.png",
+    "row": 3,
+    "col": 3,
+    "spriteSize": 8,
+    "projectiles": [
+      {
+        "projectileId": 0,
+        "positionMode": 0,
+        "angle": 0,
+        "range": 300,
+        "size": 8,
+        "magnitude": 4,
+        "damage": 5,
+        "flags": []
+      },
+      {
+        "projectileId": 1,
+        "positionMode": 0,
+        "angle": "{{PI/2}}",
+        "range": 300,
+        "size": 8,
+        "magnitude": 4,
+        "damage": 5,
+        "flags": []
+      }
+    ],
+    "angleOffset": "{{PI/4}}"
+  },
+  {
+    "projectileGroupId": 12,
+    "spriteKey": "atlas.png",
+    "row": 4,
+    "col": 0,
+    "spriteSize": 8,
+    "projectiles": [
+      {
+        "projectileId": 0,
+        "angle": "0",
+        "range": 400,
+        "size": 8,
+        "magnitude": 5,
+        "amplitude": 20,
+        "frequency": 30,
+        "flags": [
+          12
+        ]
+      }
+    ],
+    "angleOffset": "{{PI/2}"
+  },
+  {
+    "projectileGroupId": 13,
+    "spriteKey": "atlas.png",
+    "row": 4,
+    "col": 1,
+    "spriteSize": 8,
+    "projectiles": [
+      {
+        "projectileId": 0,
+        "angle": "0",
+        "range": 600,
+        "size": 8,
+        "magnitude": 0,
+        "amplitude": 48,
+        "frequency": 90,
+        "flags": [
+          20
+        ]
+      }
+    ]
+  },
+  {
+    "projectileGroupId": 14,
+    "spriteKey": "atlas.png",
+    "row": 4,
+    "col": 2,
+    "projectiles": []
+  },
+  {
+    "projectileGroupId": 20,
+    "spriteKey": "atlas.png",
+    "row": 3,
+    "col": 3,
+    "spriteSize": 8,
+    "projectiles": [
+      {
+        "projectileId": 0,
+        "positionMode": 0,
+        "angle": 0,
+        "range": 300,
+        "size": 8,
+        "magnitude": 4,
+        "damage": 5,
+        "flags": []
+      },
+      {
+        "projectileId": 1,
+        "positionMode": 0,
+        "angle": "{{PI/2}}",
+        "range": 300,
+        "size": 8,
+        "magnitude": 4,
+        "damage": 5,
+        "flags": []
+      }
+    ],
+    "fx": [
+      {
+        "type": "spin",
+        "dir": "CW",
+        "rate": 5.76,
+        "mode": "additive"
+      }
+    ]
+  },
+  {
+    "projectileGroupId": 21,
+    "spriteKey": "atlas.png",
+    "row": 3,
+    "col": 3,
+    "spriteSize": 8,
+    "projectiles": [
+      {
+        "projectileId": 0,
+        "positionMode": 0,
+        "angle": 0,
+        "range": 300,
+        "size": 8,
+        "magnitude": 4,
+        "damage": 5,
+        "flags": []
+      },
+      {
+        "projectileId": 1,
+        "positionMode": 0,
+        "angle": "{{PI/2}}",
+        "range": 300,
+        "size": 8,
+        "magnitude": 4,
+        "damage": 5,
+        "flags": []
+      }
+    ],
+    "fx": [
+      {
+        "type": "spin",
+        "dir": "CW",
+        "rate": 6,
+        "mode": "continuous"
+      }
+    ]
+  },
+  {
+    "projectileGroupId": 22,
+    "spriteKey": "atlas.png",
+    "row": 3,
+    "col": 3,
+    "spriteSize": 8,
+    "projectiles": [
+      {
+        "projectileId": 0,
+        "positionMode": 0,
+        "angle": 0,
+        "range": 300,
+        "size": 8,
+        "magnitude": 4,
+        "damage": 5,
+        "flags": []
+      },
+      {
+        "projectileId": 1,
+        "positionMode": 0,
+        "angle": "{{PI/2}}",
+        "range": 300,
+        "size": 8,
+        "magnitude": 4,
+        "damage": 5,
+        "flags": []
+      }
+    ],
+    "fx": [
+      {
+        "type": "trail",
+        "particle": "spark"
+      },
+      {
+        "type": "spin",
+        "dir": "ccw"
+      }
+    ]
+  },
+  {
+    "projectileGroupId": 23,
+    "spriteKey": "atlas.png",
+    "row": 3,
+    "col": 3,
+    "spriteSize": 8,
+    "projectiles": [
+      {
+        "projectileId": 0,
+        "positionMode": 0,
+        "angle": 0,
+        "range": 300,
+        "size": 8,
+        "magnitude": 4,
+        "damage": 5,
+        "flags": []
+      },
+      {
+        "projectileId": 1,
+        "positionMode": 0,
+        "angle": "{{PI/2}}",
+        "range": 300,
+        "size": 8,
+        "magnitude": 4,
+        "damage": 5,
+        "flags": []
+      }
+    ],
+    "fx": [
+      {
+        "type": "trail",
+        "particle": "smoke",
+        "rate": 48
+      }
+    ]
+  },
+  {
+    "projectileGroupId": 15,
+    "spriteKey": "atlas.png",
+    "row": 4,
+    "col": 1,
+    "spriteSize": 8,
+    "projectiles": [
+      {
+        "projectileId": 0,
+        "positionMode": 2,
+        "angle": "{{PI/2}}",
+        "range": 200,
+        "size": 8,
+        "magnitude": 3,
+        "damage": 5,
+        "flags": []
+      },
+      {
+        "projectileId": 1,
+        "positionMode": 0,
+        "angle": 0,
+        "range": 200,
+        "size": 8,
+        "magnitude": 3,
+        "damage": 5,
+        "flags": [
+          34
+        ]
+      }
+    ]
+  },
+  {
+    "projectileGroupId": 24,
+    "spriteKey": "atlas.png",
+    "row": 4,
+    "col": 1,
+    "spriteSize": 8,
+    "fx": [
+      {
+        "type": "trail",
+        "particle": "spark",
+        "color": "0xfff0a0",
+        "lifeMs": 320,
+        "rate": 40,
+        "size": 7,
+        "spread": 0.4
+      },
+      {
+        "type": "impact",
+        "particle": "spark",
+        "color": "0xffcc44",
+        "count": 18,
+        "lifeMs": 420,
+        "size": 8,
+        "speed": 130
+      }
+    ],
+    "projectiles": [
+      {
+        "projectileId": 0,
+        "positionMode": 0,
+        "angle": 0,
+        "range": 200,
+        "size": 8,
+        "magnitude": 3,
+        "damage": 5,
+        "flags": []
+      }
+    ]
+  },
+  {
+    "projectileGroupId": 25,
+    "spriteKey": "atlas.png",
+    "row": 4,
+    "col": 1,
+    "spriteSize": 8,
+    "trailColor": "#8a1020",
+    "projectiles": [
+      {
+        "projectileId": 0,
+        "positionMode": 0,
+        "angle": 0,
+        "range": 200,
+        "size": 8,
+        "magnitude": 3,
+        "damage": 5,
+        "flags": []
+      }
+    ]
+  }
+]

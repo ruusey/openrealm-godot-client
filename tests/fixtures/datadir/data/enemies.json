@@ -1,0 +1,22 @@
+[
+ {
+  "enemyId": 1,
+  "name": "Beach Crab",
+  "spriteKey": "atlas.png",
+  "row": 4,
+  "col": 5,
+  "spriteSize": 8,
+  "size": 32,
+  "health": 100
+ },
+ {
+  "enemyId": 2,
+  "name": "Cube God",
+  "spriteKey": "atlas.png",
+  "row": 0,
+  "col": 0,
+  "spriteSize": 16,
+  "size": 64,
+  "health": 4000
+ }
+]

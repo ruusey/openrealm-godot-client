@@ -1,0 +1,76 @@
+[
+ {
+  "objectId": 0,
+  "objectType": "player",
+  "className": "Barbarian",
+  "spriteKey": "atlas.png",
+  "spriteSize": 8,
+  "animations": {
+   "idle_front": {
+    "frames": [
+     {
+      "row": 7,
+      "col": 7
+     }
+    ],
+    "durations": [
+     999
+    ]
+   },
+   "walk_side": {
+    "frames": [
+     {
+      "row": 6,
+      "col": 8
+     },
+     {
+      "row": 6,
+      "col": 9
+     }
+    ],
+    "durations": [
+     8,
+     8
+    ]
+   },
+   "attack_side": {
+    "frames": [
+     {
+      "row": 6,
+      "col": 11
+     },
+     {
+      "row": 6,
+      "col": 12,
+      "spriteWidth": 16
+     }
+    ],
+    "durations": [
+     5,
+     5
+    ]
+   }
+  }
+ },
+ {
+  "objectId": 9,
+  "objectType": "player",
+  "className": "NoFrames",
+  "spriteKey": "atlas.png",
+  "spriteSize": 8,
+  "animations": {
+   "idle_front": {
+    "frames": [],
+    "durations": []
+   }
+  }
+ },
+ {
+  "objectId": 1,
+  "objectType": "enemy",
+  "className": "NotAPlayer",
+  "spriteKey": "atlas.png",
+  "spriteSize": 8,
+  "animations": {}
+ }
+]

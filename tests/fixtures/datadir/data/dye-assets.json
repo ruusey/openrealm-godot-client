@@ -1,0 +1,16 @@
+[
+  {
+    "dyeId": 1,
+    "name": "Green Dye",
+    "type": "solid",
+    "color": 4899402
+  },
+  {
+    "dyeId": 9,
+    "name": "Plaid Cloth",
+    "type": "sprite",
+    "spriteKey": "atlas.png",
+    "row": 0,
+    "col": 0
+  }
+]

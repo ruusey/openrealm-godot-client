@@ -1,0 +1,699 @@
+[
+ {
+  "packet": "PlayerMovePacket",
+  "id": 1,
+  "offset": 0,
+  "frame_size": 17,
+  "payload_size": 12,
+  "compressed": false,
+  "payload_hex": "0000002a3f3504f3bf3504f3",
+  "expected": {
+   "seq": 42,
+   "vx": 0.70710678,
+   "vy": -0.70710678
+  }
+ },
+ {
+  "packet": "HeartbeatPacket",
+  "id": 5,
+  "offset": 17,
+  "frame_size": 13,
+  "payload_size": 8,
+  "compressed": false,
+  "payload_hex": "000001996992007b",
+  "expected": {
+   "timestamp": 1758412800123
+  }
+ },
+ {
+  "packet": "PlayerShootPacket",
+  "id": 6,
+  "offset": 30,
+  "frame_size": 33,
+  "payload_size": 28,
+  "compressed": false,
+  "payload_hex": "00007048860ddf790000004d42c90000c34840003f80000040000000",
+  "expected": {
+   "projectileId": 123456789012345,
+   "projectileGroupId": 77,
+   "destX": 100.5,
+   "destY": -200.25,
+   "srcX": 1.0,
+   "srcY": 2.0
+  }
+ },
+ {
+  "packet": "UseAbilityPacket",
+  "id": 11,
+  "offset": 63,
+  "frame_size": 14,
+  "payload_size": 9,
+  "compressed": false,
+  "payload_hex": "41480000c148000003",
+  "expected": {
+   "posX": 12.5,
+   "posY": -12.5,
+   "abilityIndex": 3
+  }
+ },
+ {
+  "packet": "UsePortalPacket",
+  "id": 13,
+  "offset": 77,
+  "frame_size": 23,
+  "payload_size": 18,
+  "compressed": false,
+  "payload_hex": "000000000000022b00000000000000010001",
+  "expected": {
+   "portalId": 555,
+   "fromRealmId": 1,
+   "toVault": 0,
+   "toNexus": 1
+  }
+ },
+ {
+  "packet": "TestPacket",
+  "id": 101,
+  "offset": 100,
+  "frame_size": 51,
+  "payload_size": 46,
+  "compressed": false,
+  "payload_hex": "0000000000000014756e69636f64653a20e298a020c3a920f09f9880800000000000000080000000000401000101",
+  "expected": {
+   "test0": "",
+   "test1": "unicode: \u2620 \u00e9 \ud83d\ude00",
+   "test2": -9223372036854775808,
+   "test3": -32768,
+   "test4": [
+    true,
+    false,
+    true,
+    true
+   ]
+  }
+ },
+ {
+  "packet": "LoadMapPacket",
+  "id": 8,
+  "offset": 151,
+  "frame_size": 80,
+  "payload_size": 75,
+  "compressed": false,
+  "payload_hex": "ffffffffffffffff0003000700800080000000050000000000000000000000000101000000020000000300020200000004000000060003000000000600000009000401000000080000000c",
+  "expected": {
+   "realmId": -1,
+   "mapId": 3,
+   "dungeonId": 7,
+   "mapWidth": 128,
+   "mapHeight": 128,
+   "tiles": [
+    {
+     "tileId": 0,
+     "layer": 0,
+     "xIndex": 0,
+     "yIndex": 0
+    },
+    {
+     "tileId": 1,
+     "layer": 1,
+     "xIndex": 2,
+     "yIndex": 3
+    },
+    {
+     "tileId": 2,
+     "layer": 2,
+     "xIndex": 4,
+     "yIndex": 6
+    },
+    {
+     "tileId": 3,
+     "layer": 0,
+     "xIndex": 6,
+     "yIndex": 9
+    },
+    {
+     "tileId": 4,
+     "layer": 1,
+     "xIndex": 8,
+     "yIndex": 12
+    }
+   ]
+  }
+ },
+ {
+  "packet": "UnloadPacket",
+  "id": 10,
+  "offset": 231,
+  "frame_size": 73,
+  "payload_size": 68,
+  "compressed": false,
+  "payload_hex": "0000000300000000000000010000000000000002000000000000000300000000000000017fffffffffffffff00000001000000000000000000000001ffffffffffffffff",
+  "expected": {
+   "players": [
+    1,
+    2,
+    3
+   ],
+   "bullets": [],
+   "enemies": [
+    9223372036854775807
+   ],
+   "containers": [
+    0
+   ],
+   "portals": [
+    -1
+   ]
+  }
+ },
+ {
+  "packet": "PlayerStatePacket",
+  "id": 24,
+  "offset": 304,
+  "frame_size": 63,
+  "payload_size": 58,
+  "compressed": false,
+  "payload_hex": "000000000000002a000004b00000012c0000000300040007000c0000000300000000000003e800000000000007d00000000000000bb800000000",
+  "expected": {
+   "playerId": 42,
+   "health": 1200,
+   "mana": 300,
+   "effectIds": [
+    4,
+    7,
+    12
+   ],
+   "effectTimes": [
+    1000,
+    2000,
+    3000
+   ],
+   "effectStacks": []
+  }
+ },
+ {
+  "packet": "ObjectMovePacket",
+  "id": 3,
+  "offset": 367,
+  "frame_size": 61,
+  "payload_size": 56,
+  "compressed": false,
+  "payload_hex": "000000020000000000000001004120000041a000003f0000000000000001000000000000000201c12800003e80000000000000bfc0000000",
+  "expected": {
+   "movements": [
+    {
+     "entityId": 1,
+     "entityType": 0,
+     "posX": 10.0,
+     "posY": 20.0,
+     "velX": 0.5,
+     "velY": 0.0,
+     "flags": 1
+    },
+    {
+     "entityId": 2,
+     "entityType": 1,
+     "posX": -10.5,
+     "posY": 0.25,
+     "velX": 0.0,
+     "velY": -1.5,
+     "flags": 0
+    }
+   ]
+  }
+ },
+ {
+  "packet": "CompactMovePacket",
+  "id": 25,
+  "offset": 428,
+  "frame_size": 24,
+  "payload_size": 19,
+  "compressed": false,
+  "payload_hex": "00000001ffff3fc00000402000007fff8000ff",
+  "expected": {
+   "movements": [
+    {
+     "shortEntityId": -1,
+     "posX": 1.5,
+     "posY": 2.5,
+     "velXFixed": 32767,
+     "velYFixed": -32768,
+     "flags": -1
+    }
+   ]
+  }
+ },
+ {
+  "packet": "CommandPacket",
+  "id": 7,
+  "offset": 452,
+  "frame_size": 96,
+  "payload_size": 91,
+  "compressed": false,
+  "payload_hex": "0000000000000000010000004e7b22656d61696c223a20226140622e63222c202270617373776f7264223a20227077222c202263686172616374657255756964223a2022757569642d31222c2022746f6b656e223a206e756c6c7d",
+  "expected": {
+   "playerId": 0,
+   "commandId": 1,
+   "command": "{\"email\": \"a@b.c\", \"password\": \"pw\", \"characterUuid\": \"uuid-1\", \"token\": null}"
+  }
+ },
+ {
+  "packet": "LoadPacket",
+  "id": 9,
+  "offset": 548,
+  "frame_size": 194,
+  "payload_size": 601,
+  "compressed": true,
+  "payload_hex": "00000000000000000000000600000000000000010000000700103fc00000c02000003f000000bf0000003fa000004100000043a00000002d00000000004000000000000003df000001996992007b00000002000100040000000000000000020000000700103fc00000c02000003f000000bf0000003fa000004100000043a00000002d00000000004000000000000003df000001996992007b000000020001000401010000000000000010000c000300000000000000030000000700103fc00000c02000003f000000bf0000003fa000004100000043a00000002d00000000004000000000000003df000001996992007b00000002000100040241200000c1200000424000003fc0000000000000000000040000000700103fc00000c02000003f000000bf0000003fa000004100000043a00000002d00000000004000000000000003df000001996992007b00000002000100040400007048860ddf7900000000000000050000000700103fc00000c02000003f000000bf0000003fa000004100000043a00000002d00000000004000000000000003df000001996992007b0000000200010004080000000b62756c6c6574732e706e670000000200000003000000080000000800000000000000060000000700103fc00000c02000003f000000bf0000003fa000004100000043a00000002d00000000004000000000000003df000001996992007b00000002000100040f010000000000000001000100013f8000003f8000003f8000003f800000000000000000002a00000005782e706e6700000001000000010000000100000001000000000000000001",
+  "expected": {
+   "players": [],
+   "enemies": [],
+   "bullets": [
+    {
+     "id": 1,
+     "projectileId": 7,
+     "size": 16,
+     "pos": {
+      "x": 1.5,
+      "y": -2.5
+     },
+     "dX": 0.5,
+     "dY": -0.5,
+     "angle": 1.25,
+     "magnitude": 8.0,
+     "range": 320.0,
+     "damage": 45,
+     "length": 0,
+     "lifetimeTicks": 64,
+     "srcEntityId": 991,
+     "createdTime": 1758412800123,
+     "flags": [
+      1,
+      4
+     ],
+     "_mask": 0
+    },
+    {
+     "id": 2,
+     "projectileId": 7,
+     "size": 16,
+     "pos": {
+      "x": 1.5,
+      "y": -2.5
+     },
+     "dX": 0.5,
+     "dY": -0.5,
+     "angle": 1.25,
+     "magnitude": 8.0,
+     "range": 320.0,
+     "damage": 45,
+     "length": 0,
+     "lifetimeTicks": 64,
+     "srcEntityId": 991,
+     "createdTime": 1758412800123,
+     "flags": [
+      1,
+      4
+     ],
+     "_mask": 1,
+     "invert": true,
+     "timeStep": 16,
+     "amplitude": 12,
+     "frequency": 3
+    },
+    {
+     "id": 3,
+     "projectileId": 7,
+     "size": 16,
+     "pos": {
+      "x": 1.5,
+      "y": -2.5
+     },
+     "dX": 0.5,
+     "dY": -0.5,
+     "angle": 1.25,
+     "magnitude": 8.0,
+     "range": 320.0,
+     "damage": 45,
+     "length": 0,
+     "lifetimeTicks": 64,
+     "srcEntityId": 991,
+     "createdTime": 1758412800123,
+     "flags": [
+      1,
+      4
+     ],
+     "_mask": 2,
+     "orbitCenterX": 10.0,
+     "orbitCenterY": -10.0,
+     "orbitRadius": 48.0,
+     "orbitPhase": 1.5
+    },
+    {
+     "id": 4,
+     "projectileId": 7,
+     "size": 16,
+     "pos": {
+      "x": 1.5,
+      "y": -2.5
+     },
+     "dX": 0.5,
+     "dY": -0.5,
+     "angle": 1.25,
+     "magnitude": 8.0,
+     "range": 320.0,
+     "damage": 45,
+     "length": 0,
+     "lifetimeTicks": 64,
+     "srcEntityId": 991,
+     "createdTime": 1758412800123,
+     "flags": [
+      1,
+      4
+     ],
+     "_mask": 4,
+     "targetEntityId": 123456789012345
+    },
+    {
+     "id": 5,
+     "projectileId": 7,
+     "size": 16,
+     "pos": {
+      "x": 1.5,
+      "y": -2.5
+     },
+     "dX": 0.5,
+     "dY": -0.5,
+     "angle": 1.25,
+     "magnitude": 8.0,
+     "range": 320.0,
+     "damage": 45,
+     "length": 0,
+     "lifetimeTicks": 64,
+     "srcEntityId": 991,
+     "createdTime": 1758412800123,
+     "flags": [
+      1,
+      4
+     ],
+     "_mask": 8,
+     "overrideSpriteKey": "bullets.png",
+     "overrideSpriteRow": 2,
+     "overrideSpriteCol": 3,
+     "overrideSpriteSize": 8,
+     "overrideSpriteHeight": 8
+    },
+    {
+     "id": 6,
+     "projectileId": 7,
+     "size": 16,
+     "pos": {
+      "x": 1.5,
+      "y": -2.5
+     },
+     "dX": 0.5,
+     "dY": -0.5,
+     "angle": 1.25,
+     "magnitude": 8.0,
+     "range": 320.0,
+     "damage": 45,
+     "length": 0,
+     "lifetimeTicks": 64,
+     "srcEntityId": 991,
+     "createdTime": 1758412800123,
+     "flags": [
+      1,
+      4
+     ],
+     "_mask": 15,
+     "invert": true,
+     "timeStep": 1,
+     "amplitude": 1,
+     "frequency": 1,
+     "orbitCenterX": 1.0,
+     "orbitCenterY": 1.0,
+     "orbitRadius": 1.0,
+     "orbitPhase": 1.0,
+     "targetEntityId": 42,
+     "overrideSpriteKey": "x.png",
+     "overrideSpriteRow": 1,
+     "overrideSpriteCol": 1,
+     "overrideSpriteSize": 1,
+     "overrideSpriteHeight": 1
+    }
+   ],
+   "containers": [],
+   "portals": [],
+   "difficulty": 1
+  }
+ },
+ {
+  "packet": "LoadPacket",
+  "id": 9,
+  "offset": 742,
+  "frame_size": 354,
+  "payload_size": 903,
+  "compressed": true,
+  "payload_hex": "0000000600000000000003e800000007506c617965723000000009616363742d3130303000000009636861722d3130303000000000001c00000000000000003f000000be800000000000000006706c617965720000000000000000000003e900000007506c617965723100000009616363742d3130303100000009636861722d3130303100000001001c42000000418000003f000000be800000000100000006706c617965720000000000000000000003ea00000007506c617965723200000009616363742d3130303200000009636861722d3130303200000002001c42800000420000003f000000be800000000200000006706c617965720000000000000000000003eb00000007506c617965723300000009616363742d3130303300000009636861722d3130303300000003001c42c00000424000003f000000be800000000300000006706c617965720000000000000000000003ec00000007506c617965723400000009616363742d3130303400000009636861722d3130303400000004001c43000000428000003f000000be800000000400000006706c617965720000000000000000000003ed00000007506c617965723500000009616363742d3130303500000009636861722d3130303500000005001c4320000042a000003f000000be800000000500000006706c617965720000000000000008000000000000138800000000000000000010000000000000000000000000000000003fc0000000000064000000640000000000000000138900000001000000000010410000004080000000000000000000003fc0000000000064000000640001000000000000138a00000002000000000010418000004100000000000000000000003fc0000000000064000000640002000000000000138b0000000300000000001041c000004140000000000000000000003fc0000000000064000000640003000000000000138c00000004000000000010420000004180000000000000000000003fc0000000000064000000640004000000000000138d000000050000000000104220000041a0000000000000000000003fc0000000000064000000640005000000000000138e000000060000000000104240000041c0000000000000000000003fc0000000000064000000640006000000000000138f000000070000000000104260000041e0000000000000000000003fc000000000006400000064000700000000000000000000000002",
+  "expected": {
+   "players": [
+    {
+     "id": 1000,
+     "name": "Player0",
+     "accountUuid": "acct-1000",
+     "characterUuid": "char-1000",
+     "classId": 0,
+     "size": 28,
+     "pos": {
+      "x": 0.0,
+      "y": 0.0
+     },
+     "dX": 0.5,
+     "dY": -0.25,
+     "shortId": 0,
+     "chatRole": "player",
+     "dyeId": 0
+    },
+    {
+     "id": 1001,
+     "name": "Player1",
+     "accountUuid": "acct-1001",
+     "characterUuid": "char-1001",
+     "classId": 1,
+     "size": 28,
+     "pos": {
+      "x": 32.0,
+      "y": 16.0
+     },
+     "dX": 0.5,
+     "dY": -0.25,
+     "shortId": 1,
+     "chatRole": "player",
+     "dyeId": 0
+    },
+    {
+     "id": 1002,
+     "name": "Player2",
+     "accountUuid": "acct-1002",
+     "characterUuid": "char-1002",
+     "classId": 2,
+     "size": 28,
+     "pos": {
+      "x": 64.0,
+      "y": 32.0
+     },
+     "dX": 0.5,
+     "dY": -0.25,
+     "shortId": 2,
+     "chatRole": "player",
+     "dyeId": 0
+    },
+    {
+     "id": 1003,
+     "name": "Player3",
+     "accountUuid": "acct-1003",
+     "characterUuid": "char-1003",
+     "classId": 3,
+     "size": 28,
+     "pos": {
+      "x": 96.0,
+      "y": 48.0
+     },
+     "dX": 0.5,
+     "dY": -0.25,
+     "shortId": 3,
+     "chatRole": "player",
+     "dyeId": 0
+    },
+    {
+     "id": 1004,
+     "name": "Player4",
+     "accountUuid": "acct-1004",
+     "characterUuid": "char-1004",
+     "classId": 4,
+     "size": 28,
+     "pos": {
+      "x": 128.0,
+      "y": 64.0
+     },
+     "dX": 0.5,
+     "dY": -0.25,
+     "shortId": 4,
+     "chatRole": "player",
+     "dyeId": 0
+    },
+    {
+     "id": 1005,
+     "name": "Player5",
+     "accountUuid": "acct-1005",
+     "characterUuid": "char-1005",
+     "classId": 5,
+     "size": 28,
+     "pos": {
+      "x": 160.0,
+      "y": 80.0
+     },
+     "dX": 0.5,
+     "dY": -0.25,
+     "shortId": 5,
+     "chatRole": "player",
+     "dyeId": 0
+    }
+   ],
+   "enemies": [
+    {
+     "id": 5000,
+     "enemyId": 0,
+     "weaponId": 0,
+     "size": 16,
+     "pos": {
+      "x": 0.0,
+      "y": 0.0
+     },
+     "dX": 0.0,
+     "dY": 0.0,
+     "difficulty": 1.5,
+     "health": 100,
+     "maxHealth": 100,
+     "shortId": 0
+    },
+    {
+     "id": 5001,
+     "enemyId": 1,
+     "weaponId": 0,
+     "size": 16,
+     "pos": {
+      "x": 8.0,
+      "y": 4.0
+     },
+     "dX": 0.0,
+     "dY": 0.0,
+     "difficulty": 1.5,
+     "health": 100,
+     "maxHealth": 100,
+     "shortId": 1
+    },
+    {
+     "id": 5002,
+     "enemyId": 2,
+     "weaponId": 0,
+     "size": 16,
+     "pos": {
+      "x": 16.0,
+      "y": 8.0
+     },
+     "dX": 0.0,
+     "dY": 0.0,
+     "difficulty": 1.5,
+     "health": 100,
+     "maxHealth": 100,
+     "shortId": 2
+    },
+    {
+     "id": 5003,
+     "enemyId": 3,
+     "weaponId": 0,
+     "size": 16,
+     "pos": {
+      "x": 24.0,
+      "y": 12.0
+     },
+     "dX": 0.0,
+     "dY": 0.0,
+     "difficulty": 1.5,
+     "health": 100,
+     "maxHealth": 100,
+     "shortId": 3
+    },
+    {
+     "id": 5004,
+     "enemyId": 4,
+     "weaponId": 0,
+     "size": 16,
+     "pos": {
+      "x": 32.0,
+      "y": 16.0
+     },
+     "dX": 0.0,
+     "dY": 0.0,
+     "difficulty": 1.5,
+     "health": 100,
+     "maxHealth": 100,
+     "shortId": 4
+    },
+    {
+     "id": 5005,
+     "enemyId": 5,
+     "weaponId": 0,
+     "size": 16,
+     "pos": {
+      "x": 40.0,
+      "y": 20.0
+     },
+     "dX": 0.0,
+     "dY": 0.0,
+     "difficulty": 1.5,
+     "health": 100,
+     "maxHealth": 100,
+     "shortId": 5
+    },
+    {
+     "id": 5006,
+     "enemyId": 6,
+     "weaponId": 0,
+     "size": 16,
+     "pos": {
+      "x": 48.0,
+      "y": 24.0
+     },
+     "dX": 0.0,
+     "dY": 0.0,
+     "difficulty": 1.5,
+     "health": 100,
+     "maxHealth": 100,
+     "shortId": 6
+    },
+    {
+     "id": 5007,
+     "enemyId": 7,
+     "weaponId": 0,
+     "size": 16,
+     "pos": {
+      "x": 56.0,
+      "y": 28.0
+     },
+     "dX": 0.0,
+     "dY": 0.0,
+     "difficulty": 1.5,
+     "health": 100,
+     "maxHealth": 100,
+     "shortId": 7
+    }
+   ],
+   "bullets": [],
+   "containers": [],
+   "portals": [],
+   "difficulty": 2
+  }
+ }
+]

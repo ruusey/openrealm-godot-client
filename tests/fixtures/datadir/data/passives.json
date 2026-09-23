@@ -1,0 +1,14 @@
+[
+ {
+  "id": 12000,
+  "classId": 0,
+  "name": "Muscle for Brains",
+  "description": "Mana regen scales off STR."
+ },
+ {
+  "id": 12002,
+  "classId": 2,
+  "name": "Arcane Well",
+  "description": "A deeper pool of mana."
+ }
+]

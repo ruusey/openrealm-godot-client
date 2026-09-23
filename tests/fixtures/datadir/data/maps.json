@@ -1,0 +1,37 @@
+[
+ {
+  "mapId": 2,
+  "mapName": "World_1_Beach",
+  "width": 64,
+  "height": 64,
+  "tileSize": 32
+ },
+ {
+  "mapId": 30,
+  "mapName": "Vault_Auru_V1",
+  "width": 64,
+  "height": 64,
+  "tileSize": 32
+ },
+ {
+  "mapId": 31,
+  "mapName": "Nexus_Auru_V1",
+  "width": 128,
+  "height": 128,
+  "tileSize": 32
+ },
+ {
+  "mapId": 32,
+  "mapName": "Deep_Vault_Ruins",
+  "width": 64,
+  "height": 64,
+  "tileSize": 32
+ },
+ {
+  "mapId": 33,
+  "mapName": "Old_Nexus_Ruins",
+  "width": 64,
+  "height": 64,
+  "tileSize": 32
+ }
+]

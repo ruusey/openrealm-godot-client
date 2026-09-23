@@ -1,0 +1,21 @@
+[
+ {
+  "portalId": 1,
+  "portalName": "Beach_Portal",
+  "mapId": 2,
+  "dungeonId": -1,
+  "spriteKey": "portal-sheet.png",
+  "row": 3,
+  "col": 2,
+  "spriteSize": 8
+ },
+ {
+  "portalId": 2,
+  "portalName": "Vault_Portal",
+  "mapId": 30,
+  "dungeonId": -1,
+  "spriteKey": "portal-sheet.png",
+  "row": 0,
+  "col": 1
+ }
+]

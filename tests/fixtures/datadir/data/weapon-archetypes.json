@@ -1,0 +1,21 @@
+[
+ {
+  "id": 1,
+  "name": "Sword",
+  "family": "HEAVY",
+  "rangeMul": 1.6,
+  "piercing": false,
+  "projectileCount": 1,
+  "spreadRad": 0.0,
+  "melee": true
+ },
+ {
+  "id": 2,
+  "name": "Scattergun",
+  "family": "LIGHT",
+  "rangeMul": 0.5,
+  "piercing": true,
+  "projectileCount": 3,
+  "spreadRad": 0.2
+ }
+]

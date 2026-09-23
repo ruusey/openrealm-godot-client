@@ -1,0 +1,175 @@
+[
+ {
+  "tileId": 1,
+  "name": "Grass",
+  "spriteKey": "atlas.png",
+  "row": 2,
+  "col": 3,
+  "size": 32,
+  "data": {
+   "hasCollision": 0,
+   "slows": 0,
+   "damaging": 0,
+   "isWall": 0
+  },
+  "interactionType": null
+ },
+ {
+  "tileId": 2,
+  "name": "Wall",
+  "spriteKey": "atlas.png",
+  "size": 32,
+  "spriteSize": 16,
+  "data": {
+   "hasCollision": 1,
+   "slows": 0,
+   "damaging": 0,
+   "isWall": 1
+  }
+ },
+ {
+  "tileId": 3,
+  "name": "Swamp",
+  "spriteKey": "atlas.png",
+  "row": 1,
+  "col": 1,
+  "size": 32,
+  "data": {
+   "hasCollision": 0,
+   "slows": 1,
+   "damaging": 0,
+   "isWall": 0
+  }
+ },
+ {
+  "tileId": 4,
+  "name": "Broken",
+  "spriteKey": "does-not-exist.png",
+  "row": 0,
+  "col": 0,
+  "size": 32,
+  "data": {
+   "hasCollision": 0,
+   "slows": 0,
+   "damaging": 0,
+   "isWall": 0
+  }
+ },
+ {
+  "tileId": 5,
+  "name": "NoSprite",
+  "spriteKey": "",
+  "row": 0,
+  "col": 0,
+  "size": 32,
+  "data": {
+   "hasCollision": 0,
+   "slows": 0,
+   "damaging": 0,
+   "isWall": 0
+  }
+ },
+ {
+  "tileId": 6,
+  "name": "TallWall",
+  "spriteKey": "atlas.png",
+  "row": 1,
+  "col": 0,
+  "spriteSize": 8,
+  "spriteHeight": 16,
+  "data": {
+   "hasCollision": 1,
+   "isWall": 1,
+   "slows": 0,
+   "damaging": 0,
+   "noBlend": 0
+  }
+ },
+ {
+  "tileId": 7,
+  "name": "NoBlend",
+  "spriteKey": "atlas.png",
+  "row": 2,
+  "col": 3,
+  "data": {
+   "hasCollision": 0,
+   "isWall": 0,
+   "slows": 0,
+   "damaging": 0,
+   "noBlend": 1
+  }
+ },
+ {
+  "tileId": 8,
+  "name": "GrassTwin",
+  "spriteKey": "atlas.png",
+  "row": 2,
+  "col": 3,
+  "data": {
+   "hasCollision": 0,
+   "isWall": 0,
+   "slows": 0,
+   "damaging": 0,
+   "noBlend": 0
+  }
+ },
+ {
+  "tileId": 9,
+  "name": "Anvil",
+  "spriteKey": "atlas.png",
+  "row": 1,
+  "col": 1,
+  "size": 32,
+  "data": {
+   "hasCollision": 1,
+   "slows": 0,
+   "damaging": 0,
+   "isWall": 0
+  }
+ },
+ {
+  "tileId": 300,
+  "name": "Forge",
+  "interactionType": "forge",
+  "spriteKey": "atlas.png",
+  "row": 2,
+  "col": 3,
+  "size": 32,
+  "data": {
+   "hasCollision": 1,
+   "slows": 0,
+   "damaging": 0,
+   "isWall": 0
+  }
+ },
+ {
+  "tileId": 301,
+  "name": "Fame Store",
+  "interactionType": "fame_store",
+  "spriteKey": "atlas.png",
+  "row": 2,
+  "col": 3,
+  "size": 32,
+  "data": {
+   "hasCollision": 1,
+   "slows": 0,
+   "damaging": 0,
+   "isWall": 0
+  }
+ },
+ {
+  "tileId": 327,
+  "name": "Potion_Storage_Main",
+  "interactionType": "potion_storage",
+  "spriteKey": "atlas.png",
+  "row": 2,
+  "col": 3,
+  "size": 32,
+  "data": {
+   "hasCollision": 1,
+   "slows": 0,
+   "damaging": 0,
+   "isWall": 0
+  }
+ }
+]

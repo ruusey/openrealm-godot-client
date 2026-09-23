@@ -1,0 +1,114 @@
+[
+ {
+  "id": 13000,
+  "classId": 0,
+  "name": "Butcher",
+  "description": "Wide forward swing.",
+  "mpCost": 40,
+  "baseCooldownMs": 3000,
+  "cdReductionPerPointMs": 200,
+  "baseCastMs": 0,
+  "maxCastRange": 96,
+  "maxSkillPoints": 5,
+  "spriteKey": "atlas.png",
+  "spriteSize": 16,
+  "row": 1,
+  "col": 2,
+  "effects": [
+   {
+    "type": "STATUS_APPLY",
+    "target": "ENEMIES_HIT",
+    "statusId": "36",
+    "baseDurationMs": 4000
+   }
+  ]
+ },
+ {
+  "id": 13002,
+  "classId": 0,
+  "name": "Rage",
+  "description": "Self buff.",
+  "mpCost": 60,
+  "baseCooldownMs": 12000,
+  "cdReductionPerPointMs": 500,
+  "baseCastMs": 0,
+  "maxCastRange": 0,
+  "maxSkillPoints": 5,
+  "spriteKey": "atlas.png",
+  "spriteSize": 16,
+  "row": 1,
+  "col": 3,
+  "effects": [
+   {
+    "type": "STATUS_APPLY",
+    "target": "SELF",
+    "statusId": "19",
+    "baseDurationMs": 5000
+   }
+  ]
+ },
+ {
+  "id": 13006,
+  "classId": 2,
+  "name": "Fire Breath",
+  "description": "A cone of flame.",
+  "mpCost": 60,
+  "baseCooldownMs": 2500,
+  "cdReductionPerPointMs": 200,
+  "baseCastMs": 0,
+  "maxCastRange": 352,
+  "maxSkillPoints": 5,
+  "spriteKey": "atlas.png",
+  "spriteSize": 16,
+  "row": 0,
+  "col": 2,
+  "effects": [
+   {
+    "type": "PROJECTILE_GROUP",
+    "projectileGroupId": 12
+   }
+  ]
+ },
+ {
+  "id": 13007,
+  "classId": 2,
+  "name": "Frost Spike",
+  "description": "Slows what it hits.",
+  "mpCost": 70,
+  "baseCooldownMs": 4000,
+  "cdReductionPerPointMs": 250,
+  "baseCastMs": 1200,
+  "maxCastRange": 224,
+  "maxSkillPoints": 3,
+  "spriteKey": "atlas.png",
+  "spriteSize": 16,
+  "row": 0,
+  "col": 3,
+  "effects": [
+   {
+    "type": "STATUS_APPLY",
+    "target": "ENEMIES_HIT",
+    "statusId": "21",
+    "baseDurationMs": 2000
+   }
+  ]
+ },
+ {
+  "id": 13008,
+  "classId": 2,
+  "name": "Supernova",
+  "description": "",
+  "mpCost": 95,
+  "baseCooldownMs": 9000,
+  "cdReductionPerPointMs": 300,
+  "baseCastMs": 0,
+  "maxCastRange": 288,
+  "maxSkillPoints": 0,
+  "effects": [
+   {
+    "type": "PROJECTILE_GROUP",
+    "projectileGroupId": 15
+   }
+  ]
+ }
+]

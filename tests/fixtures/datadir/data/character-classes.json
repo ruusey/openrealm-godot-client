@@ -1,0 +1,81 @@
+[
+ {
+  "classId": 0,
+  "className": "Barbarian",
+  "baseStats": {
+   "spd": 10
+  },
+  "allowedWeaponClasses": [
+   1
+  ],
+  "allowedArmorClasses": [
+   10
+  ],
+  "allowedWeaponArchetypes": [
+   1,
+   2,
+   3
+  ],
+  "abilityTree": {
+   "defaultHotbar": [
+    13000,
+    0,
+    13002,
+    0
+   ],
+   "passive": 12000,
+   "pool": [
+    13000,
+    13002
+   ]
+  },
+  "maxStats": {
+   "hp": 780,
+   "mp": 252,
+   "def": 25,
+   "str": 75,
+   "spd": 50,
+   "dex": 50,
+   "vit": 75,
+   "wis": 40
+  }
+ },
+ {
+  "classId": 2,
+  "className": "Wizard",
+  "baseStats": {
+   "spd": 12
+  },
+  "allowedWeaponClasses": [
+   3
+  ],
+  "allowedArmorClasses": [
+   12
+  ],
+  "allowedWeaponArchetypes": [],
+  "abilityTree": {
+   "defaultHotbar": [
+    13006,
+    13007,
+    13008,
+    0
+   ],
+   "passive": 12002,
+   "pool": [
+    13006,
+    13007,
+    13008
+   ]
+  },
+  "maxStats": {
+   "hp": 670,
+   "mp": 385,
+   "def": 25,
+   "str": 50,
+   "spd": 50,
+   "dex": 75,
+   "vit": 40,
+   "wis": 75
+  }
+ }
+]

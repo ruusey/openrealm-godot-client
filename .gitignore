@@ -1,0 +1,15 @@
+# macOS
+.DS_Store
+
+.coverage/
+reports/
+*.translation
+.godot/
+build/
+target/
+
+# Python bytecode (tools/ runs under python3 and writes it on every test run)
+__pycache__/
+*.pyc
+
+
