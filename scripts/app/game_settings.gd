@@ -36,6 +36,10 @@ const GRAPHICS := {
 }
 
 var path := ""
+## The player's UI scale and world zoom from the options, each 0 for
+## automatic (DisplayScale); ScaleRow names them by these keys.
+var ui_scale := 0.0
+var world_zoom := 0.0
 var _values := {}
 
 
@@ -67,6 +71,8 @@ func load_from(file_path: String) -> void:
 	if path != "" and file.load(path) == OK:
 		for key in _values:
 			_values[key] = bool(file.get_value(SECTION, key, _values[key]))
+		ui_scale = float(file.get_value(SECTION, "ui_scale", 0.0))
+		world_zoom = float(file.get_value(SECTION, "world_zoom", 0.0))
 		for action in file.get_section_keys(KEYS) if file.has_section(KEYS) else []:
 			keys[action] = int(file.get_value(KEYS, action, 0))
 	KeyBindings.apply(keys)
@@ -79,6 +85,8 @@ func save() -> void:
 	var file := ConfigFile.new()
 	for key in _values:
 		file.set_value(SECTION, key, _values[key])
+	file.set_value(SECTION, "ui_scale", ui_scale)
+	file.set_value(SECTION, "world_zoom", world_zoom)
 	var keys := KeyBindings.custom()
 	for action in keys:
 		file.set_value(KEYS, action, keys[action])
@@ -90,6 +98,19 @@ func rebind(action: String, key: int) -> void:
 	if not KeyBindings.rebind(action, key).is_empty():
 		save()
 		changed.emit()
+
+
+## "ui_scale" or "world_zoom", 0 for automatic.
+func set_scale(key: String, scale: float) -> void:
+	if is_equal_approx(scale, scale_of(key)):
+		return
+	set(key, scale)
+	save()
+	changed.emit()
+
+
+func scale_of(key: String) -> float:
+	return float(get(key))
 
 
 func reset_keys() -> void:

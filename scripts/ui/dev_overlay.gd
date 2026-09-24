@@ -4,7 +4,7 @@ extends CanvasLayer
 ## The web client's dev readout: one line, top right, off until /dev.
 ##
 ## FPS, ping and draw calls in its traffic-light colours, jitter, and the
-## render resolution with the whole-number scale DisplayScale chose -- the
+## render resolution with the scale DisplayScale chose -- the
 ## numbers that say whether a hitch is the frame, the network or the
 ## screen. Draw calls come from FrameCounts, the rendering server's own
 ## count. It only builds the line while it is showing, and a few times a
@@ -79,7 +79,7 @@ static func line(fps: float, ping_ms: int, jitter_ms: int, resolution: Vector2i,
 		"FPS [color=%s]%d[/color]" % [fps_colour(fps), roundi(fps)],
 		"PING [color=%s]%dms[/color]" % [ping_colour(ping_ms), ping_ms],
 		"JITTER %dms" % jitter_ms,
-		"RES %dx%d @%.0fx" % [resolution.x, resolution.y, scale],
+		"RES %dx%d @%sx" % [resolution.x, resolution.y, DisplayScale.label(scale)],
 		"DRAW [color=%s]%d[/color]" % [draw_colour(draw_calls), draw_calls],
 	])
 

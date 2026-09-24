@@ -5,8 +5,8 @@ extends CanvasLayer
 ##
 ## Godot's own controls, on two tabs: a checkbox a setting under Display and
 ## Graphics headings, each flipping its GameSettings switch the moment it is
-## clicked (and kept for next time); and Controls, a key an action
-## (ControlsTab). Leave game is what Escape used to do on its
+## clicked (and kept for next time), with the UI scale and the world zoom
+## under Display (ScaleRow); and Controls, a key an action (ControlsTab). Leave game is what Escape used to do on its
 ## own: an accidental Escape now opens a menu instead of dropping the
 ## session. Close, or Escape again, puts it away.
 
@@ -20,6 +20,8 @@ var shown := false
 var _root: PanelContainer
 var boxes := {}   # key -> CheckBox
 var controls: ControlsTab
+var scale_row: ScaleRow
+var zoom_row: ScaleRow
 var leave_button: Button
 var close_button: Button
 
@@ -58,6 +60,10 @@ func _ready() -> void:
 	switches.name = "Display & Graphics"
 	tabs.add_child(switches)
 	_section(switches, "Display", GameSettings.DISPLAY)
+	scale_row = ScaleRow.new(settings, ScaleRow.UI)
+	switches.add_child(scale_row)
+	zoom_row = ScaleRow.new(settings, ScaleRow.WORLD)
+	switches.add_child(zoom_row)
 	_section(switches, "Graphics", GameSettings.GRAPHICS)
 	controls = ControlsTab.new(settings)
 	tabs.add_child(controls)
@@ -101,6 +107,10 @@ func refresh() -> void:
 		return
 	for key in boxes:
 		boxes[key].set_pressed_no_signal(settings.is_on(key))
+	if scale_row != null:
+		scale_row.refresh()
+	if zoom_row != null:
+		zoom_row.refresh()
 	if controls != null and controls.is_inside_tree():
 		controls.refresh()
 

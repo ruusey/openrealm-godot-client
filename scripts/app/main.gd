@@ -6,7 +6,7 @@ extends Node
 ## SessionController, gameplay input in PlayerInput, the realm transitions in
 ## PortalInput, and the screens over the world in Screens.
 
-const CAMERA_ZOOM := 2.0
+const CAMERA_ZOOM := DisplayScale.WORLD_ZOOM
 
 var config: ClientConfig
 var game_data: GameData
@@ -35,11 +35,13 @@ func _ready() -> void:
 	# Assigned ahead of _ready by tests; otherwise taken from the command line.
 	if config == null:
 		config = ClientConfig.from_command_line()
-	add_child(DisplayScale.new())
+	var display := DisplayScale.new()
+	add_child(display)
 
 	game_data = GameData.new()
 	state = RealmState.new(game_data)
 	state.settings.load_from(config.settings_path)
+	display.follow(state.settings)
 	client = OpenRealmClient.new()
 	client.connection.transport = config.open_transport()
 	client.name = "OpenRealmClient"
@@ -61,6 +63,7 @@ func _ready() -> void:
 	_camera.position_smoothing_enabled = false
 	add_child(_camera)
 	_camera.make_current()
+	display.camera = _camera   # the world's zoom, apart from the UI's
 
 	inventory_actions = InventoryActions.new(state, client, game_data)
 	caster = AbilityCaster.new(state, client, game_data, _world)
@@ -124,7 +127,7 @@ func _load_content() -> void:
 ## Snap rather than ease, so the first frame in a realm is already framed on
 ## the player instead of panning in from the origin.
 func _on_entered_realm(_response: Dictionary) -> void:
-	_camera.position = state.local.render_centre()
+	PixelSnap.camera(_camera, state.local.render_centre(), state.local.render_position())
 
 
 ## The character is gone from the account, so the list we hold is stale and
@@ -142,8 +145,7 @@ func _process(delta: float) -> void:
 	inventory_input.tick(delta)
 	ability_input.tick(delta)
 	if client.is_in_game():
-		_camera.position = state.local.render_centre()
-		_camera.force_update_scroll()
+		PixelSnap.camera(_camera, state.local.render_centre(), state.local.render_position())
 		trace.observe(delta, state)
 
 
