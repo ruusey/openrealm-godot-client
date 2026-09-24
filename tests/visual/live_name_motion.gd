@@ -3,7 +3,9 @@ extends SceneTree
 ## Walks the diagonals in a realm and watches the name under the player.
 ##
 ##   godot --path . --resolution 1280x720 --script tests/visual/live_name_motion.gd -- \
-##     <host> <data_port> <email> <password> <character_uuid> <out_dir>
+##     <host> <data_port> <email> <password> <character_uuid> <out_dir> [ui_scale] [world_zoom]
+##
+## The scales are Options' two (0 automatic): a browser's are 2 and 1.25.
 ##
 ## The name is a Label on EntityOverlay, placed each frame from the
 ## player's position; the body is drawn by the world, snapped to the same
@@ -11,10 +13,10 @@ extends SceneTree
 ## the moment each frame is drawn this reads both and counts the frames
 ## where that distance changed -- a name that wobbles against its body --
 ## and the frames where the body itself moved on screen: the camera follows
-## it, so it holds one pixel. At a zoom that puts the body on a half pixel
-## (a browser's 1.25 in the newer client) the pair hopped between two
-## pixels on 140 to 167 frames of 180, which on a diagonal reads as a
-## blurred name, until PixelSnap.camera took the body as its anchor.
+## it, so it holds one pixel. At a browser's scales (2 and 1.25) the pair
+## hopped between two pixels on 140 to 167 frames of 180, which on a
+## diagonal reads as a blurred name, until PixelSnap.camera took the body
+## as its anchor.
 ##
 ## Windowed only. Exit 0 both held, 1 either moved or it never got there,
 ## 2 bad arguments.
@@ -53,7 +55,14 @@ func _init() -> void:
 		push_error("the realm never streamed in")
 		quit(1)
 		return
+	if args.size() > 7:
+		_main.state.settings.set_scale("ui_scale", float(args[6]))
+		_main.state.settings.set_scale("world_zoom", float(args[7]))
 	await drive.settle(1.0)
+	if args.size() > 7 and float(args[6]) > 0.0 and not is_equal_approx(root.content_scale_factor, float(args[6])):
+		push_error("the UI scale did not take: %.2f" % root.content_scale_factor)
+		quit(1)
+		return
 	print("[name] realm %d, window %s, canvas %.2fx, camera zoom %s" % [_main.state.tiles.realm_id,
 		root.size, root.content_scale_factor, _main._camera.zoom])
 	RenderingServer.frame_pre_draw.connect(_sample)

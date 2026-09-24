@@ -6,7 +6,7 @@ extends Node
 ## SessionController, gameplay input in PlayerInput, the realm transitions in
 ## PortalInput, and the screens over the world in Screens.
 
-const CAMERA_ZOOM := 2.0
+const CAMERA_ZOOM := DisplayScale.WORLD_ZOOM
 
 var config: ClientConfig
 var game_data: GameData
@@ -35,11 +35,13 @@ func _ready() -> void:
 	# Assigned ahead of _ready by tests; otherwise taken from the command line.
 	if config == null:
 		config = ClientConfig.from_command_line()
-	add_child(DisplayScale.new())
+	var display := DisplayScale.new()
+	add_child(display)
 
 	game_data = GameData.new()
 	state = RealmState.new(game_data)
 	state.settings.load_from(config.settings_path)
+	display.follow(state.settings)
 	client = OpenRealmClient.new()
 	client.connection.transport = config.open_transport()
 	client.name = "OpenRealmClient"
@@ -61,6 +63,7 @@ func _ready() -> void:
 	_camera.position_smoothing_enabled = false
 	add_child(_camera)
 	_camera.make_current()
+	display.camera = _camera   # the world's zoom, apart from the UI's
 
 	inventory_actions = InventoryActions.new(state, client, game_data)
 	caster = AbilityCaster.new(state, client, game_data, _world)

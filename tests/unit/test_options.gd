@@ -157,3 +157,78 @@ func test_an_unknown_or_unchanged_switch_does_nothing():
 	assert_true(state.settings.is_on("no_such_setting"), "an unknown key reads as on, as a default would")
 	state.settings.set_on("show_names", false)
 	assert_eq(told[0], 1)
+
+
+func test_the_ui_scale_row_shows_the_scale_and_keeps_a_choice():
+	var settings := GameSettings.new()
+	settings.load_from(PATH)
+	var row := ScaleRow.new(settings)
+	var drawn := [1.75]   # a box: what the screen is drawn at
+	row.current = func() -> float: return drawn[0]
+	add_child_autofree(row)
+	row.refresh()
+	assert_eq(row.value_label.text, "1.75x (auto)", "automatic until chosen, and says so")
+	assert_true(row.auto_button.disabled, "nothing to go back to")
+	assert_eq(row.slider.value, 1.75)
+	row.choose(2.25)
+	drawn[0] = 2.25
+	row.refresh()
+	assert_eq(settings.ui_scale, 2.25)
+	assert_eq(row.value_label.text, "2.25x", "the chosen scale, no (auto)")
+	assert_false(row.auto_button.disabled)
+	var again := GameSettings.new()
+	again.load_from(PATH)
+	assert_eq(again.ui_scale, 2.25, "kept for next time")
+	row.auto_button.pressed.emit()
+	assert_eq(settings.ui_scale, 0.0, "Auto hands it back")
+
+
+func test_dragging_the_slider_shows_the_number_and_applies_only_on_letting_go():
+	var settings := GameSettings.new()
+	var row := ScaleRow.new(settings)
+	add_child_autofree(row)
+	row.slider.drag_started.emit()
+	row.slider.value = 2.5
+	assert_eq(row.value_label.text, "2.5x", "the number as it moves")
+	assert_eq(settings.ui_scale, 0.0, "not applied mid-drag")
+	row.slider.drag_ended.emit(true)
+	assert_eq(settings.ui_scale, 2.5, "applied when let go")
+
+
+func test_the_options_carry_the_ui_scale_row():
+	var options := OptionsPanel.new()
+	options.setup(GameSettings.new(), null)
+	add_child_autofree(options)
+	assert_not_null(options.scale_row)
+	assert_true(options.scale_row.is_inside_tree(), "on the Display tab")
+
+
+func test_the_world_zoom_row_keeps_its_own_setting():
+	var settings := GameSettings.new()
+	settings.load_from(PATH)
+	var row := ScaleRow.new(settings, ScaleRow.WORLD)
+	var drawn := [1.75]
+	row.current = func() -> float: return drawn[0]
+	add_child_autofree(row)
+	assert_eq(row.slider.max_value, 4.0, "the world goes to 4x")
+	assert_eq(row.value_label.text, "1.75x (auto)")
+	row.choose(3.0)
+	drawn[0] = 3.0
+	row.refresh()
+	assert_eq(settings.world_zoom, 3.0)
+	assert_eq(settings.ui_scale, 0.0, "the UI scale is not the world's")
+	assert_eq(row.value_label.text, "3x")
+	var again := GameSettings.new()
+	again.load_from(PATH)
+	assert_eq(again.world_zoom, 3.0, "kept for next time")
+	row.auto_button.pressed.emit()
+	assert_eq(settings.world_zoom, 0.0, "Auto hands it back")
+
+
+func test_the_options_carry_both_scale_rows():
+	var options := OptionsPanel.new()
+	options.setup(GameSettings.new(), null)
+	add_child_autofree(options)
+	assert_eq(options.scale_row.setting, ScaleRow.UI)
+	assert_eq(options.zoom_row.setting, ScaleRow.WORLD)
+	assert_true(options.zoom_row.is_inside_tree())
