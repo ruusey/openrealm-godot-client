@@ -16,7 +16,7 @@ cd "$(dirname "$0")"
 
 OUT_DIR="reports/visual"
 REF_DIR="tests/visual/reference"
-SCENARIOS=(terrain entities ysort bullets collision overlap walk_left walk_right walk_up walk_down walls feather effects walldepth shadows attack_left attack_right attack_up spin portals transition transition_named damage damage_fading chat chat_typing chat_bubbles death wading inventory abilities potion_storage fame_store forge minimap trails login exchange_market wall_bands effects_cast effects_generic effects_holy effects_dark effects_arcane effects_knight effects_rogue effects_trapper effects_heavy trade player_hud party nearby item_card options options_controls masteries dev_overlay blind dyes quests quest_stars login_delete login_stats terms how_to leaderboard loot_preview minimap_hop billboards)
+SCENARIOS=(terrain entities ysort bullets collision overlap walk_left walk_right walk_up walk_down walls feather effects walldepth shadows attack_left attack_right attack_up spin portals transition transition_named damage damage_fading chat chat_typing chat_bubbles death wading inventory abilities potion_storage fame_store forge minimap trails login exchange_market wall_bands effects_cast effects_generic effects_holy effects_dark effects_arcane effects_knight effects_rogue effects_trapper effects_heavy trade player_hud party nearby item_card options options_controls masteries dev_overlay blind dyes quests quest_stars login_delete login_stats terms how_to leaderboard loot_preview minimap_hop billboards chunk_seams)
 
 mkdir -p "$OUT_DIR" "$REF_DIR"
 rm -f "$OUT_DIR"/*.png

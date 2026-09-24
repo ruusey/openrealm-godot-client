@@ -33,10 +33,11 @@ static func is_billboard(content: GameData, tile_id: int) -> bool:
 
 ## The ring behind one billboard, drawn just before its body. A tile with
 ## no art has no silhouette to ring; its placeholder block goes bare.
-func ring(canvas: CanvasItem, texture: Texture2D, rect: Rect2) -> void:
+func ring(canvas: CanvasItem, texture: Texture2D, rect: Rect2, own := Rect2i()) -> void:
 	if texture == null:
 		return
-	ringed += 1
+	if GroundChunk.counts(own, floori(rect.position.x / TILE_SIZE), floori(rect.position.y / TILE_SIZE)):
+		ringed += 1
 	for offset in SpriteOutline.OFFSETS:
 		canvas.draw_texture_rect(texture, Rect2(rect.position + offset, rect.size), false, SpriteOutline.TINT)
 
@@ -44,7 +45,7 @@ func ring(canvas: CanvasItem, texture: Texture2D, rect: Rect2) -> void:
 ## The bottom edge and the body again, for every billboard in view; call
 ## after every tile layer. Rows north to south, as both references run it.
 func paint_bottoms(canvas: CanvasItem, tiles: TileMapState, content: GameData,
-		first: Vector2i, last: Vector2i) -> int:
+		first: Vector2i, last: Vector2i, own := Rect2i()) -> int:
 	drawn = 0
 	var props: Dictionary = tiles.layers.get(GameConstants.COLLISION_LAYER, {})
 	if props.is_empty():
@@ -61,5 +62,6 @@ func paint_bottoms(canvas: CanvasItem, tiles: TileMapState, content: GameData,
 			var rect := Rect2(tile_x * TILE_SIZE, tile_y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
 			canvas.draw_texture_rect(texture, Rect2(rect.position + below, rect.size), false, SpriteOutline.TINT)
 			canvas.draw_texture_rect(texture, rect, false)
-			drawn += 1
+			if GroundChunk.counts(own, tile_x, tile_y):
+				drawn += 1
 	return drawn

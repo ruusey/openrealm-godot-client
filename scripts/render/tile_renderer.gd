@@ -1,10 +1,10 @@
 class_name TileRenderer
 extends Node2D
 
-## Draws terrain, culled to the camera rect.
+## Draws terrain -- once, in GroundChunks it keeps, not every frame.
 ##
 ## Its own canvas item, so a shader can be hung on the ground without touching
-## the entities standing on it.
+## the entities standing on it; its chunks use their parent's material.
 ##
 ## Tiles are square cells, except walls: their art is twice as tall as it is
 ## wide and carries its own front face, so it is drawn two cells tall.
@@ -29,25 +29,50 @@ var bands := WallBandPass.new()
 var billboards := BillboardOutlines.new()
 ## Fringes laid down by the last draw.
 var feathers_drawn: int:
-	get: return feathers.drawn
+	get: return int(stats.get("feathers", 0))
 
 
 var state: RealmState
 var content: GameData
-## What the last frame drew, after culling.
-var drawn := 0
+var chunks := GroundChunks.new()
+## What the chunks in view put down, over their own cells: "tiles",
+## "feathers", "shadows", "bands", "rings", "bottoms".
+var stats := {}
+var drawn: int:
+	get: return int(stats.get("tiles", 0))
+var _drawn_for := []   # the content and the band switch the chunks were drawn with
 
 
-func _draw() -> void:
+## Each frame, from WorldRenderer: what changed goes to the chunks it
+## touches, and the chunks in view are drawn if they need it.
+func refresh() -> void:
 	if state == null or content == null:
 		return
-	drawn = paint(self, state.tiles, content, ViewRect.of(self))
+	var tiles := state.tiles
+	# A new map or new content: none of it stands. The bands switched: all
+	# of it is drawn again.
+	if tiles.cleared or _drawn_for.is_empty() or _drawn_for[0] != content:
+		chunks.drop_all()
+	elif _drawn_for[1] != WallBandPass.enabled:
+		chunks.mark_all()
+	_drawn_for = [content, WallBandPass.enabled]
+	tiles.cleared = false
+	if not tiles.changed_cells.is_empty():
+		chunks.mark(tiles.changed_cells)
+		tiles.changed_cells.clear()
+	var view := ViewRect.of(self)
+	chunks.update(self, view)
+	stats = chunks.stats_over(view)
 
 
-func paint(canvas: CanvasItem, tiles: TileMapState, content: GameData,
-		view: Rect2) -> int:
-	var first := Vector2i(floori(view.position.x / TILE_SIZE), floori(view.position.y / TILE_SIZE))
-	var last := Vector2i(ceili(view.end.x / TILE_SIZE), ceili(view.end.y / TILE_SIZE))
+## One chunk: its cells and the ring around them, in this order, the stats
+## counting its own cells only.
+func paint_cells(canvas: CanvasItem, own: Rect2i) -> Dictionary:
+	if state == null or content == null:
+		return {}
+	var tiles := state.tiles
+	var first := own.position - Vector2i.ONE
+	var last := own.end
 	var drawn := 0
 	billboards.ringed = 0
 
@@ -58,8 +83,8 @@ func paint(canvas: CanvasItem, tiles: TileMapState, content: GameData,
 		# Props cast their shadows, and walls their bands, before any of them
 		# is drawn: ahead of the layer they live on, not after the terrain.
 		if layer == GameConstants.COLLISION_LAYER:
-			shadows.paint(canvas, tiles, content, first, last)
-			bands.paint_under(canvas, tiles, content, first, last)
+			shadows.paint(canvas, tiles, content, first, last, own)
+			bands.paint_under(canvas, tiles, content, first, last, own)
 		for tile_x in range(first.x, last.x + 1):
 			for tile_y in range(first.y, last.y + 1):
 				var key := Vector2i(tile_x, tile_y)
@@ -70,18 +95,20 @@ func paint(canvas: CanvasItem, tiles: TileMapState, content: GameData,
 					continue
 				var rect := Rect2(tile_x * TILE_SIZE, tile_y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
 				if layer == GameConstants.COLLISION_LAYER and BillboardOutlines.is_billboard(content, tile_id):
-					billboards.ring(canvas, content.tile_texture(tile_id), rect)
+					billboards.ring(canvas, content.tile_texture(tile_id), rect, own)
 				_draw_tile(canvas, content, tile_id, rect)
-				drawn += 1
+				if GroundChunk.counts(own, tile_x, tile_y):
+					drawn += 1
 		# Fringes blend the base layer's seams, so they go on after it and
 		# before the walls that sit on top; the walls' edge light goes over.
 		if layer == BASE_LAYER:
-			feathers.paint(canvas, tiles, content, first, last)
+			feathers.paint(canvas, tiles, content, first, last, own)
 		elif layer == GameConstants.COLLISION_LAYER:
 			bands.paint_over(canvas, tiles, content, first, last)
 	# The billboards' lower edges, over every layer so nothing covers them.
-	billboards.paint_bottoms(canvas, tiles, content, first, last)
-	return drawn
+	billboards.paint_bottoms(canvas, tiles, content, first, last, own)
+	return {"tiles": drawn, "feathers": feathers.drawn, "shadows": shadows.drawn, "bands": bands.drawn,
+		"rings": billboards.ringed, "bottoms": billboards.drawn}
 
 
 func _draw_tile(canvas: CanvasItem, content: GameData, tile_id: int, rect: Rect2) -> void:

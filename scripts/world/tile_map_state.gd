@@ -22,6 +22,9 @@ var width := 0
 var height := 0
 ## layer -> {Vector2i(tileX, tileY): tileId}
 var layers := {}
+## What changed since the ground last redrew (TileRenderer takes both).
+var changed_cells := {}   # Vector2i -> true; a re-sent, unchanged id is none
+var cleared := false
 
 var _content: GameData
 
@@ -32,6 +35,8 @@ func _init(content: GameData = null) -> void:
 
 func clear() -> void:
 	layers.clear()
+	changed_cells.clear()
+	cleared = true
 
 
 func tile_count() -> int:
@@ -75,7 +80,10 @@ func apply_load_map(data: Dictionary) -> bool:
 		var column := int(tile.get("yIndex", 0))
 		var row := int(tile.get("xIndex", 0))
 		var tile_id := int(tile.get("tileId", -1))
-		layers[layer][Vector2i(column, row)] = tile_id
+		var cell := Vector2i(column, row)
+		if layers[layer].get(cell) != tile_id:
+			layers[layer][cell] = tile_id
+			changed_cells[cell] = true
 	return changed
 
 
