@@ -1,0 +1,121 @@
+name: Release web build
+
+# Exports the Godot web client and publishes it as a GitHub Release zip.
+# Mirrors the native client's tag-driven release: push a v* tag to cut a
+# release; deploy-remote.bat then pulls the zip and mounts it under /opt on the
+# data box (served at https://openrealm.net/play/).
+#
+# The export uses the standard (non-Mono) Godot 4.7.2 headless binary -- the
+# Mono build refuses web exports (see export_presets.cfg) -- and the "Web"
+# preset, which has thread support off so the page needs no COOP/COEP headers.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-web
+  cancel-in-progress: false
+
+env:
+  GODOT_VERSION: 4.7.2
+  PROJECT_DIR: .
+  EXPORT_DIR: build/web
+  ASSET_NAME: openrealm-godot-web.zip
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Cache Godot editor + web export templates
+        id: godot-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/godot
+            ~/.local/share/godot/export_templates
+          key: godot-${{ env.GODOT_VERSION }}-web-nothreads
+
+      - name: Install Godot ${{ env.GODOT_VERSION }} + web templates
+        if: steps.godot-cache.outputs.cache-hit != 'true'
+        timeout-minutes: 10
+        run: |
+          set -euo pipefail
+          BASE="https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-stable"
+
+          fetch() {
+            curl -sSL --retry 5 --retry-all-errors --retry-delay 5 \
+              --speed-limit 100000 --speed-time 30 --max-time 600 -o "$2" "$1"
+          }
+
+          echo "== editor binary"
+          mkdir -p ~/godot
+          fetch "$BASE/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip" /tmp/godot.zip
+          unzip -q /tmp/godot.zip -d ~/godot
+          mv ~/godot/Godot_v${GODOT_VERSION}-stable_linux.x86_64 ~/godot/godot
+          chmod +x ~/godot/godot
+          rm -f /tmp/godot.zip
+
+          # The templates archive (.tpz) is a zip covering every platform (~1 GB).
+          # Extract only the two no-threads web templates + version.txt into the
+          # version dir Godot looks in; leave the rest on the cutting-room floor.
+          echo "== web export templates"
+          TPL_DIR=~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+          mkdir -p "$TPL_DIR"
+          fetch "$BASE/Godot_v${GODOT_VERSION}-stable_export_templates.tpz" /tmp/templates.tpz
+          unzip -oq /tmp/templates.tpz 'templates/web_nothreads_*.zip' 'templates/version.txt' -d /tmp/tpl
+          mv /tmp/tpl/templates/* "$TPL_DIR"/
+          rm -rf /tmp/templates.tpz /tmp/tpl
+          ls -la "$TPL_DIR"
+
+      - name: Godot version
+        run: ~/godot/godot --headless --version
+
+      - name: Import project
+        run: ~/godot/godot --headless --path "$PROJECT_DIR" --import
+
+      - name: Export web build
+        run: |
+          set -euo pipefail
+          rm -rf "$EXPORT_DIR"
+          mkdir -p "$EXPORT_DIR"
+          ~/godot/godot --headless --path "$PROJECT_DIR" --export-release Web build/web/index.html
+          test -f "$EXPORT_DIR/index.html" || { echo "export produced no index.html" >&2; exit 1; }
+          test -f "$EXPORT_DIR/index.wasm" || { echo "export produced no index.wasm" >&2; exit 1; }
+          ls -la "$EXPORT_DIR"
+
+      - name: Zip the export
+        run: |
+          set -euo pipefail
+          # index.html at the zip root so it unpacks straight into the /play mount.
+          (cd "$EXPORT_DIR" && zip -r "$GITHUB_WORKSPACE/$ASSET_NAME" .)
+          ls -la "$ASSET_NAME"
+
+      - name: Upload zip as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ASSET_NAME }}
+          path: ${{ env.ASSET_NAME }}
+          if-no-files-found: error
+
+      - name: Publish to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.ASSET_NAME }}
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+          # Keep releases/latest/download/openrealm-godot-web.zip pointing here
+          # regardless of tag-push ordering -- deploy-remote.bat pulls that URL.
+          make_latest: 'true'
