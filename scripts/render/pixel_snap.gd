@@ -16,3 +16,21 @@ extends RefCounted
 static func world(canvas: CanvasItem, position: Vector2) -> Vector2:
 	var to_screen := canvas.get_global_transform_with_canvas()
 	return to_screen.affine_inverse() * (to_screen * position).round()
+
+
+## The camera on `centre`, moved the least it takes to put the world's
+## origin on a whole screen pixel.
+##
+## Every body is snapped (`world`); the ground is not, it is drawn where the
+## canvas puts it. A camera at a fraction of a pixel therefore slides the
+## ground by that fraction while the bodies on it hold, until they jump a
+## whole pixel at once -- after every stop, while the correction's offset
+## unwinds a fraction a frame, the blue flame in the nexus did exactly that.
+## On the grid, the ground moves in whole pixels with them. The web client
+## rounds its world layer's pivot for the same reason.
+static func camera(camera: Camera2D, centre: Vector2) -> void:
+	camera.position = centre
+	camera.force_update_scroll()
+	var origin := camera.get_viewport().get_canvas_transform().origin
+	camera.position += (origin - origin.round()) / camera.zoom
+	camera.force_update_scroll()

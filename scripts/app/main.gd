@@ -124,7 +124,7 @@ func _load_content() -> void:
 ## Snap rather than ease, so the first frame in a realm is already framed on
 ## the player instead of panning in from the origin.
 func _on_entered_realm(_response: Dictionary) -> void:
-	_camera.position = state.local.render_centre()
+	PixelSnap.camera(_camera, state.local.render_centre())
 
 
 ## The character is gone from the account, so the list we hold is stale and
@@ -142,8 +142,7 @@ func _process(delta: float) -> void:
 	inventory_input.tick(delta)
 	ability_input.tick(delta)
 	if client.is_in_game():
-		_camera.position = state.local.render_centre()
-		_camera.force_update_scroll()
+		PixelSnap.camera(_camera, state.local.render_centre())
 		trace.observe(delta, state)
 
 

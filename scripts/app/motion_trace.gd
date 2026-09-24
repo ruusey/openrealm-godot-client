@@ -59,10 +59,13 @@ func sample(delta: float, position: Vector2, seq: int, corrections: int) -> Stri
 
 
 ## Where the local sprite is about to be drawn, against where the camera
-## says it should be: the viewport's centre.
+## says it should be: the viewport's centre. The worse axis, since the
+## camera sits on the pixel grid (PixelSnap.camera) and is up to half a
+## pixel off the player on each.
 func sample_draw(to_screen: Transform2D, world_centre: Vector2, viewport_size: Vector2) -> void:
 	if active():
-		off_centre = maxf(off_centre, (to_screen * world_centre - viewport_size * 0.5).length())
+		var off := (to_screen * world_centre - viewport_size * 0.5).abs()
+		off_centre = maxf(off_centre, maxf(off.x, off.y))
 
 
 ## The frame as the realm state has it, printed when the trace completes.

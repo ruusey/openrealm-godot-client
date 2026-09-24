@@ -72,6 +72,8 @@ func test_the_sprite_off_the_cameras_centre_is_the_worst_frame():
 	assert_almost_eq(trace.off_centre, 3.0, 0.001, "nothing sampled once the trace is done")
 	trace.start(0, 1)
 	assert_eq(trace.off_centre, 0.0, "a new trace starts clean")
+	trace.sample_draw(to_screen, Vector2(100.25, 100.25), Vector2(600.0, 600.0))
+	assert_almost_eq(trace.off_centre, 0.5, 0.001, "half a pixel on each axis is half a pixel, not 0.71")
 
 
 func test_an_empty_trace_says_so():
