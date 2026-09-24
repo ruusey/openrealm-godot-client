@@ -3,7 +3,7 @@ extends RefCounted
 
 ## Runtime configuration. Defaults target a local server plus the data repo
 ## checked out beside this repo -- openrealm-data is a separate private repo,
-## so it lives next to champion-spawn rather than inside it; every value can be
+## so it lives next to this one rather than inside it; every value can be
 ## overridden from the command line, e.g.
 ##
 ##   godot -- --host=127.0.0.1 --email=me@example.com --password=pw \

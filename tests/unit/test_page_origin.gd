@@ -185,11 +185,11 @@ func test_a_port_is_never_appended_after_a_path():
 
 # --- production --------------------------------------------------------------
 
-func test_a_page_on_championspawn_talks_to_openrealm_over_tls():
-	# The deploy serves the client from play.championspawn.com; the servers
-	# live on openrealm.net. One rule, no build variants.
+func test_a_page_on_openrealm_talks_to_openrealm_over_tls():
+	# A page on any openrealm.net host talks to the servers there. One rule,
+	# no build variants.
 	var config := ClientConfig.parse(PackedStringArray([]), true,
-		PageOrigin.current(_page("play.championspawn.com", "", "https:")))
+		PageOrigin.current(_page("play.openrealm.net", "", "https:")))
 	assert_eq(config.host, "openrealm.net")
 	assert_eq(ServerAddress.data_url(config), "https://openrealm.net")
 	# The route openrealm.net actually proxies: one per game server, and
@@ -198,9 +198,9 @@ func test_a_page_on_championspawn_talks_to_openrealm_over_tls():
 
 
 func test_the_production_domains_whatever_the_page_scheme_or_port():
-	# A plain-http or oddly-ported page on either domain still goes to the
-	# real servers over TLS: production is a place, not a scheme.
-	for host in ["championspawn.com", "www.championspawn.com", "openrealm.net", "play.openrealm.net"]:
+	# A plain-http or oddly-ported page on the domain still goes to the real
+	# servers over TLS: production is a place, not a scheme.
+	for host in ["openrealm.net", "www.openrealm.net", "play.openrealm.net"]:
 		var config := ClientConfig.new()
 		PageOrigin.apply(config, PageOrigin.current(_page(host, "8080")))
 		assert_eq(config.host, "openrealm.net", host)
@@ -209,8 +209,8 @@ func test_the_production_domains_whatever_the_page_scheme_or_port():
 
 
 func test_anywhere_else_still_talks_to_its_own_origin():
-	for host in ["localhost", "127.0.0.1", "staging.example", "notchampionspawn.com",
-			"championspawn.com.evil.example"]:
+	for host in ["localhost", "127.0.0.1", "staging.example", "notopenrealm.net",
+			"openrealm.net.evil.example"]:
 		var config := ClientConfig.new()
 		PageOrigin.apply(config, PageOrigin.current(_page(host, "8080")))
 		assert_eq(config.host, host, host)
@@ -219,5 +219,5 @@ func test_anywhere_else_still_talks_to_its_own_origin():
 
 func test_an_explicit_host_still_beats_the_page():
 	var config := ClientConfig.parse(PackedStringArray(["--host=127.0.0.1"]), true,
-		PageOrigin.current(_page("play.championspawn.com", "", "https:")))
+		PageOrigin.current(_page("play.openrealm.net", "", "https:")))
 	assert_eq(config.host, "127.0.0.1")

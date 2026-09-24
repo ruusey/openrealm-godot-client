@@ -3,7 +3,7 @@
 # Everything runs in containers so the host needs no Java, Maven or MongoDB.
 # The Dockerfiles are inline because the build context has to be the parent
 # directory holding both `openrealm/` and `openrealm-data/` -- they are
-# separate private repos cloned beside champion-spawn -- and this keeps those
+# separate private repos cloned beside this one -- and this keeps those
 # repos untouched.
 #
 #   docker compose -f docker/docker-compose.yml up -d --build

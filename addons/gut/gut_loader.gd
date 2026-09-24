@@ -32,7 +32,7 @@ static var were_addons_disabled : bool = true
 @warning_ignore("unsafe_property_access")
 @warning_ignore("untyped_declaration")
 static func _static_init() -> void:
-	# Patched here (champion-spawn): Godot 4.7 has no exclude_addons -- it
+	# Patched here: Godot 4.7 has no exclude_addons -- it
 	# became debug/gdscript/warnings/directory_rules, which already excludes
 	# res://addons -- so the plain get() returned null into this bool and
 	# printed a SCRIPT ERROR on every run. Missing, it defaults to true, which

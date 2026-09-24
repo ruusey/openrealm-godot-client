@@ -13,15 +13,14 @@ extends RefCounted
 ## arrived on, so the game port is left alone.
 ##
 ## One exception, and it is the whole of the production setup: a page served
-## from championspawn.com or openrealm.net -- either domain, any subdomain --
-## talks to openrealm.net over TLS, whatever the build and whatever port the
-## page came from. Anywhere else (localhost, an address, a staging box) talks
+## from openrealm.net -- the domain or any subdomain -- talks to openrealm.net
+## over TLS, whatever the build and whatever port the page came from. Anywhere else (localhost, an address, a staging box) talks
 ## to its own origin, which is what a dev setup expects.
 
 ## What a url that names no port of its own implies, per scheme.
 const HTTP_PORT := 80
 const HTTPS_PORT := 443
-const PRODUCTION_DOMAINS := ["championspawn.com", "openrealm.net"]
+const PRODUCTION_DOMAINS := ["openrealm.net"]
 const PRODUCTION_HOST := "openrealm.net"
 
 
