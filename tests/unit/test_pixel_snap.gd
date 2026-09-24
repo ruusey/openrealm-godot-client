@@ -59,3 +59,23 @@ func test_a_body_and_the_ground_keep_their_distance_as_the_camera_creeps():
 		var flame := to_screen * PixelSnap.world(canvas, Vector2(3.3, 7.7))
 		gaps[flame - to_screen.origin] = true
 	assert_eq(gaps.size(), 1, "the flame never slips against the ground: %s" % [gaps.keys()])
+
+
+func test_the_followed_body_stays_on_one_pixel_at_a_browsers_zoom():
+	var camera := Camera2D.new()
+	# A browser's 1.25: half a 28-unit player is 17.5 pixels, so the body
+	# the camera centres on stands on a half pixel.
+	camera.zoom = Vector2(1.25, 1.25)
+	add_child_autofree(camera)
+	camera.make_current()
+	var canvas := Node2D.new()
+	add_child_autofree(canvas)
+	var spots := {}
+	for step in 40:
+		var feet := Vector2(1000.0, 800.0) + Vector2(0.37, 0.37) * step
+		PixelSnap.camera(camera, feet + Vector2(14.0, 14.0), feet)
+		var origin := camera.get_viewport().get_canvas_transform().origin
+		assert_almost_eq(origin, origin.round(), Vector2(0.001, 0.001), "the ground on the grid")
+		var body := canvas.get_global_transform_with_canvas() * PixelSnap.world(canvas, feet)
+		spots[body.round()] = true
+	assert_eq(spots.size(), 1, "the body never hops: %s" % [spots.keys()])

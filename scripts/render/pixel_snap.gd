@@ -13,24 +13,39 @@ extends RefCounted
 ## drawing in world units, with nothing to know about the zoom.
 
 
+## Far below a pixel, far above float noise on a realm's coordinates.
+const SETTLE := 0.01
+
+
 static func world(canvas: CanvasItem, position: Vector2) -> Vector2:
 	var to_screen := canvas.get_global_transform_with_canvas()
 	return to_screen.affine_inverse() * (to_screen * position).round()
 
 
 ## The camera on `centre`, moved the least it takes to put the world's
-## origin on a whole screen pixel.
+## origin on a whole screen pixel and `anchor` -- the body the camera
+## follows, as `world` snaps it -- on the same pixel every frame.
 ##
 ## Every body is snapped (`world`); the ground is not, it is drawn where the
-## canvas puts it. A camera at a fraction of a pixel therefore slides the
-## ground by that fraction while the bodies on it hold, until they jump a
-## whole pixel at once -- after every stop, while the correction's offset
-## unwinds a fraction a frame, the blue flame in the nexus did exactly that.
-## On the grid, the ground moves in whole pixels with them. The web client
-## rounds its world layer's pivot for the same reason.
-static func camera(camera: Camera2D, centre: Vector2) -> void:
+## canvas puts it. A camera at a fraction of a pixel therefore slid the
+## ground by that fraction while the bodies on it held, until they jumped a
+## whole pixel at once -- after every stop the blue flame in the nexus did
+## exactly that. On the grid, the ground moves in whole pixels with them.
+##
+## But the grid alone is not enough at a zoom that puts the followed body
+## on a half pixel -- 1.25, a browser's: rounded apart, the camera and the
+## body disagreed by one pixel on alternate frames, and the player and the
+## name under them hopped between two spots, a blur on a diagonal. So the
+## origin is the one that leaves the body where it would stand with the
+## camera exactly on it, rounded once. The web client rounds its world
+## layer's pivot for the same reason.
+static func camera(camera: Camera2D, centre: Vector2, anchor := centre) -> void:
 	camera.position = centre
 	camera.force_update_scroll()
-	var origin := camera.get_viewport().get_canvas_transform().origin
-	camera.position += (origin - origin.round()) / camera.zoom
+	var to_screen := camera.get_viewport().get_canvas_transform()
+	var body := to_screen.basis_xform(anchor)
+	# Where the body lands with the camera exactly on it never changes; a
+	# hair of bias keeps float noise from flipping a half pixel's rounding.
+	var origin := (to_screen.origin + body + Vector2(SETTLE, SETTLE)).round() - body.round()
+	camera.position += (to_screen.origin - origin) / camera.zoom
 	camera.force_update_scroll()
