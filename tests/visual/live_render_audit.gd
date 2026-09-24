@@ -27,9 +27,11 @@ extends SceneTree
 
 const LOGIN_TIMEOUT := 20.0
 const LOAD_TIMEOUT := 20.0
-## The idle nexus drew 181 at 1280x720 when AGENTS.md was last measured;
-## the budget leaves room for a few players passing through.
-const BUDGET := 260
+## The idle nexus draws 269 at 1280x720: 234 before the ground was kept in
+## chunks (GroundChunk), which cost 35 more -- each chunk replays the
+## ground's passes, and the small nexus sits where four meet -- for half the
+## frame time. The budget leaves room for a few players passing through.
+const BUDGET := 290
 ## Frames to let a change settle before it is read, and frames read.
 const SETTLE := 3
 const SAMPLES := 10

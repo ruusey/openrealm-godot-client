@@ -27,7 +27,7 @@ var drawn := 0
 
 
 func paint(canvas: CanvasItem, tiles: TileMapState, content: GameData,
-		first: Vector2i, last: Vector2i) -> void:
+		first: Vector2i, last: Vector2i, own := Rect2i()) -> void:
 	drawn = 0
 	# Only called once the base layer has been drawn, so it exists and has
 	# cells in it.
@@ -53,7 +53,8 @@ func paint(canvas: CanvasItem, tiles: TileMapState, content: GameData,
 				if texture != null:
 					canvas.draw_texture_rect(texture,
 						TileFeather.edge_rect(origin, direction, TILE_SIZE, fringe), false)
-					drawn += 1
+					if GroundChunk.counts(own, tile_x, tile_y):
+						drawn += 1
 
 
 ## A wall cell, or a tile that opts out of blending.

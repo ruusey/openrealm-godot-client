@@ -14,7 +14,7 @@ static var enabled := true
 ## Bands and rim copies for every square wall in view; call before the
 ## collision layer's bodies.
 func paint_under(canvas: CanvasItem, tiles: TileMapState, content: GameData,
-		first: Vector2i, last: Vector2i) -> void:
+		first: Vector2i, last: Vector2i, own := Rect2i()) -> void:
 	drawn = 0
 	if not enabled:
 		return
@@ -23,7 +23,8 @@ func paint_under(canvas: CanvasItem, tiles: TileMapState, content: GameData,
 		var open := WallBands.exposure(tiles, content, cell)
 		for band in WallBands.bands(rect, open):
 			canvas.draw_rect(band["rect"], Color(0, 0, 0, band["alpha"]))
-			drawn += 1
+			if GroundChunk.counts(own, cell.x, cell.y):
+				drawn += 1
 		var texture := content.tile_texture(tiles.tile_at(GameConstants.COLLISION_LAYER, cell.x, cell.y))
 		if texture == null:
 			continue

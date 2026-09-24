@@ -3,7 +3,8 @@ extends Node2D
 
 ## The realm, drawn as six stacked canvas items.
 ##
-## Each layer is a Node2D that redraws itself every frame -- still
+## Each layer is a Node2D that redraws itself every frame -- all but the
+## ground, kept in chunks and drawn again only where it changed -- still
 ## immediate-mode, still culled to the camera rect, with no node per entity.
 ## The split exists so a layer can carry its own material: every CanvasItem
 ## has one, so a shader on the ground leaves the characters standing on it
@@ -65,15 +66,17 @@ var draw_stats: Dictionary:
 		stats["particles"] = particles.drawn
 		stats["effects"] = effects.drawn
 		stats["wall_tops"] = wall_tops.drawn
-		stats["object_shadows"] = tiles.shadows.drawn
-		stats["wall_bands"] = tiles.bands.drawn
-		stats["billboard_rings"] = tiles.billboards.ringed
-		stats["billboard_bottoms"] = tiles.billboards.drawn
+		stats["object_shadows"] = int(tiles.stats.get("shadows", 0))
+		stats["wall_bands"] = int(tiles.stats.get("bands", 0))
+		stats["billboard_rings"] = int(tiles.stats.get("rings", 0))
+		stats["billboard_bottoms"] = int(tiles.stats.get("bottoms", 0))
 		return stats
 
 
+## Everything that moves, every frame; the ground only where it changed.
 func _process(_delta: float) -> void:
-	for layer in [tiles, entities, wall_tops, particles, bullets, effects, debug]:
+	tiles.refresh()
+	for layer in [entities, wall_tops, particles, bullets, effects, debug]:
 		layer.queue_redraw()
 
 

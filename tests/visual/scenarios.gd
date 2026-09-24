@@ -35,7 +35,7 @@ const SQUARE_WALL_TILE := 184
 
 static func names() -> Array:
 	return ["terrain", "entities", "ysort", "bullets", "collision", "overlap",
-		"walk_left", "walk_right", "walk_up", "walk_down", "walls", "feather", "effects", "walldepth", "shadows", "attack_left", "attack_right", "attack_up", "spin", "portals", "transition", "transition_named", "damage", "damage_fading", "chat", "death", "wading", "inventory", "abilities", "potion_storage", "fame_store", "forge", "minimap", "trails", "login", "exchange_market", "wall_bands", "effects_cast", "effects_generic", "effects_holy", "effects_dark", "effects_arcane", "effects_knight", "effects_rogue", "effects_trapper", "effects_heavy", "trade", "player_hud", "party", "nearby", "item_card", "options", "options_controls", "masteries", "dev_overlay", "blind", "dyes", "quests", "quest_stars", "login_delete", "login_stats", "terms", "how_to", "leaderboard", "loot_preview", "minimap_hop", "billboards"]
+		"walk_left", "walk_right", "walk_up", "walk_down", "walls", "feather", "effects", "walldepth", "shadows", "attack_left", "attack_right", "attack_up", "spin", "portals", "transition", "transition_named", "damage", "damage_fading", "chat", "death", "wading", "inventory", "abilities", "potion_storage", "fame_store", "forge", "minimap", "trails", "login", "exchange_market", "wall_bands", "effects_cast", "effects_generic", "effects_holy", "effects_dark", "effects_arcane", "effects_knight", "effects_rogue", "effects_trapper", "effects_heavy", "trade", "player_hud", "party", "nearby", "item_card", "options", "options_controls", "masteries", "dev_overlay", "blind", "dyes", "quests", "quest_stars", "login_delete", "login_stats", "terms", "how_to", "leaderboard", "loot_preview", "minimap_hop", "billboards", "chunk_seams"]
 
 
 ## A second step, applied after the first rendered frame, for scenarios whose
@@ -111,6 +111,7 @@ static func apply(name: String, state: RealmState) -> void:
 		"loot_preview": _loot_preview(state)
 		"trails": _trails(state)
 		"billboards": _billboards(state)
+		"chunk_seams": _chunk_seams(state)
 		# The login screen: no realm at all, the capture raises the screen itself.
 		"login", "login_delete", "login_stats", "terms", "how_to", "leaderboard": pass
 		_: push_error("unknown scenario '%s'" % name)
@@ -1076,6 +1077,38 @@ static func _billboards(state: RealmState) -> void:
 	state.apply_packet("LoadMapPacket", _map(tiles))
 	state.apply_packet("LoadPacket", {"players": [_player(1, "Ruu", Vector2(-40.0, -24.0), 0)]})
 
+
+## The ground where four chunks meet (GroundChunk: cells -1 and 0 on both
+## axes): runs of tall walls crossing the border north to south, whose
+## front faces each spill onto the wall below; a row of them west to east;
+## square walls and their bands, props and their rings, bottoms and
+## shadows, and grass, sand and water seams, all straddling it. Its
+## reference was made by the renderer that drew the whole view at once.
+static func _chunk_seams(state: RealmState) -> void:
+	var tiles: Array = []
+	for x in range(-8, 8):
+		for y in range(-6, 6):
+			var ground: int = GRASS_TILE if x < 0 and y < 0 else SHALLOW_WATER_TILE if x >= 4 else FLOOR_TILE
+			tiles.append({"tileId": ground, "layer": 0, "xIndex": y, "yIndex": x})
+	var walls := []
+	for y in range(-4, 3):
+		walls.append([WALL_TILE, -3, y])
+	for y in range(-3, 2):
+		walls.append([WALL_TILE, 1, y])
+	for x in range(-7, -3):
+		walls.append([WALL_TILE, x, -1])
+	for y in range(-3, 3):
+		walls.append([SQUARE_WALL_TILE, 3, y])
+	for prop in walls + [[PROP_TILE, -1, -1], [PROP_TILE, 0, 0], [PROP_TILE, -1, 0], [PROP_TILE, 0, -1],
+			[PROP_TILE, 5, -1], [PROP_TILE, 5, 0]]:
+		tiles.append({"tileId": prop[0], "layer": 1, "xIndex": prop[2], "yIndex": prop[1]})
+	state.apply_packet("LoadMapPacket", _map(tiles))
+	state.local.id = 1
+	state.local.position = Vector2(-16, 64)
+	state.apply_packet("LoadPacket", {"players": [_player(1, "Ruu", Vector2(-16, 64), 0)]})
+
+
+## The server's top five as the Menu's Leaderboard lists them, fame and
 
 ## The account signed in, as the leaderboard scenario lays it out: two of its
 ## own characters beside the server's top five, fame and pre-fame both, one

@@ -26,7 +26,7 @@ var drawn := 0
 
 
 func paint(canvas: CanvasItem, tiles: TileMapState, content: GameData,
-		first: Vector2i, last: Vector2i) -> int:
+		first: Vector2i, last: Vector2i, own := Rect2i()) -> int:
 	drawn = 0
 	var props: Dictionary = tiles.layers.get(GameConstants.COLLISION_LAYER, {})
 	var ground: Dictionary = tiles.layers.get(BASE_LAYER, {})
@@ -38,7 +38,8 @@ func paint(canvas: CanvasItem, tiles: TileMapState, content: GameData,
 			if not _casts(content, tile_id) or _is_liquid(content, ground.get(key, 0)):
 				continue
 			if GroundShadow.under_object(canvas,
-					Vector2(tile_x * TILE_SIZE, tile_y * TILE_SIZE), TILE_SIZE):
+					Vector2(tile_x * TILE_SIZE, tile_y * TILE_SIZE), TILE_SIZE) \
+					and GroundChunk.counts(own, tile_x, tile_y):
 				drawn += 1
 	return drawn
 
