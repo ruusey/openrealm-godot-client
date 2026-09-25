@@ -123,6 +123,10 @@ func _ready() -> void:
 	# The moment before the frame is drawn, for the motion trace: the
 	# transform the world is about to be drawn with, against the player.
 	RenderingServer.frame_pre_draw.connect(_on_pre_draw)
+	# Desktop-only self-update against the GitHub releases page; no-ops on web/dev.
+	var updater := UpdateChecker.new()
+	add_child(updater)
+	updater.check()
 	_load_content()
 
 
