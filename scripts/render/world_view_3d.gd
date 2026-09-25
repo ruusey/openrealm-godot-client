@@ -170,13 +170,32 @@ func _floor_material_for(texture: Texture2D) -> StandardMaterial3D:
 	if _floor_materials.has(texture):
 		return _floor_materials[texture]
 	var material := StandardMaterial3D.new()
-	material.albedo_texture = texture
+	_apply_atlas(material, texture)
 	material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
 	material.alpha_scissor_threshold = 0.5
 	_floor_materials[texture] = material
 	return material
+
+
+## Binds a (usually AtlasTexture) sprite to a material's albedo. A 3D material
+## samples the whole atlas at UV 0..1 -- unlike Sprite2D/3D it ignores an
+## AtlasTexture's region -- so the region is turned into a uv1 offset/scale, and
+## the full sheet bound underneath, so only the one clipped sprite shows.
+func _apply_atlas(material: StandardMaterial3D, texture: Texture2D) -> void:
+	if texture is AtlasTexture:
+		var atlas: AtlasTexture = texture
+		var sheet := atlas.atlas
+		var size := sheet.get_size() if sheet != null else Vector2.ZERO
+		material.albedo_texture = sheet
+		if size.x > 0.0 and size.y > 0.0:
+			material.uv1_offset = Vector3(atlas.region.position.x / size.x,
+				atlas.region.position.y / size.y, 0.0)
+			material.uv1_scale = Vector3(atlas.region.size.x / size.x,
+				atlas.region.size.y / size.y, 1.0)
+	else:
+		material.albedo_texture = texture
 
 
 ## Wall boxes take the tile's art on every face (the 8x16 top/front art is
@@ -188,14 +207,15 @@ func _wall_material_for(texture: Texture2D) -> StandardMaterial3D:
 	if _wall_materials.has(texture):
 		return _wall_materials[texture]
 	var material := StandardMaterial3D.new()
-	material.albedo_texture = texture
+	_apply_atlas(material, texture)
 	material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	material.roughness = 0.9
 	# A faint self-glow of the wall's own art, so collision tiles read as raised
-	# and lit against the flat, unshaded ground rather than melting into it.
+	# and lit against the flat, unshaded ground rather than melting into it. The
+	# emission samples the same uv1 region set by _apply_atlas.
 	material.emission_enabled = true
 	material.emission = Color.WHITE
-	material.emission_texture = texture
+	material.emission_texture = material.albedo_texture
 	material.emission_energy_multiplier = 0.35
 	_wall_materials[texture] = material
 	return material
