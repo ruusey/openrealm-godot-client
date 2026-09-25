@@ -24,6 +24,8 @@ const WALL_HEIGHT := 44.0
 const ENTITY_RANGE := 900.0
 const BULLET_HEIGHT := 12.0
 const SHADOW_SIZE := 32
+## The black outline: a transparent copy this much larger, drawn behind.
+const OUTLINE_SCALE := 1.12
 ## The player billboard, stretched up to undo the vertical foreshortening the
 ## downward camera gives an upright sprite (it read as smushed). 1.0 is off.
 const PLAYER_STRETCH := 1.28
@@ -190,7 +192,9 @@ func _rebuild_map_if_changed() -> void:
 			if content.tile_is_wall(tile_id):
 				_group(wall_cells, texture, Vector3(cell.x * TILE + TILE * 0.5,
 					WALL_HEIGHT * 0.5, cell.y * TILE + TILE * 0.5))
-			elif layer == COLLISION_LAYER:
+			elif layer == COLLISION_LAYER and content.tile_has_collision(tile_id):
+				# Only collision-layer tiles that actually collide stand up; the
+				# rest are topographical decoration and lie flat on the floor.
 				_add_prop(cell, texture)
 			elif texture != null:
 				_group(floor_cells, texture, Vector3(cell.x * TILE + TILE * 0.5,
@@ -305,11 +309,21 @@ func _place(index: int, texture: Texture2D, xz: Vector2, height: float, width: f
 	return index + 1
 
 
-## A standing sprite (Y-billboard) with a ground shadow (child 0). `stretch`
-## scales its height without changing its width.
+## A standing sprite (Y-billboard) with a ground shadow (child 0) and a black
+## outline (child 1). The body is opaque (alpha-scissor, writes depth in the
+## opaque pass); the outline is a larger TRANSPARENT black copy drawn in the
+## later transparent pass, so it depth-tests against the body and only its rim
+## shows -- no coplanar z-fight, unlike an opaque backing copy.
 func _new_billboard() -> Sprite3D:
 	var sprite := _sprite_node(BaseMaterial3D.BILLBOARD_FIXED_Y)
 	sprite.add_child(_new_shadow())
+	var outline := Sprite3D.new()
+	outline.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
+	outline.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	outline.shaded = false
+	outline.modulate = Color(0.0, 0.0, 0.0, 1.0)
+	outline.render_priority = -1
+	sprite.add_child(outline)
 	return sprite
 
 
@@ -329,6 +343,10 @@ func _configure(sprite: Sprite3D, texture: Texture2D, xz: Vector2, height: float
 	shadow.pixel_size = width / float(SHADOW_SIZE)
 	shadow.scale = Vector3(1.0, 1.0 / stretch, 1.0)
 	shadow.position = Vector3(0.0, (0.15 - center_y) / stretch, 0.0)
+	var outline: Sprite3D = sprite.get_child(1)
+	outline.texture = texture
+	outline.pixel_size = pixel * OUTLINE_SCALE
+	outline.flip_h = flip
 
 
 # ── Projectiles: flat on the ground, turned to their heading ──────────────────
