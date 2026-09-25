@@ -1,13 +1,15 @@
 name: Release builds
 
-# Exports the Godot client for Web + desktop (Windows / Linux / macOS) and
-# publishes them as GitHub Release assets. Mirrors the native client's
-# tag-driven release: push a v* tag to cut a release.
+# Exports the Godot client for Web + desktop (Windows / Linux) and publishes
+# them as GitHub Release assets. Mirrors the native client's tag-driven release:
+# push a v* tag to cut a release.
 #
 #   openrealm-godot-web.zip     -> deploy-remote.bat pulls this to the /play mount
 #   openrealm-godot-windows.zip -> single OpenRealm.exe (pck embedded)
 #   openrealm-godot-linux.zip   -> single OpenRealm.x86_64 (pck embedded)
-#   openrealm-godot-macos.zip   -> OpenRealm.app bundle (UNSIGNED)
+#
+# macOS is intentionally not built (unsigned .app is a poor experience and needs
+# an Apple cert + notarization we don't have).
 #
 # Exports run with the standard (non-Mono) Godot 4.7.2 headless binary -- the
 # Mono build refuses web exports (see export_presets.cfg). The Web preset has
@@ -32,7 +34,6 @@ env:
   WEB_ASSET: openrealm-godot-web.zip
   WIN_ASSET: openrealm-godot-windows.zip
   LINUX_ASSET: openrealm-godot-linux.zip
-  MAC_ASSET: openrealm-godot-macos.zip
 
 jobs:
   release:
@@ -95,7 +96,7 @@ jobs:
         run: |
           set -euo pipefail
           rm -rf build
-          mkdir -p build/web build/windows build/linux build/macos
+          mkdir -p build/web build/windows build/linux
 
           # export-release can exit non-zero on non-fatal warnings, so verify the
           # artifact exists rather than trusting the exit code.
@@ -109,10 +110,9 @@ jobs:
           export_target "Web"             build/web/index.html    "build/web/index.wasm"
           export_target "Windows Desktop" build/windows/OpenRealm.exe "build/windows/OpenRealm.exe"
           export_target "Linux"           build/linux/OpenRealm.x86_64 "build/linux/OpenRealm.x86_64"
-          export_target "macOS"           build/macos/OpenRealm.zip    "build/macos/OpenRealm.zip"
 
           chmod +x build/linux/OpenRealm.x86_64
-          ls -la build/web build/windows build/linux build/macos
+          ls -la build/web build/windows build/linux
 
       - name: Package release zips
         run: |
@@ -121,9 +121,7 @@ jobs:
           (cd build/web && zip -r "$GITHUB_WORKSPACE/$WEB_ASSET" .)
           (cd build/windows && zip "$GITHUB_WORKSPACE/$WIN_ASSET" OpenRealm.exe)
           (cd build/linux && zip "$GITHUB_WORKSPACE/$LINUX_ASSET" OpenRealm.x86_64)
-          # Godot already emits a zip of the .app bundle for macOS; just name it.
-          cp build/macos/OpenRealm.zip "$GITHUB_WORKSPACE/$MAC_ASSET"
-          ls -la "$WEB_ASSET" "$WIN_ASSET" "$LINUX_ASSET" "$MAC_ASSET"
+          ls -la "$WEB_ASSET" "$WIN_ASSET" "$LINUX_ASSET"
 
       - name: Upload zips as workflow artifacts
         uses: actions/upload-artifact@v4
@@ -133,7 +131,6 @@ jobs:
             ${{ env.WEB_ASSET }}
             ${{ env.WIN_ASSET }}
             ${{ env.LINUX_ASSET }}
-            ${{ env.MAC_ASSET }}
           if-no-files-found: error
 
       - name: Publish to GitHub Release
@@ -144,7 +141,6 @@ jobs:
             ${{ env.WEB_ASSET }}
             ${{ env.WIN_ASSET }}
             ${{ env.LINUX_ASSET }}
-            ${{ env.MAC_ASSET }}
           generate_release_notes: true
           draft: false
           prerelease: false
