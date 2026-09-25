@@ -30,6 +30,10 @@ var touch_aim: Callable = func() -> Vector2: return Vector2.INF
 ## The 3D view's orbit angle, so WASD stays relative to the screen when the
 ## camera is turned (W is always "up" on screen). 0 in the plain 2D client.
 var view_yaw := 0.0
+## In 3D, the mouse's world point on the ground through the 3D camera; the 2D
+## camera's get_global_mouse_position is wrong there. Returns a Vector2, or null
+## to fall back to the 2D mouse (the plain client).
+var world_mouse: Callable = func() -> Variant: return null
 
 var _next_shot_ms := 0
 ## The stick made digital, as the keys are: eight directions, full speed.
@@ -76,7 +80,8 @@ func _fire(_delta: float) -> void:
 	if target == Vector2.INF:
 		if not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
 			return
-		target = aim_source.get_global_mouse_position()
+		var world: Variant = world_mouse.call()
+		target = world if world is Vector2 else aim_source.get_global_mouse_position()
 	# Stunned, the server refuses the shot outright -- and predicting a bullet
 	# it will never spawn is worse than not firing.
 	if AttackRate.blocked(state.local.effects) or clock.call() < _next_shot_ms:

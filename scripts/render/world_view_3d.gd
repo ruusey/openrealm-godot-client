@@ -24,8 +24,6 @@ const WALL_HEIGHT := 44.0
 const ENTITY_RANGE := 900.0
 const BULLET_HEIGHT := 12.0
 const SHADOW_SIZE := 32
-## The black outline: a transparent copy this much larger, drawn behind.
-const OUTLINE_SCALE := 1.12
 ## The player billboard, stretched up to undo the vertical foreshortening the
 ## downward camera gives an upright sprite (it read as smushed). 1.0 is off.
 const PLAYER_STRETCH := 1.28
@@ -138,6 +136,7 @@ func _process(delta: float) -> void:
 		_yaw -= ORBIT_SPEED * delta
 	if input != null:
 		input.view_yaw = _yaw
+		input.world_mouse = _mouse_world
 	var centre := state.local.render_centre()
 	_rebuild_map_if_changed()
 	_follow_camera(centre)
@@ -148,6 +147,23 @@ func _process(delta: float) -> void:
 	_place_projectiles(centre)
 	_update_effects(centre)
 	_update_overlay(centre)
+
+
+## The mouse's world point on the ground (y=0) through the 3D camera, as a 2D
+## (x, z), so shooting aims where the cursor is at any orbit. Null off-plane.
+func _mouse_world() -> Variant:
+	if _camera == null:
+		return null
+	var mouse := get_viewport().get_mouse_position()
+	var origin := _camera.project_ray_origin(mouse)
+	var direction := _camera.project_ray_normal(mouse)
+	if absf(direction.y) < 0.0001:
+		return null
+	var distance := -origin.y / direction.y
+	if distance < 0.0:
+		return null
+	var hit := origin + direction * distance
+	return Vector2(hit.x, hit.z)
 
 
 func _follow_camera(centre: Vector2) -> void:
@@ -197,9 +213,8 @@ func _rebuild_map_if_changed() -> void:
 			if content.tile_is_wall(tile_id):
 				_group(wall_cells, texture, Vector3(cell.x * TILE + TILE * 0.5,
 					WALL_HEIGHT * 0.5, cell.y * TILE + TILE * 0.5))
-			elif layer == COLLISION_LAYER and content.tile_has_collision(tile_id):
-				# Only collision-layer tiles that actually collide stand up; the
-				# rest are topographical decoration and lie flat on the floor.
+			elif layer == COLLISION_LAYER:
+				# Every collision-layer tile stands up as a 2.5D billboard.
 				_add_prop(cell, texture)
 			elif texture != null:
 				_group(floor_cells, texture, Vector3(cell.x * TILE + TILE * 0.5,
@@ -319,21 +334,13 @@ func _place(index: int, texture: Texture2D, xz: Vector2, height: float, width: f
 	return index + 1
 
 
-## A standing sprite (Y-billboard) with a ground shadow (child 0) and a black
-## outline (child 1). The body is opaque (alpha-scissor, writes depth in the
-## opaque pass); the outline is a larger TRANSPARENT black copy drawn in the
-## later transparent pass, so it depth-tests against the body and only its rim
-## shows -- no coplanar z-fight, unlike an opaque backing copy.
+## A standing sprite (Y-billboard) with a ground shadow (child 0). `stretch`
+## scales its height without changing its width. (A black outline belongs here
+## too, but a second billboard copy can only z-fight or mis-sort against the
+## body -- it needs an alpha-dilation shader, done separately.)
 func _new_billboard() -> Sprite3D:
 	var sprite := _sprite_node(BaseMaterial3D.BILLBOARD_FIXED_Y)
 	sprite.add_child(_new_shadow())
-	var outline := Sprite3D.new()
-	outline.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
-	outline.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	outline.shaded = false
-	outline.modulate = Color(0.0, 0.0, 0.0, 1.0)
-	outline.render_priority = -1
-	sprite.add_child(outline)
 	return sprite
 
 
@@ -353,10 +360,6 @@ func _configure(sprite: Sprite3D, texture: Texture2D, xz: Vector2, height: float
 	shadow.pixel_size = width / float(SHADOW_SIZE)
 	shadow.scale = Vector3(1.0, 1.0 / stretch, 1.0)
 	shadow.position = Vector3(0.0, (0.15 - center_y) / stretch, 0.0)
-	var outline: Sprite3D = sprite.get_child(1)
-	outline.texture = texture
-	outline.pixel_size = pixel * OUTLINE_SCALE
-	outline.flip_h = flip
 
 
 # ── Projectiles: flat on the ground, turned to their heading ──────────────────
