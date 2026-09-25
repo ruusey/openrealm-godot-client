@@ -89,9 +89,8 @@ func _ready() -> void:
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color(0.7, 0.7, 0.75)
 	env.ambient_light_energy = 1.0
-	env.glow_enabled = true
-	env.glow_intensity = 0.5
-	env.glow_bloom = 0.15
+	# No glow/bloom: it blurred the bright ability effects (and pixel art in
+	# general) into a fuzzy haze. Effects must read crisp like the rest of the scene.
 	var world_env := WorldEnvironment.new()
 	world_env.environment = env
 	add_child(world_env)
@@ -275,7 +274,7 @@ func _add_prop(cell: Vector2i, texture: Texture2D) -> void:
 	var sprite := _new_billboard()
 	_map_root.add_child(sprite)
 	_configure(sprite, texture, Vector2(cell.x * TILE + TILE * 0.5, cell.y * TILE + TILE * 0.5),
-		height, TILE, false, Color.WHITE, 1.0)
+		height, TILE, TILE, false, Color.WHITE)
 
 
 func _floor_material_for(texture: Texture2D) -> StandardMaterial3D:
@@ -335,53 +334,52 @@ func _place_entities(centre: Vector2) -> int:
 		var pos: Vector2 = item["pos"]
 		var size := float(item["size"])
 		var draw: Vector2 = item["draw"]
-		var flip: bool = item["flip"]
-		var stretch := 1.0
-		# A wide frame (an attack swing) overhangs the facing side, as 2D's
-		# frame_rect anchors it; shift the centred billboard by that overhang so
-		# the body still lands on the entity instead of drifting sideways.
-		var overhang := (draw.x - size) * 0.5 * (-1.0 if flip else 1.0)
-		used = _place(used, texture, Vector2(pos.x + size * 0.5 + overhang, pos.y + size * 0.5),
-			draw.y, draw.x, flip, item.get("modulate", Color.WHITE), stretch)
+		used = _place(used, texture, Vector2(pos.x + size * 0.5, pos.y + size * 0.5),
+			draw.y, draw.x, size, bool(item["flip"]), item.get("modulate", Color.WHITE))
 	return used
 
 
 func _place(index: int, texture: Texture2D, xz: Vector2, height: float, width: float,
-		flip: bool, modulate: Color, stretch: float) -> int:
+		cell: float, flip: bool, modulate: Color) -> int:
 	while _entities.size() <= index:
 		var made := _new_billboard()
 		_sprite_root.add_child(made)
 		_entities.append(made)
-	_configure(_entities[index], texture, xz, height, width, flip, modulate, stretch)
+	_configure(_entities[index], texture, xz, height, width, cell, flip, modulate)
 	return index + 1
 
 
-## A standing sprite (Y-billboard) with a ground shadow (child 0). `stretch`
-## scales its height without changing its width. (A black outline belongs here
-## too, but a second billboard copy can only z-fight or mis-sort against the
-## body -- it needs an alpha-dilation shader, done separately.)
+## A standing sprite (full billboard) with a ground shadow (child 0).
 func _new_billboard() -> Sprite3D:
 	var sprite := _sprite_node(BaseMaterial3D.BILLBOARD_ENABLED)
 	sprite.add_child(_new_shadow())
 	return sprite
 
 
+## The pivot is pinned to the body's ground point -- which is exactly the
+## camera's target -- so animation frames of different sizes never move it and
+## jitter the sprite (the earlier per-frame position shift is what caused the
+## jitter). The art is placed WITHIN the sprite by `offset`, not by moving the
+## node: bottom-anchored so the feet sit on the ground, and side-anchored so a
+## wide attack frame's overhang falls on the facing side.
 func _configure(sprite: Sprite3D, texture: Texture2D, xz: Vector2, height: float,
-		width: float, flip: bool, modulate: Color, stretch: float) -> void:
+		width: float, cell: float, flip: bool, modulate: Color) -> void:
 	var tex_h := float(texture.get_height())
-	var pixel := height / tex_h if tex_h > 0.0 else 1.0
-	var center_y := height * 0.5 * stretch
+	var tex_w := float(texture.get_width())
 	sprite.texture = texture
-	sprite.pixel_size = pixel
+	sprite.pixel_size = height / tex_h if tex_h > 0.0 else 1.0
 	sprite.flip_h = flip
 	sprite.modulate = modulate
-	sprite.scale = Vector3(1.0, stretch, 1.0)
-	sprite.position = Vector3(xz.x, center_y, xz.y)
+	sprite.position = Vector3(xz.x, 0.0, xz.y)
 	sprite.visible = true
+	# Body pixels within the frame; the overhang is the rest, on the facing side.
+	var body_px := tex_w * cell / width if width > 0.0 else tex_w
+	var side := (tex_w - body_px) * 0.5
+	sprite.offset = Vector2(-side if flip else side, tex_h * 0.5)
 	var shadow: Sprite3D = sprite.get_child(0)
 	shadow.pixel_size = width / float(SHADOW_SIZE)
-	shadow.scale = Vector3(1.0, 1.0 / stretch, 1.0)
-	shadow.position = Vector3(0.0, (0.15 - center_y) / stretch, 0.0)
+	shadow.scale = Vector3.ONE
+	shadow.position = Vector3(0.0, 0.15, 0.0)
 
 
 # ── Projectiles: flat on the ground, turned to their heading ──────────────────
