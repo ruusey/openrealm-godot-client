@@ -27,6 +27,7 @@ var trace := MotionTrace.new()
 
 var _world: WorldRenderer
 var _camera: Camera2D
+var _view_3d: WorldView3D
 var _data_service: DataService
 var _http: HttpBackend
 
@@ -114,6 +115,11 @@ func _ready() -> void:
 	screens.prompt.portals = portals
 	screens.prompt.touch = screens.touch.enabled
 
+	if OS.has_feature("web") and _url_wants_3d():
+		config.enable_3d = true
+	if config.enable_3d:
+		_enable_3d_view()
+
 	# The moment before the frame is drawn, for the motion trace: the
 	# transform the world is about to be drawn with, against the player.
 	RenderingServer.frame_pre_draw.connect(_on_pre_draw)
@@ -135,6 +141,24 @@ func _hide_web_input_caret() -> void:
 			document.head.appendChild(style);
 		})();
 	""", true)
+
+
+## The web page's ?3d=1 (or &3d=1) query, so the prototype can be reached on a
+## phone without a command line.
+func _url_wants_3d() -> bool:
+	var search: Variant = JavaScriptBridge.eval("location.search")
+	return search is String and "3d=1" in search
+
+
+## Swaps the 2D world for the 3D one: hide and stop the flat renderer so it is
+## not the sole consumer of the tile-change flags, and stand the 3D view up in
+## the same viewport, under the HUD.
+func _enable_3d_view() -> void:
+	_world.hide()
+	_world.set_process(false)
+	_view_3d = WorldView3D.new()
+	_view_3d.setup(state, game_data)
+	add_child(_view_3d)
 
 
 func _on_pre_draw() -> void:
