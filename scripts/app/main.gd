@@ -161,6 +161,8 @@ func _enable_3d_view() -> void:
 	# The overlay (names, bars, damage numbers, bubbles, loot) keeps drawing, but
 	# through the 3D camera: the view fits it an affine projector each frame.
 	_view_3d.overlay = screens.overlay
+	# So WASD turns with the orbit -- screen-up is always forward.
+	_view_3d.input = input
 	add_child(_view_3d)
 
 

@@ -27,6 +27,10 @@ var keyboard_captured: Callable = func() -> bool: return false
 ## (the mouse decides), ZERO for a stick at rest (no shot), else the point.
 var touch_aim: Callable = func() -> Vector2: return Vector2.INF
 
+## The 3D view's orbit angle, so WASD stays relative to the screen when the
+## camera is turned (W is always "up" on screen). 0 in the plain 2D client.
+var view_yaw := 0.0
+
 var _next_shot_ms := 0
 ## The stick made digital, as the keys are: eight directions, full speed.
 var _direction := StickDirection.new()
@@ -47,6 +51,9 @@ func tick(delta: float) -> void:
 	# Raw, no deadzone of the actions' own: StickDirection has the thresholds.
 	var movement := Vector2.ZERO if keyboard_captured.call() \
 		else _direction.filter(Input.get_vector("move_left", "move_right", "move_up", "move_down", 0.0))
+	# Turn the keys into the camera's frame, so screen-up is always forward.
+	if view_yaw != 0.0:
+		movement = movement.rotated(view_yaw)
 	for packet in state.advance(delta, movement, client.stats.round_trip_ms()):
 		client.send_move(packet["seq"], packet["vx"], packet["vy"])
 

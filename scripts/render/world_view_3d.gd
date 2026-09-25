@@ -5,7 +5,7 @@ extends Node3D
 ## quads (MultiMesh), the walls extruded boxes (MultiMesh), and every prop,
 ## player, enemy, loot, portal and projectile a sprite in 3D -- the same art the
 ## 2D renderer draws. Standing things (props, characters) are upright Y-billboards
-## with a black outline and a ground shadow; projectiles lie flat on the ground
+## with a ground shadow; projectiles lie flat on the ground
 ## rotated to their heading; the ability effects are the real 2D EffectRenderer
 ## projected onto the floor. The pinned overlay (names, bars, damage numbers,
 ## bubbles, loot) is the real EntityOverlay, driven through this view's 3D camera
@@ -24,8 +24,6 @@ const WALL_HEIGHT := 44.0
 const ENTITY_RANGE := 900.0
 const BULLET_HEIGHT := 12.0
 const SHADOW_SIZE := 32
-## The black outline: a copy this much larger drawn behind the sprite.
-const OUTLINE_SCALE := 1.14
 ## The player billboard, stretched up to undo the vertical foreshortening the
 ## downward camera gives an upright sprite (it read as smushed). 1.0 is off.
 const PLAYER_STRETCH := 1.28
@@ -42,6 +40,8 @@ var state: RealmState
 var content: GameData
 ## The real pinned overlay, driven through this camera while 3D is up.
 var overlay: EntityOverlay
+## Player input, told the orbit angle so WASD stays screen-relative.
+var input: PlayerInput
 
 var _camera: Camera3D
 var _backdrop: MeshInstance3D
@@ -129,6 +129,8 @@ func _process(delta: float) -> void:
 		_yaw += ORBIT_SPEED * delta
 	if Input.is_key_pressed(KEY_E):
 		_yaw -= ORBIT_SPEED * delta
+	if input != null:
+		input.view_yaw = _yaw
 	var centre := state.local.render_centre()
 	_rebuild_map_if_changed()
 	_follow_camera(centre)
@@ -303,13 +305,11 @@ func _place(index: int, texture: Texture2D, xz: Vector2, height: float, width: f
 	return index + 1
 
 
-## A standing sprite (Y-billboard) with a ground shadow (child 0) and a black
-## outline copy (child 1) drawn a touch behind so the body reads off the
-## background. `stretch` scales its height without changing its width.
+## A standing sprite (Y-billboard) with a ground shadow (child 0). `stretch`
+## scales its height without changing its width.
 func _new_billboard() -> Sprite3D:
 	var sprite := _sprite_node(BaseMaterial3D.BILLBOARD_FIXED_Y)
 	sprite.add_child(_new_shadow())
-	sprite.add_child(_sprite_node(BaseMaterial3D.BILLBOARD_FIXED_Y))
 	return sprite
 
 
@@ -329,12 +329,6 @@ func _configure(sprite: Sprite3D, texture: Texture2D, xz: Vector2, height: float
 	shadow.pixel_size = width / float(SHADOW_SIZE)
 	shadow.scale = Vector3(1.0, 1.0 / stretch, 1.0)
 	shadow.position = Vector3(0.0, (0.15 - center_y) / stretch, 0.0)
-	var outline: Sprite3D = sprite.get_child(1)
-	outline.texture = texture
-	outline.pixel_size = pixel * OUTLINE_SCALE
-	outline.flip_h = flip
-	outline.modulate = Color.BLACK
-	outline.position = Vector3(0.0, -0.8, 0.0)
 
 
 # ── Projectiles: flat on the ground, turned to their heading ──────────────────
