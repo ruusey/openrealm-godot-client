@@ -35,6 +35,8 @@ func _ready() -> void:
 	# Assigned ahead of _ready by tests; otherwise taken from the command line.
 	if config == null:
 		config = ClientConfig.from_command_line()
+	if OS.has_feature("web"):
+		_hide_web_input_caret()
 	var display := DisplayScale.new()
 	var mobile := OS.has_feature("web") or OS.has_feature("android")
 	display.device_scale = DisplayScale.pixel_ratio(OS.has_feature("web"), JavaScriptBridge.eval,
@@ -116,6 +118,23 @@ func _ready() -> void:
 	# transform the world is about to be drawn with, against the player.
 	RenderingServer.frame_pre_draw.connect(_on_pre_draw)
 	_load_content()
+
+
+## The web virtual keyboard rides on a transparent DOM <input> Godot overlays
+## on the focused LineEdit; on a scaled canvas the browser draws that element's
+## own caret offset from Godot's -- a stray marker below-left of the field.
+## Make the DOM element's caret and text invisible so only Godot's own caret,
+## drawn in the canvas, shows. Godot's are the only text inputs on the page.
+func _hide_web_input_caret() -> void:
+	JavaScriptBridge.eval("""
+		(function () {
+			if (document.getElementById('or-input-caret-fix')) return;
+			var style = document.createElement('style');
+			style.id = 'or-input-caret-fix';
+			style.textContent = 'input, textarea { caret-color: transparent !important; color: transparent !important; -webkit-text-fill-color: transparent !important; }';
+			document.head.appendChild(style);
+		})();
+	""", true)
 
 
 func _on_pre_draw() -> void:

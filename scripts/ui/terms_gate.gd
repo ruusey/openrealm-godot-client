@@ -18,7 +18,12 @@ const WIDTH := 560
 const BODY_HEIGHT := 300
 ## How close to the end counts as the end, as the web client allows.
 const SLACK_PX := 8.0
+## Room the title, subtitle, hint and buttons need around the body, so the
+## panel still fits a short landscape phone with I Agree reachable.
+const CHROME_PX := 170.0
+const MIN_BODY := 110.0
 
+var panel: PanelContainer
 var body: RichTextLabel
 var hint: Label
 var agree_button: Button
@@ -39,7 +44,7 @@ func _ready() -> void:
 	var centre := CenterContainer.new()
 	centre.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(centre)
-	var panel := PanelContainer.new()
+	panel = PanelContainer.new()
 	panel.custom_minimum_size = Vector2(WIDTH, 0)
 	panel.add_theme_stylebox_override("panel", _box(Color(0.12, 0.10, 0.14), 4))
 	centre.add_child(panel)
@@ -72,16 +77,32 @@ func _ready() -> void:
 	agree_button = InventoryLayout.button(buttons, "I Agree", answer.bind(true))
 	agree_button.disabled = true
 
+	get_viewport().size_changed.connect(_fit)
+	_fit.call_deferred()
+
 
 ## Shows the terms from the top and waits for a button.
 func ask() -> bool:
 	visible = true
 	set_process(true)
+	_fit()
 	agree_button.disabled = true
 	hint.modulate.a = 1.0
 	body.scroll_to_line(0)
 	body.grab_focus.call_deferred()
 	return await answered
+
+
+## Sizes the panel and its scrolling body to the viewport so the whole gate --
+## title through the buttons -- fits, including a short landscape phone.
+func _fit() -> void:
+	if panel == null or body == null:
+		return
+	var view := get_viewport_rect().size
+	var w := minf(float(WIDTH), view.x - 32.0)
+	var h := clampf(view.y - CHROME_PX, MIN_BODY, float(BODY_HEIGHT))
+	panel.custom_minimum_size = Vector2(w, 0)
+	body.custom_minimum_size = Vector2(w - 24.0, h)
 
 
 func answer(agreed: bool) -> void:

@@ -18,6 +18,11 @@ signal status_changed(text: String, is_error: bool)
 var data_service: DataService
 var game_data: GameData
 
+## Narrower than this (in canvas rows/cols, the space the columns are sized in)
+## the two columns cannot sit side by side, so they stack instead of running
+## the class grid off the right on a phone.
+const STACK_BELOW_PX := 720.0
+
 var picker: CharacterPicker
 var play_button: Button
 var deleter: CharacterDeleter
@@ -25,6 +30,7 @@ var creator: CharacterCreator
 var stats_card: CharacterStatsCard
 
 var _characters: VBoxContainer
+var _columns: BoxContainer
 
 
 func _init(service: DataService = null, content: GameData = null) -> void:
@@ -36,13 +42,13 @@ func _ready() -> void:
 	# Hidden as a whole until there is an account, so an empty stage takes
 	# no room in the panel.
 	visible = false
-	var columns := HBoxContainer.new()
-	columns.add_theme_constant_override("separation", 16)
-	add_child(columns)
+	_columns = BoxContainer.new()
+	_columns.add_theme_constant_override("separation", 16)
+	add_child(_columns)
 	_characters = VBoxContainer.new()
 	_characters.custom_minimum_size.x = 340
 	_characters.add_theme_constant_override("separation", 8)
-	columns.add_child(_characters)
+	_columns.add_child(_characters)
 	picker = CharacterPicker.new()
 	picker.game_data = game_data
 	picker.visible = false
@@ -79,11 +85,22 @@ func _ready() -> void:
 	creator.created.connect(_on_created)
 	creator.failed.connect(func(reason: String) -> void:
 		status_changed.emit("Could not create the character: %s" % reason, true))
-	columns.add_child(creator)
+	_columns.add_child(creator)
+
+	get_viewport().size_changed.connect(_fit)
+	_fit.call_deferred()
+
+
+## Side by side where there is room, stacked on a phone so the class grid
+## stays on screen instead of running off the right.
+func _fit() -> void:
+	if _columns != null:
+		_columns.vertical = get_viewport_rect().size.x < STACK_BELOW_PX
 
 
 func show_account(characters: Array) -> void:
 	visible = true
+	_fit()
 	picker.game_data = game_data
 	picker.show_characters(characters)
 	creator.game_data = game_data

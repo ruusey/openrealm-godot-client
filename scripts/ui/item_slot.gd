@@ -22,6 +22,8 @@ const EMPTY := Color(0.10, 0.10, 0.12, 0.85)
 const FILLED := Color(0.16, 0.16, 0.20, 0.95)
 const BORDER := Color(0.35, 0.35, 0.40)
 const EQUIPMENT_BORDER := Color(0.65, 0.55, 0.25)
+## Two taps closer than this on the same slot are a double-tap (hot-equip/use).
+const DOUBLE_TAP_MS := 400
 
 ## Rewritten on a page switch: the twenty backpack cells stand for whichever
 ## page is showing, so handlers read this rather than what they were built with.
@@ -32,6 +34,8 @@ var _icon: TextureRect
 var _count: Label
 var _style := StyleBoxFlat.new()
 var _dragging := false
+var _last_tap_ms := 0
+var _last_touch_ms := 0
 
 
 func _init(slot_index: int, equipment := false) -> void:
@@ -125,9 +129,25 @@ func _notification(what: int) -> void:
 
 
 func _gui_input(event: InputEvent) -> void:
+	# Touch: the OS's emulated-mouse double_click drops on a finger that shifts
+	# between taps, so detect the double-tap ourselves. This is what hot-equips
+	# gear and uses a consumable on a phone, as double-click does on the desktop.
+	if event is InputEventScreenTouch:
+		if event.pressed:
+			var now := Time.get_ticks_msec()
+			_last_touch_ms = now
+			if now - _last_tap_ms <= DOUBLE_TAP_MS:
+				_last_tap_ms = 0
+				activated.emit(index)
+			else:
+				_last_tap_ms = now
+		return
 	if not event is InputEventMouseButton or not event.pressed:
 		return
 	if event.button_index == MOUSE_BUTTON_LEFT and event.double_click:
+		# Skip the emulated double-click riding on a touch we just handled.
+		if Time.get_ticks_msec() - _last_touch_ms <= 600:
+			return
 		activated.emit(index)
 	elif event.button_index == MOUSE_BUTTON_RIGHT:
 		secondary.emit(index, event.shift_pressed)

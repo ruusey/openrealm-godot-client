@@ -35,12 +35,21 @@ func _init(service: DataService = null, content: GameData = null) -> void:
 func _ready() -> void:
 	layer = 20
 	_backdrop = LoginBackdrop.attach(self, game_data)
-	var centre := CenterContainer.new()
-	centre.set_anchors_preset(Control.PRESET_FULL_RECT)
-	add_child(centre)
+	# A ScrollContainer so a phone can reach the whole panel when it is taller
+	# than a short landscape screen; the panel still centres across the width.
+	var scroll := ScrollContainer.new()
+	scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	add_child(scroll)
+	var holder := VBoxContainer.new()
+	holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	holder.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	holder.alignment = BoxContainer.ALIGNMENT_CENTER
+	scroll.add_child(holder)
 	_panel = PanelContainer.new()
 	_panel.custom_minimum_size = Vector2(420, 0)
-	centre.add_child(_panel)
+	_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	holder.add_child(_panel)
 
 	var column := InventoryLayout.column(_panel)
 
