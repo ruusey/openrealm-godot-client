@@ -31,7 +31,8 @@ const OUTLINE_SCALE := 1.12
 const PLAYER_STRETCH := 1.28
 const CAM_HEIGHT := 620.0
 const CAM_BACK := 430.0
-const CAM_FOV := 48.0
+## Orthographic vertical extent in world units (the zoom); ~720 base rows.
+const CAM_ORTHO_SIZE := 720.0
 const ORBIT_SPEED := 1.8
 const FX_REGION := 2400.0
 const FX_VIEWPORT_PX := 1024
@@ -92,9 +93,13 @@ func _ready() -> void:
 	world_env.environment = env
 	add_child(world_env)
 
+	# Orthographic, not perspective: it keeps the angled 2.5D look, but world ->
+	# screen is then an exact affine, so the overlay's affine projector pins
+	# names, bars, portal captions and loot precisely at any position and any
+	# orbit -- perspective made a single affine drift for far entities.
 	_camera = Camera3D.new()
-	_camera.projection = Camera3D.PROJECTION_PERSPECTIVE
-	_camera.fov = CAM_FOV
+	_camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+	_camera.size = CAM_ORTHO_SIZE
 	_camera.near = 1.0
 	_camera.far = 5000.0
 	_camera.current = true
@@ -293,9 +298,14 @@ func _place_entities(centre: Vector2) -> int:
 		var pos: Vector2 = item["pos"]
 		var size := float(item["size"])
 		var draw: Vector2 = item["draw"]
+		var flip: bool = item["flip"]
 		var stretch := PLAYER_STRETCH if item["kind"] == "players" else 1.0
-		used = _place(used, texture, Vector2(pos.x + size * 0.5, pos.y + size * 0.5),
-			draw.y, draw.x, bool(item["flip"]), item.get("modulate", Color.WHITE), stretch)
+		# A wide frame (an attack swing) overhangs the facing side, as 2D's
+		# frame_rect anchors it; shift the centred billboard by that overhang so
+		# the body still lands on the entity instead of drifting sideways.
+		var overhang := (draw.x - size) * 0.5 * (-1.0 if flip else 1.0)
+		used = _place(used, texture, Vector2(pos.x + size * 0.5 + overhang, pos.y + size * 0.5),
+			draw.y, draw.x, flip, item.get("modulate", Color.WHITE), stretch)
 	return used
 
 
