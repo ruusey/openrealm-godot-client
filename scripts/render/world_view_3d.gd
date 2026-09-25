@@ -36,8 +36,13 @@ const PITCH_STEP := 6.0
 ## Orthographic vertical extent in world units (the zoom); ~720 base rows.
 const CAM_ORTHO_SIZE := 720.0
 const ORBIT_SPEED := 1.8
-const FX_REGION := 2400.0
-const FX_VIEWPORT_PX := 1024
+# The effect layer renders the 2D EffectRenderer into a SubViewport and projects
+# it onto the ground, so its texel density (PX / REGION) is what the effects read
+# at. The region is centred on the player each frame, so it only has to cover the
+# visible ground -- kept tight, and the resolution high, so effects stay crisp
+# instead of magnified into a blur.
+const FX_REGION := 1600.0
+const FX_VIEWPORT_PX := 2048
 ## The world span used to fit the overlay's affine projector to the 3D camera.
 const OVERLAY_PROBE := 120.0
 
@@ -468,6 +473,10 @@ func _build_effect_ground() -> void:
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	# Plain linear, no mipmaps: the ground is viewed at a grazing angle, and the
+	# default mipmapped filter drops to blurry, shimmering low mip levels there --
+	# that was the grain. Linear keeps the anti-aliased vector effects smooth.
+	material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
 	plane.material = material
 	_fx_ground.mesh = plane
 	add_child(_fx_ground)
