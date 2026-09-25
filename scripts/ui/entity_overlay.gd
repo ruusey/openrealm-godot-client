@@ -62,6 +62,16 @@ func _ready() -> void:
 	add_child(_vignette)
 
 
+## Disabled by the 3D view: its anchors are screen positions from the 2D
+## camera, which the 3D camera does not share, so every tag, bar and loot label
+## would float off its entity. Stops the per-frame refresh and hides what it drew.
+func set_pinned_ui_enabled(on: bool) -> void:
+	set_process(on)
+	for child in get_children():
+		if child is CanvasItem:
+			child.visible = on
+
+
 func _process(_delta: float) -> void:
 	refresh()
 
