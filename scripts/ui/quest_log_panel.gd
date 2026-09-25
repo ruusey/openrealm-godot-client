@@ -41,6 +41,9 @@ func _ready() -> void:
 	chip.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	chip.add_theme_color_override("font_color", TagStyles.STAR_GOLD)
 	chip.add_theme_font_size_override("font_size", 12)
+	# A drawn star icon, not the U+2605 glyph, which the fallback font shows as a
+	# missing-glyph box on the web export.
+	chip.icon = HudWidgets.star_icon(14)
 	chip.tooltip_text = "Open the quest log (L)"
 	chip.pressed.connect(toggle)
 	add_child(chip)
@@ -65,6 +68,12 @@ func _ready() -> void:
 	var title := HudWidgets.label("QUEST LOG", 16, Color("dfe4ee"))
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(title)
+	var star_icon := TextureRect.new()
+	star_icon.texture = HudWidgets.star_icon(16)
+	star_icon.custom_minimum_size = Vector2(16, 16)
+	star_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	star_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	head.add_child(star_icon)
 	_stars = HudWidgets.label("", 14, TagStyles.STAR_GOLD)
 	head.add_child(_stars)
 	InventoryLayout.button(head, "Close", close)
@@ -84,7 +93,7 @@ func _process(_delta: float) -> void:
 		return
 	if _dialog.visible:
 		PanelFit.shrink(_dialog)
-	chip.text = "★ %d Stars" % state.progress.stars
+	chip.text = "%d Stars" % state.progress.stars
 	if _dialog.visible and state.progress.version != _drawn:
 		refresh()
 
@@ -92,7 +101,7 @@ func _process(_delta: float) -> void:
 ## Every card to the server's last snapshot.
 func refresh() -> void:
 	_drawn = state.progress.version
-	_stars.text = "★ %d Stars" % state.progress.stars
+	_stars.text = "%d Stars" % state.progress.stars
 	for card in _cards.get_children():
 		_cards.remove_child(card)
 		card.queue_free()

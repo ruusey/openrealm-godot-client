@@ -12,6 +12,34 @@ const BAR_HEIGHT := 16
 const BAR_BACK := Color(0.08, 0.08, 0.1, 0.9)
 const TEXT_SIZE := 12
 const CAPTION := Color(0.7, 0.7, 0.75)
+const STAR_GOLD := Color("ffd34d")
+
+## Cached star textures, keyed by size and colour.
+static var _star_icons := {}
+
+
+## A gold five-pointed star drawn into a texture, used instead of the U+2605
+## glyph for the quest-star display: the fallback font renders that glyph as a
+## missing-glyph box on the web export, so an icon that does not depend on the
+## font's coverage is used. Rasterised once per size/colour, then cached.
+static func star_icon(size := 16, colour := STAR_GOLD) -> ImageTexture:
+	var key := "%d:%s" % [size, colour.to_html()]
+	if _star_icons.has(key):
+		return _star_icons[key]
+	var points := PackedVector2Array()
+	var centre := size * 0.5
+	for i in 10:
+		var radius := size * 0.48 if i % 2 == 0 else size * 0.20
+		var angle := -PI * 0.5 + float(i) * PI / 5.0
+		points.append(Vector2(centre + cos(angle) * radius, centre + sin(angle) * radius))
+	var image := Image.create(size, size, false, Image.FORMAT_RGBA8)
+	for y in size:
+		for x in size:
+			var solid := Geometry2D.is_point_in_polygon(Vector2(x + 0.5, y + 0.5), points)
+			image.set_pixel(x, y, colour if solid else Color(0, 0, 0, 0))
+	var texture := ImageTexture.create_from_image(image)
+	_star_icons[key] = texture
+	return texture
 
 
 ## A filled bar with its text centred over the fill: [bar, label]. A
