@@ -1,13 +1,17 @@
-name: Release web build
+name: Release builds
 
-# Exports the Godot web client and publishes it as a GitHub Release zip.
-# Mirrors the native client's tag-driven release: push a v* tag to cut a
-# release; deploy-remote.bat then pulls the zip and mounts it under /opt on the
-# data box (served at https://openrealm.net/play/).
+# Exports the Godot client for Web + desktop (Windows / Linux / macOS) and
+# publishes them as GitHub Release assets. Mirrors the native client's
+# tag-driven release: push a v* tag to cut a release.
 #
-# The export uses the standard (non-Mono) Godot 4.7.2 headless binary -- the
-# Mono build refuses web exports (see export_presets.cfg) -- and the "Web"
-# preset, which has thread support off so the page needs no COOP/COEP headers.
+#   openrealm-godot-web.zip     -> deploy-remote.bat pulls this to the /play mount
+#   openrealm-godot-windows.zip -> single OpenRealm.exe (pck embedded)
+#   openrealm-godot-linux.zip   -> single OpenRealm.x86_64 (pck embedded)
+#   openrealm-godot-macos.zip   -> OpenRealm.app bundle (UNSIGNED)
+#
+# Exports run with the standard (non-Mono) Godot 4.7.2 headless binary -- the
+# Mono build refuses web exports (see export_presets.cfg). The Web preset has
+# thread support off so the page needs no COOP/COEP headers.
 
 on:
   push:
@@ -19,43 +23,46 @@ permissions:
   contents: write
 
 concurrency:
-  group: release-web
+  group: release-builds
   cancel-in-progress: false
 
 env:
   GODOT_VERSION: 4.7.2
   PROJECT_DIR: .
-  EXPORT_DIR: build/web
-  ASSET_NAME: openrealm-godot-web.zip
+  WEB_ASSET: openrealm-godot-web.zip
+  WIN_ASSET: openrealm-godot-windows.zip
+  LINUX_ASSET: openrealm-godot-linux.zip
+  MAC_ASSET: openrealm-godot-macos.zip
 
 jobs:
   release:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - name: Check out
         uses: actions/checkout@v4
 
-      - name: Cache Godot editor + web export templates
+      - name: Cache Godot editor + export templates
         id: godot-cache
         uses: actions/cache@v4
         with:
           path: |
             ~/godot
             ~/.local/share/godot/export_templates
-          key: godot-${{ env.GODOT_VERSION }}-web-nothreads
+          # Bumped from the web-only key: desktop exports need the full template set.
+          key: godot-${{ env.GODOT_VERSION }}-all-templates-v1
 
-      - name: Install Godot ${{ env.GODOT_VERSION }} + web templates
+      - name: Install Godot ${{ env.GODOT_VERSION }} + all export templates
         if: steps.godot-cache.outputs.cache-hit != 'true'
-        timeout-minutes: 10
+        timeout-minutes: 15
         run: |
           set -euo pipefail
           BASE="https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-stable"
 
           fetch() {
             curl -sSL --retry 5 --retry-all-errors --retry-delay 5 \
-              --speed-limit 100000 --speed-time 30 --max-time 600 -o "$2" "$1"
+              --speed-limit 100000 --speed-time 30 --max-time 900 -o "$2" "$1"
           }
 
           echo "== editor binary"
@@ -66,14 +73,14 @@ jobs:
           chmod +x ~/godot/godot
           rm -f /tmp/godot.zip
 
-          # The templates archive (.tpz) is a zip covering every platform (~1 GB).
-          # Extract only the two no-threads web templates + version.txt into the
-          # version dir Godot looks in; leave the rest on the cutting-room floor.
-          echo "== web export templates"
+          # The templates archive (.tpz) is a zip covering every platform (~1 GB
+          # unpacked). We now export desktop targets too, so extract the whole
+          # set into the version dir Godot looks in rather than cherry-picking web.
+          echo "== export templates (all platforms)"
           TPL_DIR=~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
           mkdir -p "$TPL_DIR"
           fetch "$BASE/Godot_v${GODOT_VERSION}-stable_export_templates.tpz" /tmp/templates.tpz
-          unzip -oq /tmp/templates.tpz 'templates/web_nothreads_*.zip' 'templates/version.txt' -d /tmp/tpl
+          unzip -oq /tmp/templates.tpz -d /tmp/tpl
           mv /tmp/tpl/templates/* "$TPL_DIR"/
           rm -rf /tmp/templates.tpz /tmp/tpl
           ls -la "$TPL_DIR"
@@ -84,38 +91,63 @@ jobs:
       - name: Import project
         run: ~/godot/godot --headless --path "$PROJECT_DIR" --import
 
-      - name: Export web build
+      - name: Export all targets
         run: |
           set -euo pipefail
-          rm -rf "$EXPORT_DIR"
-          mkdir -p "$EXPORT_DIR"
-          ~/godot/godot --headless --path "$PROJECT_DIR" --export-release Web build/web/index.html
-          test -f "$EXPORT_DIR/index.html" || { echo "export produced no index.html" >&2; exit 1; }
-          test -f "$EXPORT_DIR/index.wasm" || { echo "export produced no index.wasm" >&2; exit 1; }
-          ls -la "$EXPORT_DIR"
+          rm -rf build
+          mkdir -p build/web build/windows build/linux build/macos
 
-      - name: Zip the export
+          # export-release can exit non-zero on non-fatal warnings, so verify the
+          # artifact exists rather than trusting the exit code.
+          export_target() {
+            local preset="$1" out="$2" must="$3"
+            echo "== export $preset -> $out"
+            ~/godot/godot --headless --path "$PROJECT_DIR" --export-release "$preset" "$out" || true
+            test -f "$must" || { echo "export '$preset' produced no $must" >&2; exit 1; }
+          }
+
+          export_target "Web"             build/web/index.html    "build/web/index.wasm"
+          export_target "Windows Desktop" build/windows/OpenRealm.exe "build/windows/OpenRealm.exe"
+          export_target "Linux"           build/linux/OpenRealm.x86_64 "build/linux/OpenRealm.x86_64"
+          export_target "macOS"           build/macos/OpenRealm.zip    "build/macos/OpenRealm.zip"
+
+          chmod +x build/linux/OpenRealm.x86_64
+          ls -la build/web build/windows build/linux build/macos
+
+      - name: Package release zips
         run: |
           set -euo pipefail
           # index.html at the zip root so it unpacks straight into the /play mount.
-          (cd "$EXPORT_DIR" && zip -r "$GITHUB_WORKSPACE/$ASSET_NAME" .)
-          ls -la "$ASSET_NAME"
+          (cd build/web && zip -r "$GITHUB_WORKSPACE/$WEB_ASSET" .)
+          (cd build/windows && zip "$GITHUB_WORKSPACE/$WIN_ASSET" OpenRealm.exe)
+          (cd build/linux && zip "$GITHUB_WORKSPACE/$LINUX_ASSET" OpenRealm.x86_64)
+          # Godot already emits a zip of the .app bundle for macOS; just name it.
+          cp build/macos/OpenRealm.zip "$GITHUB_WORKSPACE/$MAC_ASSET"
+          ls -la "$WEB_ASSET" "$WIN_ASSET" "$LINUX_ASSET" "$MAC_ASSET"
 
-      - name: Upload zip as workflow artifact
+      - name: Upload zips as workflow artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.ASSET_NAME }}
-          path: ${{ env.ASSET_NAME }}
+          name: openrealm-godot-builds
+          path: |
+            ${{ env.WEB_ASSET }}
+            ${{ env.WIN_ASSET }}
+            ${{ env.LINUX_ASSET }}
+            ${{ env.MAC_ASSET }}
           if-no-files-found: error
 
       - name: Publish to GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ env.ASSET_NAME }}
+          files: |
+            ${{ env.WEB_ASSET }}
+            ${{ env.WIN_ASSET }}
+            ${{ env.LINUX_ASSET }}
+            ${{ env.MAC_ASSET }}
           generate_release_notes: true
           draft: false
           prerelease: false
-          # Keep releases/latest/download/openrealm-godot-web.zip pointing here
-          # regardless of tag-push ordering -- deploy-remote.bat pulls that URL.
+          # Keep releases/latest/download/*.zip pointing here regardless of
+          # tag-push ordering -- deploy-remote.bat pulls the web zip from there.
           make_latest: 'true'
