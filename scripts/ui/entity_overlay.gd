@@ -37,6 +37,15 @@ var _labels: FloatingLabels
 var _loot: LootPreviews
 var _vignette: BlindVignette
 
+## The 3D view drives these: with project_3d on, the overlay places its tags
+## through world_projector (an affine world->screen fit to the 3D camera at the
+## player) and culls to world_view, instead of the 2D camera's own transform.
+## So names, bars, damage numbers, bubbles and loot pin to the 3D bodies without
+## any of it being re-drawn for 3D.
+var project_3d := false
+var world_projector := Transform2D()
+var world_view := Rect2()
+
 
 func setup(realm_state: RealmState, game_data: GameData = null) -> void:
 	state = realm_state
@@ -62,16 +71,6 @@ func _ready() -> void:
 	add_child(_vignette)
 
 
-## Disabled by the 3D view: its anchors are screen positions from the 2D
-## camera, which the 3D camera does not share, so every tag, bar and loot label
-## would float off its entity. Stops the per-frame refresh and hides what it drew.
-func set_pinned_ui_enabled(on: bool) -> void:
-	set_process(on)
-	for child in get_children():
-		if child is CanvasItem:
-			child.visible = on
-
-
 func _process(_delta: float) -> void:
 	refresh()
 
@@ -80,8 +79,8 @@ func _process(_delta: float) -> void:
 func refresh() -> void:
 	chips = 0
 	bubbles = 0
-	var to_screen := get_viewport().get_canvas_transform()
-	var view := ViewRect.of(_root)
+	var to_screen := world_projector if project_3d else get_viewport().get_canvas_transform()
+	var view := world_view if project_3d else ViewRect.of(_root)
 	if state != null:
 		_show_players(to_screen, view)
 		_show_enemies(to_screen, view)

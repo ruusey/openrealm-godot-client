@@ -156,11 +156,11 @@ func _url_wants_3d() -> bool:
 func _enable_3d_view() -> void:
 	_world.hide()
 	_world.set_process(false)
-	# The pinned nameplates/bars/loot labels anchor through the 2D camera, so
-	# they float off in 3D; hide them until they are re-drawn in the 3D world.
-	screens.overlay.set_pinned_ui_enabled(false)
 	_view_3d = WorldView3D.new()
 	_view_3d.setup(state, game_data)
+	# The overlay (names, bars, damage numbers, bubbles, loot) keeps drawing, but
+	# through the 3D camera: the view fits it an affine projector each frame.
+	_view_3d.overlay = screens.overlay
 	add_child(_view_3d)
 
 
