@@ -20,7 +20,8 @@ extends Node3D
 
 const TILE := GameConstants.TILE_SIZE
 const COLLISION_LAYER := GameConstants.COLLISION_LAYER
-const WALL_HEIGHT := 44.0
+# Walls are perfect cubes, one tile on every edge.
+const WALL_HEIGHT := float(TILE)
 const ENTITY_RANGE := 900.0
 const BULLET_HEIGHT := 12.0
 const SHADOW_SIZE := 32
@@ -62,7 +63,7 @@ var _projectiles: Array[Sprite3D] = []
 var _projectile_shadows: Array[Sprite3D] = []
 var _entity_queue := EntityQueue.new()
 var _floor_mesh := PlaneMesh.new()
-var _wall_mesh := BoxMesh.new()
+var _wall_mesh: ArrayMesh
 var _grey_wall := StandardMaterial3D.new()
 var _floor_materials := {}
 var _wall_materials := {}
@@ -123,9 +124,10 @@ func _ready() -> void:
 	add_child(_backdrop)
 
 	_floor_mesh.size = Vector2(TILE, TILE)
-	_wall_mesh.size = Vector3(TILE, WALL_HEIGHT, TILE)
+	_wall_mesh = _make_wall_mesh()
 	_grey_wall.albedo_color = Color(0.5, 0.48, 0.54)
 	_grey_wall.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_grey_wall.cull_mode = BaseMaterial3D.CULL_DISABLED
 	_shadow = _make_shadow()
 
 	_map_root = Node3D.new()
@@ -304,8 +306,42 @@ func _wall_material_for(texture: Texture2D) -> StandardMaterial3D:
 	_apply_atlas(material, texture)
 	material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	# The cube mesh below carries its own winding; unshaded ignores normals, so
+	# skip culling rather than risk an inside-out face.
+	material.cull_mode = BaseMaterial3D.CULL_DISABLED
 	_wall_materials[texture] = material
 	return material
+
+
+## A one-tile cube whose UVs split the 8x16 wall art the way the sprite is
+## authored: the upper half (mesh v 0..0.5) is the top face, the lower half
+## (v 0.5..1) the front face, repeated on all four sides. The wall material's
+## atlas offset/scale then maps that 0..1 onto the tile's region, so each face
+## gets the correct 8x8 half instead of the whole sprite squished onto it.
+func _make_wall_mesh() -> ArrayMesh:
+	var h := TILE * 0.5
+	var builder := SurfaceTool.new()
+	builder.begin(Mesh.PRIMITIVE_TRIANGLES)
+	# Sides: top edge -> v 0.5 (top of the front face), bottom edge -> v 1.0.
+	_wall_quad(builder, Vector3(-h, h, h), Vector3(h, h, h), Vector3(h, -h, h), Vector3(-h, -h, h), 0.5, 1.0)
+	_wall_quad(builder, Vector3(h, h, -h), Vector3(-h, h, -h), Vector3(-h, -h, -h), Vector3(h, -h, -h), 0.5, 1.0)
+	_wall_quad(builder, Vector3(h, h, h), Vector3(h, h, -h), Vector3(h, -h, -h), Vector3(h, -h, h), 0.5, 1.0)
+	_wall_quad(builder, Vector3(-h, h, -h), Vector3(-h, h, h), Vector3(-h, -h, h), Vector3(-h, -h, -h), 0.5, 1.0)
+	# Top: the upper half of the sprite.
+	_wall_quad(builder, Vector3(-h, h, -h), Vector3(h, h, -h), Vector3(h, h, h), Vector3(-h, h, h), 0.0, 0.5)
+	return builder.commit()
+
+
+## A quad (top-left, top-right, bottom-right, bottom-left) with u across 0..1 and
+## v spanning the given band of the sprite.
+func _wall_quad(builder: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector3,
+		v_top: float, v_bottom: float) -> void:
+	builder.set_uv(Vector2(0.0, v_top)); builder.add_vertex(a)
+	builder.set_uv(Vector2(1.0, v_top)); builder.add_vertex(b)
+	builder.set_uv(Vector2(1.0, v_bottom)); builder.add_vertex(c)
+	builder.set_uv(Vector2(0.0, v_top)); builder.add_vertex(a)
+	builder.set_uv(Vector2(1.0, v_bottom)); builder.add_vertex(c)
+	builder.set_uv(Vector2(0.0, v_bottom)); builder.add_vertex(d)
 
 
 ## A 3D material samples the whole atlas at UV 0..1 -- unlike Sprite2D/3D it
