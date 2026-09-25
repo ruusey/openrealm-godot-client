@@ -23,6 +23,10 @@ const SYSTEM := "SYSTEM"
 const EVENT_MARKER := "EVENT_MARKER"
 
 var lines: Array = []
+## Bumped on every stored line and on clear. `size` saturates at MAX_LINES once
+## the ring is full, so a panel watching size alone would stop seeing new lines
+## -- watch this instead.
+var revision := 0
 
 var _clock: Callable
 
@@ -33,6 +37,7 @@ func _init(clock: Callable = func() -> int: return Time.get_ticks_msec()) -> voi
 
 func clear() -> void:
 	lines.clear()
+	revision += 1
 
 
 ## Stores whatever arrived, and does nothing else.
@@ -57,6 +62,7 @@ func apply_text(data: Dictionary) -> void:
 	})
 	while lines.size() > MAX_LINES:
 		lines.pop_front()
+	revision += 1
 
 
 static func is_system(line: Dictionary) -> bool:

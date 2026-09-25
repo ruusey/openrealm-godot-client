@@ -117,10 +117,12 @@ func _process(_delta: float) -> void:
 	if state == null:
 		blank()
 		return
-	# Rebuilt only when something was actually said.
-	if state.chat.lines.size() == _shown:
+	# Rebuilt only when something was actually said. Watches the log's revision,
+	# not its size -- size stops changing once the ring is full at MAX_LINES, so
+	# newer lines that push out older ones would otherwise never redraw.
+	if state.chat.revision == _shown:
 		return
-	_shown = state.chat.lines.size()
+	_shown = state.chat.revision
 	refresh()
 
 
