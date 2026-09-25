@@ -10,6 +10,13 @@ extends RefCounted
 ## Multishot Gem's gemstoneType; it adds one extra fanned bullet, which the
 ## prediction must include or that bullet arrives late and looks staggered.
 const MULTISHOT_GEM := 3
+## Hit-circle radius = size * this, for both bullet and enemy. Mirrors the
+## server's GlobalConstants.HIT_RADIUS_FACTOR / circleHit so the client's
+## predicted despawn lands where the server's damage does.
+const HIT_RADIUS_FACTOR := 0.4
+## A non-pierce bullet freezes at impact and lingers this long before the local
+## fallback removes it, in case the server's Unload is slow.
+const CONSUME_LINGER_MS := 50
 
 var bullets := {}
 ## Round-trip time, used to fast-forward freshly received bullets.
@@ -87,6 +94,13 @@ func advance(delta: float) -> void:
 	var now: int = _clock.call()
 	for id in bullets.keys():
 		var bullet: Dictionary = bullets[id]
+		# A non-pierce bullet that predicted a hit is frozen at the impact point
+		# (not flying through the enemy) and lingers briefly before the local
+		# fallback removes it; the server's Unload normally removes it first.
+		if bullet.get("consumed", false):
+			if now - int(bullet.get("consumed_at", now)) > CONSUME_LINGER_MS:
+				bullets.erase(id)
+			continue
 		# Order matches the server tick: steer, integrate, then re-anchor.
 		if _entities != null and ProjectileKind.is_homing(bullet):
 			ProjectileTracking.steer(bullet, _entities, _player, bullet_scale)
@@ -95,6 +109,41 @@ func advance(delta: float) -> void:
 			ProjectileTracking.anchor(bullet, _entities, _player)
 		if ProjectileMotion.is_expired(bullet, now):
 			bullets.erase(id)
+	_predict_hits(now)
+
+
+## Client-side predicted bullet-vs-enemy hits for player shots, mirroring the
+## server's circleHit and the web client. It ONLY freezes a non-pierce bullet at
+## impact so it stops on the first enemy instead of visually piercing -- damage,
+## HP and despawn stay server-authoritative. A bullet flagged PASS_THROUGH_ENEMIES
+## keeps flying and hits every enemy on its path, as the server does.
+func _predict_hits(now: int) -> void:
+	if _entities == null:
+		return
+	for id in bullets.keys():
+		var bullet: Dictionary = bullets[id]
+		if bullet.get("consumed", false):
+			continue
+		# Pierce shots fly through; homing shots are 100% server-driven.
+		if ProjectileKind.has_flag(bullet, ProjectileKind.PASS_THROUGH_ENEMIES):
+			continue
+		if ProjectileKind.is_homing(bullet):
+			continue
+		# Our own predictions (negative ids) and any player-flagged bullet.
+		if id >= 0 and not ProjectileKind.is_player_shot(bullet):
+			continue
+		var size := float(bullet.get("size", 4))
+		var radius := size * HIT_RADIUS_FACTOR
+		var centre: Vector2 = bullet["pos"] + Vector2(size, size) * 0.5
+		for enemy_id in _entities.enemies:
+			var enemy: Dictionary = _entities.enemies[enemy_id]
+			var enemy_size := float(enemy.get("size", GameConstants.TILE_SIZE))
+			var reach := radius + enemy_size * HIT_RADIUS_FACTOR
+			var enemy_centre := _entities.render_position(enemy) + Vector2(enemy_size, enemy_size) * 0.5
+			if centre.distance_squared_to(enemy_centre) < reach * reach:
+				bullet["consumed"] = true
+				bullet["consumed_at"] = now
+				break
 
 
 ## The projectile group a basic attack fires. The equipped item carries it on
