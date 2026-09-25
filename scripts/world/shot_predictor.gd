@@ -11,16 +11,17 @@ extends RefCounted
 
 ## Fan spread for weapons whose archetype does not specify one.
 const DEFAULT_SPREAD_RAD := 0.12
-## A prediction and an incoming bullet are the same shot within this angle...
+## A prediction and an incoming bullet are the same shot within this angle.
 const ANGLE_TOLERANCE := 0.20
-## ...and, for bullets not flagged as player shots, this distance.
-const MATCH_DISTANCE := 96.0
 
 
-## Returns the predicted bullets for one shot, keyed by their local (negative) id.
+## Returns the predicted bullets for one shot, keyed by their local (negative)
+## id. `extra_projectiles` is the count a socketed gem adds on top of the
+## archetype's (a Multishot Gem is +1) -- it MUST match the server's total or
+## the extra server bullet arrives late and the fan looks staggered.
 static func build(shot_number: int, group_id: int, definitions: Array, base_angle: float,
-		origin: Vector2, archetype: Dictionary, now_ms: int) -> Dictionary:
-	var count := maxi(int(archetype.get("projectileCount", 1)), 1)
+		origin: Vector2, archetype: Dictionary, now_ms: int, extra_projectiles := 0) -> Dictionary:
+	var count := maxi(int(archetype.get("projectileCount", 1)), 1) + maxi(extra_projectiles, 0)
 	var spread := float(archetype.get("spreadRad", 0.0))
 	if spread <= 0.0:
 		spread = DEFAULT_SPREAD_RAD
@@ -46,14 +47,16 @@ static func build(shot_number: int, group_id: int, definitions: Array, base_angl
 	return built
 
 
-## Finds the prediction matching an incoming server bullet, or an empty
-## dictionary. A matched prediction adopts the server id so a later Unload
-## removes it.
-static func claim(bullets: Dictionary, wire: Dictionary, server_id: int) -> bool:
+## Finds the prediction matching an incoming server bullet and adopts its id, or
+## returns false. `owner_id` is the local player: only a bullet the server says
+## WE fired can be one of our predictions. Matching any other bullet (a nearby
+## enemy shot at a similar angle) would drop the server's real, damaging bullet
+## so it never draws -- an invisible projectile that still kills. So an enemy
+## bullet is never claimed here; it always falls through to be spawned and drawn.
+static func claim(bullets: Dictionary, wire: Dictionary, server_id: int, owner_id: int) -> bool:
+	if int(wire.get("srcEntityId", 0)) != owner_id:
+		return false
 	var incoming_angle := float(wire.get("angle", 0.0))
-	var incoming_position := _wire_position(wire)
-	var is_player_shot: bool = ProjectileKind.PLAYER_PROJECTILE in wire.get("flags", [])
-
 	for local_id in bullets:
 		if local_id >= 0:
 			continue
@@ -62,15 +65,6 @@ static func claim(bullets: Dictionary, wire: Dictionary, server_id: int) -> bool
 			continue
 		if absf(angle_difference(prediction["angle"], incoming_angle)) > ANGLE_TOLERANCE:
 			continue
-		# A player-flagged bullet can only be ours, so the angle is enough.
-		# Anything else also has to have spawned near where we predicted.
-		if not is_player_shot and prediction["pos"].distance_to(incoming_position) > MATCH_DISTANCE:
-			continue
 		prediction["server_id"] = server_id
 		return true
 	return false
-
-
-static func _wire_position(wire: Dictionary) -> Vector2:
-	var pos: Dictionary = wire.get("pos", {})
-	return Vector2(pos.get("x", 0.0), pos.get("y", 0.0))

@@ -7,6 +7,10 @@ extends RefCounted
 ## so this advances them locally with the same integrator the server runs.
 ## Locally predicted shots live in the same table under negative ids.
 
+## Multishot Gem's gemstoneType; it adds one extra fanned bullet, which the
+## prediction must include or that bullet arrives late and looks staggered.
+const MULTISHOT_GEM := 3
+
 var bullets := {}
 ## Round-trip time, used to fast-forward freshly received bullets.
 var latency_ms := 0.0
@@ -41,7 +45,7 @@ func apply_load(data: Dictionary) -> void:
 		var id := int(wire.get("id", 0))
 		if bullets.has(id):
 			continue
-		if ShotPredictor.claim(bullets, wire, id):
+		if ShotPredictor.claim(bullets, wire, id, _player.id):
 			# Already on screen as a prediction; adopting the server copy too
 			# would draw the same bullet twice.
 			continue
@@ -133,10 +137,13 @@ func fire_basic_attack(target: Vector2) -> Dictionary:
 	_player.face_toward(target - centre)
 	_player.attack.begin(target - centre)
 
-	var archetype := _content.archetype_for_item(int(_player.equipped_weapon().get("itemId", -1)))
+	var weapon := _player.equipped_weapon()
+	var archetype := _content.archetype_for_item(int(weapon.get("itemId", -1)))
+	# Match the server's bullet count: a Multishot Gem adds one more.
+	var extra := 1 if int(weapon.get("gemstoneType", 0)) == MULTISHOT_GEM else 0
 	if not bool(archetype.get("melee", false)):
 		bullets.merge(ShotPredictor.build(shot, group_id, definitions,
-			base_angle, _player.position, archetype, _clock.call()))
+			base_angle, _player.position, archetype, _clock.call(), extra))
 
 	return {
 		"projectileId": shot,
