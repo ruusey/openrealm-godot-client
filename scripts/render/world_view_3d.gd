@@ -24,11 +24,15 @@ const WALL_HEIGHT := 44.0
 const ENTITY_RANGE := 900.0
 const BULLET_HEIGHT := 12.0
 const SHADOW_SIZE := 32
-## The player billboard, stretched up to undo the vertical foreshortening the
-## downward camera gives an upright sprite (it read as smushed). 1.0 is off.
-const PLAYER_STRETCH := 1.28
-const CAM_HEIGHT := 620.0
-const CAM_BACK := 430.0
+## Camera distance from the player. Pitch (degrees above the ground) rides the
+## mouse wheel; yaw rides Q/E. Sprites are full billboards, so they always face
+## the camera and tilt to match whatever pitch is chosen -- no foreshortening,
+## the art stays fully preserved instead of squished.
+const CAM_DIST := 755.0
+const PITCH_DEFAULT := 55.0
+const PITCH_MIN := 25.0
+const PITCH_MAX := 80.0
+const PITCH_STEP := 6.0
 ## Orthographic vertical extent in world units (the zoom); ~720 base rows.
 const CAM_ORTHO_SIZE := 720.0
 const ORBIT_SPEED := 1.8
@@ -60,6 +64,7 @@ var _wall_materials := {}
 var _shadow: ImageTexture
 var _map_built := false
 var _yaw := 0.0
+var _pitch := PITCH_DEFAULT
 
 var _fx_viewport: SubViewport
 var _fx_renderer: EffectRenderer
@@ -166,9 +171,22 @@ func _mouse_world() -> Variant:
 	return Vector2(hit.x, hit.z)
 
 
+## Mouse wheel tilts the camera: up raises the angle toward top-down, down drops
+## it toward a more acute, side-on angle. Full-billboard sprites follow suit.
+func _unhandled_input(event: InputEvent) -> void:
+	if not (event is InputEventMouseButton and event.pressed):
+		return
+	if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+		_pitch = clampf(_pitch + PITCH_STEP, PITCH_MIN, PITCH_MAX)
+	elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+		_pitch = clampf(_pitch - PITCH_STEP, PITCH_MIN, PITCH_MAX)
+
+
 func _follow_camera(centre: Vector2) -> void:
 	var target := Vector3(centre.x, 0.0, centre.y)
-	var offset := Vector3(sin(_yaw) * CAM_BACK, CAM_HEIGHT, cos(_yaw) * CAM_BACK)
+	var pitch := deg_to_rad(_pitch)
+	var horizontal := CAM_DIST * cos(pitch)
+	var offset := Vector3(sin(_yaw) * horizontal, CAM_DIST * sin(pitch), cos(_yaw) * horizontal)
 	_camera.position = target + offset
 	_camera.look_at(target, Vector3.UP)
 
@@ -186,6 +204,10 @@ func _update_overlay(centre: Vector2) -> void:
 	overlay.world_projector = Transform2D(along_x, along_z, origin_screen - along_x * centre.x - along_z * centre.y)
 	overlay.world_view = Rect2(centre - Vector2(ENTITY_RANGE, ENTITY_RANGE), Vector2(ENTITY_RANGE, ENTITY_RANGE) * 2.0)
 	overlay.project_3d = true
+	# Refresh here, after the projector is set for THIS frame, rather than letting
+	# the overlay's own _process run a frame behind -- that lag is what made the
+	# tags/pills lag and jitter while rotating. Its own _process is off in 3D.
+	overlay.refresh()
 
 
 # ── Map: ground + walls as MultiMesh, props as standing sprites ───────────────
@@ -314,7 +336,7 @@ func _place_entities(centre: Vector2) -> int:
 		var size := float(item["size"])
 		var draw: Vector2 = item["draw"]
 		var flip: bool = item["flip"]
-		var stretch := PLAYER_STRETCH if item["kind"] == "players" else 1.0
+		var stretch := 1.0
 		# A wide frame (an attack swing) overhangs the facing side, as 2D's
 		# frame_rect anchors it; shift the centred billboard by that overhang so
 		# the body still lands on the entity instead of drifting sideways.
@@ -339,7 +361,7 @@ func _place(index: int, texture: Texture2D, xz: Vector2, height: float, width: f
 ## too, but a second billboard copy can only z-fight or mis-sort against the
 ## body -- it needs an alpha-dilation shader, done separately.)
 func _new_billboard() -> Sprite3D:
-	var sprite := _sprite_node(BaseMaterial3D.BILLBOARD_FIXED_Y)
+	var sprite := _sprite_node(BaseMaterial3D.BILLBOARD_ENABLED)
 	sprite.add_child(_new_shadow())
 	return sprite
 
