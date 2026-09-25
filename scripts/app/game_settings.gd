@@ -18,6 +18,8 @@ const DEFAULT_PATH := "user://settings.cfg"
 const SECTION := "settings"
 ## The keys (KeyBindings), kept beside the switches; only those changed.
 const KEYS := "bindings"
+## Which panels are folded (PanelFold), by the panel's key; only those chosen.
+const PANELS := "panels"
 ## Key -> [label, default], in the order the options panel lists them.
 const DISPLAY := {"vsync": ["VSync", true]}
 const GRAPHICS := {
@@ -41,6 +43,7 @@ var path := ""
 var ui_scale := 0.0
 var world_zoom := 0.0
 var _values := {}
+var _panels := {}
 
 
 func _init() -> void:
@@ -75,6 +78,8 @@ func load_from(file_path: String) -> void:
 		world_zoom = float(file.get_value(SECTION, "world_zoom", 0.0))
 		for action in file.get_section_keys(KEYS) if file.has_section(KEYS) else []:
 			keys[action] = int(file.get_value(KEYS, action, 0))
+		for panel in file.get_section_keys(PANELS) if file.has_section(PANELS) else []:
+			_panels[panel] = bool(file.get_value(PANELS, panel, false))
 	KeyBindings.apply(keys)
 	apply()
 
@@ -90,14 +95,21 @@ func save() -> void:
 	var keys := KeyBindings.custom()
 	for action in keys:
 		file.set_value(KEYS, action, keys[action])
+	for panel in _panels:
+		file.set_value(PANELS, panel, _panels[panel])
 	file.save(path)
 
 
-## A key for an action, kept; see KeyBindings.rebind for the swap.
-func rebind(action: String, key: int) -> void:
-	if not KeyBindings.rebind(action, key).is_empty():
-		save()
-		changed.emit()
+## Whether a panel was folded by choice; `otherwise` when nothing was chosen.
+func panel_folded(key: String, otherwise: bool) -> bool:
+	return bool(_panels.get(key, otherwise))
+
+
+func set_panel_folded(key: String, folded: bool) -> void:
+	if _panels.get(key) == folded:
+		return
+	_panels[key] = folded
+	save()
 
 
 ## "ui_scale" or "world_zoom", 0 for automatic.
@@ -111,6 +123,13 @@ func set_scale(key: String, scale: float) -> void:
 
 func scale_of(key: String) -> float:
 	return float(get(key))
+
+
+## A key for an action, kept; see KeyBindings.rebind for the swap.
+func rebind(action: String, key: int) -> void:
+	if not KeyBindings.rebind(action, key).is_empty():
+		save()
+		changed.emit()
 
 
 func reset_keys() -> void:

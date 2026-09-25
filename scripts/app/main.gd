@@ -36,7 +36,15 @@ func _ready() -> void:
 	if config == null:
 		config = ClientConfig.from_command_line()
 	var display := DisplayScale.new()
+	var mobile := OS.has_feature("web") or OS.has_feature("android")
+	display.device_scale = DisplayScale.pixel_ratio(OS.has_feature("web"), JavaScriptBridge.eval,
+		OS.has_feature("android"), DisplayServer.screen_get_dpi())
 	add_child(display)
+	# Short by the screen's own rows: a phone in landscape, or a small window.
+	# Not under a headless display, whose 64-row window the unit suite shares:
+	# the default is process-wide, and one Main would fold every panel after it.
+	if DisplayServer.get_name() != "headless":
+		PanelFold.short_screen = PanelFold.default_folded(float(get_window().size.y) / display.device_scale)
 
 	game_data = GameData.new()
 	state = RealmState.new(game_data)
@@ -77,7 +85,8 @@ func _ready() -> void:
 	add_child(screens)
 	screens.death.dismissed.connect(screens.login.return_after_death)
 	screens.death.quit.connect(screens.login.forget_characters.bind("Signed out."))
-	screens.login.prefill(config.email, config.password)
+	screens.login.last_email.path = LastEmail.DEFAULT_PATH if config.settings_path != "" else ""
+	screens.login.prefill(config.email if config.email != "" else screens.login.last_email.read(), config.password)
 
 	session = SessionController.new(client, state, screens.login, config)
 	session.entered_realm.connect(_on_entered_realm)
@@ -93,6 +102,15 @@ func _ready() -> void:
 	# And a key typed into the chat line is a letter, not a move or a cast.
 	for ticker in [input, portals, inventory_input, ability_input]:
 		ticker.keyboard_captured = screens.captures_keyboard
+	# A phone's sticks, or --touch to try them here with the mouse as a finger.
+	var touchscreen := DisplayServer.is_touchscreen_available()
+	screens.touch.pixel_ratio = display.device_scale if mobile else DisplayServer.screen_get_scale()
+	screens.touch.enable(TouchControls.wanted(config.touch, touchscreen, OS.has_feature), not touchscreen)
+	input.touch_aim = screens.touch.aim_point
+	caster.aim_point = screens.touch.cast_point
+	# The prompt over the bar is the phone's F and Space.
+	screens.prompt.portals = portals
+	screens.prompt.touch = screens.touch.enabled
 
 	# The moment before the frame is drawn, for the motion trace: the
 	# transform the world is about to be drawn with, against the player.

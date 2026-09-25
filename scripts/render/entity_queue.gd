@@ -82,8 +82,7 @@ func _queue_players(queue: Array, state: RealmState, content: GameData,
 			# The sheet only has a right-facing side clip, so leftward
 			# movement is that clip mirrored.
 			"flip": facing == "side" and mirrored,
-			# Only the player we are wades: the web client asks this of one
-			# entity and of no other.
+			# Only the player we are wades, as in the web client.
 			"wading": is_local and state.tiles.wades(position, PLAYER_RENDER_SIZE),
 		})
 
@@ -104,6 +103,7 @@ func _queue_enemies(queue: Array, state: RealmState, content: GameData, view: Re
 			"tint": Color(0.8, 0.25, 0.25),
 			"modulate": StatusTint.of(enemy.get("effects", [])),
 			"flip": false,
+			"lock": id == state.entities.lock_on,
 		})
 
 

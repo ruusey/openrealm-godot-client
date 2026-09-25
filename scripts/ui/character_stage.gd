@@ -4,6 +4,9 @@ extends VBoxContainer
 ## The account's side of the sign-in panel: the characters to pick from,
 ## "Enter realm", "Delete", and the class grid that makes a new one.
 ##
+## Two columns, the characters left and the class grid right, every row a
+## thumb's height (TouchSize): at a mouse's size they were hard to hit.
+##
 ## Hidden until an account is signed in. Choosing -- a double-click in the
 ## list, Enter realm, or "Create & play" on a fresh character -- hands the
 ## uuid up; what it says about itself goes up as status, for the panel's one
@@ -21,6 +24,8 @@ var deleter: CharacterDeleter
 var creator: CharacterCreator
 var stats_card: CharacterStatsCard
 
+var _characters: VBoxContainer
+
 
 func _init(service: DataService = null, content: GameData = null) -> void:
 	data_service = service
@@ -31,11 +36,18 @@ func _ready() -> void:
 	# Hidden as a whole until there is an account, so an empty stage takes
 	# no room in the panel.
 	visible = false
+	var columns := HBoxContainer.new()
+	columns.add_theme_constant_override("separation", 16)
+	add_child(columns)
+	_characters = VBoxContainer.new()
+	_characters.custom_minimum_size.x = 340
+	_characters.add_theme_constant_override("separation", 8)
+	columns.add_child(_characters)
 	picker = CharacterPicker.new()
 	picker.game_data = game_data
 	picker.visible = false
 	picker.activated.connect(play)
-	add_child(picker)
+	_characters.add_child(picker)
 	stats_card = CharacterStatsCard.new()
 	stats_card.data_service = data_service
 	add_child(stats_card)
@@ -46,7 +58,7 @@ func _ready() -> void:
 	play_button.text = "Enter realm"
 	play_button.visible = false
 	play_button.pressed.connect(play)
-	add_child(play_button)
+	_characters.add_child(TouchSize.grow(play_button, 20))
 
 	deleter = CharacterDeleter.new()
 	deleter.data_service = data_service
@@ -54,7 +66,7 @@ func _ready() -> void:
 	deleter.deleted.connect(_on_deleted)
 	deleter.failed.connect(func(reason: String) -> void:
 		status_changed.emit("Could not delete the character: %s" % reason, true))
-	add_child(deleter)
+	_characters.add_child(deleter)
 	deleter.delete_button.pressed.connect(ask_delete)
 	# A question asked about one character is put away when the pick moves.
 	picker.tabs.tab_changed.connect(func(_page: int) -> void: _offer_delete())
@@ -67,7 +79,7 @@ func _ready() -> void:
 	creator.created.connect(_on_created)
 	creator.failed.connect(func(reason: String) -> void:
 		status_changed.emit("Could not create the character: %s" % reason, true))
-	add_child(creator)
+	columns.add_child(creator)
 
 
 func show_account(characters: Array) -> void:
@@ -79,6 +91,7 @@ func show_account(characters: Array) -> void:
 	creator.visible = true
 	# Nothing to play, but a graveyard is still worth a look.
 	picker.visible = picker.alive_count() > 0 or picker.dead_count() > 0
+	_characters.visible = picker.visible
 	play_button.visible = picker.alive_count() > 0
 	deleter.game_data = game_data
 	_offer_delete()

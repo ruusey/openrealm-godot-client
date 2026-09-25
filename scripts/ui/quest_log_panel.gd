@@ -82,6 +82,8 @@ func _process(_delta: float) -> void:
 	_dialog.visible = visible and shown
 	if not visible:
 		return
+	if _dialog.visible:
+		PanelFit.shrink(_dialog)
 	chip.text = "★ %d Stars" % state.progress.stars
 	if _dialog.visible and state.progress.version != _drawn:
 		refresh()

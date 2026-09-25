@@ -55,6 +55,8 @@ var autoconnect := true
 ## server on loopback; 0 is the real socket.
 var lag_ms := 0.0
 var lag_jitter_ms := 0.0
+## Show the phone's sticks and buttons here, where there is no touchscreen.
+var touch := false
 ## Where the options are kept. Empty -- a test's config -- keeps nothing.
 var settings_path := ""
 
@@ -67,9 +69,15 @@ static func from_command_line() -> ClientConfig:
 
 ## `on_web` and `origin` are parameters rather than direct queries so the
 ## browser's behaviour -- including which of the two wins when both name a
-## host -- is reachable from a test running on the desktop.
+## host -- is reachable from a test running on the desktop. `on_app`, an
+## Android build, has no page and no command line and is always what a page
+## on the production domain is: openrealm.net over TLS, socket and content
+## the browser's way, since no 127.0.0.1 or data repo exists on a phone.
 static func parse(args: PackedStringArray, on_web := OS.has_feature("web"),
-		origin := PageOrigin.current()) -> ClientConfig:
+		origin := PageOrigin.current(), on_app := OS.has_feature("android")) -> ClientConfig:
+	if on_app:
+		on_web = true
+		origin = {"host": PageOrigin.PRODUCTION_HOST, "port": 0, "secure": true}
 	var config := ClientConfig.new()
 	config.websocket = on_web
 	config.content_http = on_web
@@ -109,6 +117,7 @@ static func parse(args: PackedStringArray, on_web := OS.has_feature("web"),
 			"no-connect": config.autoconnect = false
 			"lag": config.lag_ms = float(value)
 			"lag-jitter": config.lag_jitter_ms = float(value)
+			"touch": config.touch = true
 			_:
 				push_warning("ClientConfig: ignoring unknown argument '%s'" % arg)
 	return config

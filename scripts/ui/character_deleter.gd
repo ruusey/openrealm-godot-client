@@ -19,7 +19,7 @@ var data_service: DataService
 var game_data: GameData
 
 var delete_button: Button
-var question: HBoxContainer
+var question: VBoxContainer
 var prompt: Label
 var confirm_button: Button
 
@@ -31,19 +31,23 @@ func _ready() -> void:
 	delete_button = Button.new()
 	delete_button.text = "Delete"
 	delete_button.add_theme_color_override("font_color", DANGER)
-	add_child(delete_button)
+	add_child(TouchSize.grow(delete_button))
 
-	question = HBoxContainer.new()
-	question.add_theme_constant_override("separation", 8)
+	# The question over its two answers, which share the row between them.
+	question = VBoxContainer.new()
 	question.visible = false
 	add_child(question)
 	prompt = Label.new()
-	prompt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	prompt.add_theme_color_override("font_color", DANGER)
 	question.add_child(prompt)
-	confirm_button = InventoryLayout.button(question, "Delete forever", confirm)
+	var answers := HBoxContainer.new()
+	answers.add_theme_constant_override("separation", 8)
+	question.add_child(answers)
+	confirm_button = TouchSize.grow(InventoryLayout.button(answers, "Delete forever", confirm))
 	confirm_button.add_theme_color_override("font_color", DANGER)
-	InventoryLayout.button(question, "Keep", cancel)
+	var keep := TouchSize.grow(InventoryLayout.button(answers, "Keep", cancel))
+	confirm_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	keep.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 
 ## Asks about `character`; nothing is sent until the answer is yes.

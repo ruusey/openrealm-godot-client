@@ -41,6 +41,8 @@ func draw_ground(canvas: CanvasItem, items: Array) -> Dictionary:
 	for item in items:
 		if GroundShadow.under_entity(canvas, item["pos"], item["size"]):
 			counts["shadows"] += 1
+		if item.get("lock", false):
+			LockOnRing.draw(canvas, item["pos"], item["size"])
 	for item in items:
 		_draw_entity(canvas, item)
 		counts[item["kind"]] += 1

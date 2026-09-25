@@ -68,6 +68,7 @@ func _process(_delta: float) -> void:
 	if not visible:
 		_tooltip.hide_card()
 		return
+	PanelFit.shrink(_root)
 	# Content can land after the panel is built; the rows wait for it.
 	if _rows.is_empty():
 		_build_rows()

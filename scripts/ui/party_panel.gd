@@ -32,6 +32,7 @@ var _count: Label
 var _rows_box: VBoxContainer
 var _rows: Array = []
 var _shape := ""
+var fold: PanelFold
 
 
 func setup(realm_state: RealmState, game_data: GameData, party_actions: PartyActions,
@@ -61,6 +62,8 @@ func _ready() -> void:
 	_rows_box = VBoxContainer.new()
 	_rows_box.add_theme_constant_override("separation", 4)
 	column.add_child(_rows_box)
+	fold = PanelFold.new(self, "Party", "party", state.settings if state != null else null,
+		func(folded: bool) -> void: _root.visible = not folded)
 
 
 func _process(_delta: float) -> void:
@@ -69,6 +72,7 @@ func _process(_delta: float) -> void:
 		_shape = ""
 		return
 	_root.offset_top = top()
+	fold.place(Vector2(MARGIN + WIDTH - fold.chip.size.x - 2.0, top() + 2.0))
 	var party := state.party
 	var others := party.others(state.local.id)
 	var shape := shape_key(party, others)
@@ -79,10 +83,20 @@ func _process(_delta: float) -> void:
 		_rows[i].patch(others[i], party, content, state.tiles.realm_id)
 
 
-## Where the left column starts: the top, or just under the diagnostics.
+## How much of the column this takes: the chip alone, folded.
+func height() -> float:
+	return PanelFold.CHIP_HEIGHT if fold.folded else _root.size.y
+
+
+## Where the row of Bag, Menu and Chat ends; the column starts under it.
+var buttons_bottom: Callable = func() -> float: return 0.0
+
+
+## Where the left column starts: under the buttons, or under the diagnostics.
 func top() -> float:
 	var under := hud.bottom() if hud != null else 0.0
-	return under + MARGIN if under > 0.0 else float(TOP)
+	var buttons: float = buttons_bottom.call()
+	return maxf(under + MARGIN if under > 0.0 else float(TOP), buttons + MARGIN if buttons > 0.0 else 0.0)
 
 
 ## The web client's key: everything that changes which rows exist and
@@ -110,4 +124,4 @@ func _rebuild(others: Array) -> void:
 
 
 func captures_mouse() -> bool:
-	return visible and _root.get_global_rect().has_point(_root.get_global_mouse_position())
+	return fold.under_mouse() or visible and _root.visible and _root.get_global_rect().has_point(_root.get_global_mouse_position())

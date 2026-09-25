@@ -29,9 +29,12 @@ func _ready() -> void:
 	for page in PAGES:
 		tabs.add_tab(page)
 	tabs.tab_changed.connect(func(_index: int) -> void: _fill())
-	add_child(tabs)
+	add_child(TouchSize.grow(tabs))
+	# Five rows a thumb's height: the font plus the gap between rows.
 	list = ItemList.new()
-	list.custom_minimum_size = Vector2(0, 140)
+	list.custom_minimum_size = Vector2(0, TouchSize.ROW * 5)
+	list.add_theme_font_size_override("font_size", TouchSize.FONT)
+	list.add_theme_constant_override("v_separation", 22)
 	list.item_activated.connect(func(_index: int) -> void: activated.emit())
 	list.allow_rmb_select = true
 	list.item_clicked.connect(_on_clicked)

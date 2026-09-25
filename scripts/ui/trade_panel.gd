@@ -87,6 +87,7 @@ func _process(_delta: float) -> void:
 	if not visible:
 		_drawn = Vector2i(-1, -1)
 		return
+	PanelFit.shrink(_root)
 	var now := Vector2i(state.trade.version, state.local.inventory.version)
 	if now != _drawn:
 		refresh()

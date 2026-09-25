@@ -29,11 +29,15 @@ var state: RealmState
 var content: GameData
 ## Off for a scripted render that is about something else.
 var shown := true
+## Where the top edge sits: under the map, or under its chip when folded.
+var below: Callable = func() -> float: return float(MinimapPanel.MARGIN + MinimapPanel.SIDE)
+var fold: PanelFold
 
 var _root: PanelContainer
 var _identity: Label
 var _bars := {}   # "hp" / "mp" / "xp" -> [ProgressBar, Label]
 var _cells := {}  # stat -> [value Label, bonus Label]
+var _grid: GridContainer
 var _drawn := ""
 
 
@@ -65,22 +69,31 @@ func _ready() -> void:
 	_bars["hp"] = HudWidgets.bar(column, HP_FILL)
 	_bars["mp"] = HudWidgets.bar(column, MP_FILL)
 	_bars["xp"] = HudWidgets.bar(column, XP_FILL)
-	var grid := GridContainer.new()
-	grid.columns = 3
-	column.add_child(grid)
+	_grid = GridContainer.new()
+	_grid.columns = 3
+	column.add_child(_grid)
 	for stat in STATS:
-		_cells[stat] = HudWidgets.stat_cell(grid, stat.to_upper())
+		_cells[stat] = HudWidgets.stat_cell(_grid, stat.to_upper())
+	fold = PanelFold.new(self, "Stats", "stats", state.settings if state != null else null,
+		func(folded: bool) -> void: _grid.visible = not folded)
 
 
 func _process(_delta: float) -> void:
 	visible = shown and state != null and content != null and state.local.is_present()
 	if not visible:
 		return
+	_root.offset_top = below.call() + MARGIN
+	_root.offset_bottom = _root.offset_top + (_root.get_combined_minimum_size().y if fold.folded else float(HEIGHT))
+	fold.place_right(_root.offset_top + 2.0, get_viewport().get_visible_rect().size.x - MinimapPanel.MARGIN - 2.0)
 	var key := "%s|%d|%d|%d|%d|%d" % [state.local.stats, state.local.health, state.local.mana,
 		state.local.inventory.experience, state.local.inventory.version, state.local.class_id]
 	if key != _drawn:
 		_drawn = key
 		refresh()
+
+
+func captures_mouse() -> bool:
+	return visible and fold.under_mouse()
 
 
 func refresh() -> void:

@@ -21,6 +21,9 @@ var client: OpenRealmClient
 var content: GameData
 ## Supplies the aim point; any Node2D in the world will do.
 var aim_source: Node2D
+## The touch controls' point to cast at, when they are on; INF, or unset,
+## leaves it to the mouse.
+var aim_point: Callable = Callable()
 
 
 func _init(realm_state: RealmState, net_client: OpenRealmClient, game_data: GameData,
@@ -32,7 +35,8 @@ func _init(realm_state: RealmState, net_client: OpenRealmClient, game_data: Game
 
 
 func cast_at_cursor(slot: int) -> bool:
-	return cast(slot, aim_source.get_global_mouse_position())
+	var at: Vector2 = aim_point.call() if aim_point.is_valid() else Vector2.INF
+	return cast(slot, aim_source.get_global_mouse_position() if at == Vector2.INF else at)
 
 
 func cast(slot: int, target: Vector2) -> bool:

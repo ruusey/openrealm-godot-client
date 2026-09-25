@@ -27,6 +27,8 @@ var _box: VBoxContainer
 var _labels: Array = []
 var _input: ChatInput
 var _shown := 0
+## The chip that folds the log to its name; the input line stays.
+var fold: PanelFold
 
 
 func setup(realm_state: RealmState, chat_actions: ChatActions = null) -> void:
@@ -66,6 +68,22 @@ func _ready() -> void:
 	_input.custom_minimum_size.y = INPUT_ROW
 	_input.sent.connect(_on_sent)
 	_box.add_child(_input)
+	fold = PanelFold.new(self, "Chat", "chat", state.settings if state != null else null,
+		func(folded: bool) -> void: for row in _labels: row.visible = not folded)
+	# This layer is never hidden -- the sign-in screen simply covers it --
+	# so the chip, unlike the map's or the stats', hides itself until there
+	# is a player to have a chat.
+	fold.chip.visible = false
+
+
+## The chat line, opened as Enter opens it: the phone's Chat button.
+func open_line() -> void:
+	if not _input.is_open():
+		_input.open()
+
+
+func captures_mouse() -> bool:
+	return fold.under_mouse()
 
 
 func is_typing() -> bool:
@@ -93,6 +111,9 @@ func _on_sent(text: String) -> void:
 
 
 func _process(_delta: float) -> void:
+	# Just over the lines, which sit on the bottom margin and grow upward.
+	fold.chip.visible = state != null and state.local.is_present()
+	fold.place(Vector2(MARGIN, _box.get_global_rect().position.y - PanelFold.CHIP_HEIGHT - 2.0))
 	if state == null:
 		blank()
 		return
@@ -123,3 +144,5 @@ func refresh() -> void:
 			row.blank()
 		else:
 			row.show_line(tail[i])
+			# A line shows its row; folded, the fold has the last word.
+			row.visible = not fold.folded

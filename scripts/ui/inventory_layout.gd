@@ -23,16 +23,15 @@ const CAPTIONS := ["Wpn", "Arm", "Gnt", "Bts", "Rng"]
 const HEADING_COLOUR := Color(0.7, 0.7, 0.75)
 
 
-## The frame, pinned under the minimap and the player HUD in the top-right
-## corner and growing leftwards to fit: the web client's HUD column,
-## minimap first so it is never pushed off the bottom, then the bars and
-## stats, then the bag.
+## The frame, on the left edge and growing right to fit; the panel sets its
+## top under the left column. The same place on a desktop and a phone, so
+## the right side is the map and stats on one and Attack on the other.
 static func root(into: Node) -> DropSink:
 	var frame := DropSink.new()
-	frame.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	frame.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	frame.offset_right = -MARGIN
-	frame.offset_top = PlayerHud.BOTTOM + MARGIN
+	frame.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	frame.grow_horizontal = Control.GROW_DIRECTION_END
+	frame.offset_left = MARGIN
+	frame.offset_right = MARGIN
 	into.add_child(frame)
 	return frame
 

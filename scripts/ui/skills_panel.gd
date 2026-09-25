@@ -23,6 +23,7 @@ var _points: Label
 var _names: Array = []
 var _levels: Array = []
 var _buttons: Array = []
+var close_button: Button
 var _drawn := ""
 
 
@@ -62,15 +63,19 @@ func _ready() -> void:
 		_levels.append(_line(row, "", 12, MUTED))
 		var button := Button.new()
 		button.text = "Invest"
+		button.custom_minimum_size.x = 88
 		button.pressed.connect(invest.bind(slot))
-		row.add_child(button)
+		row.add_child(TouchSize.grow(button, 16))
 		_buttons.append(button)
+	# Menu opens it on a phone, where there is no K to shut it again.
+	close_button = TouchSize.grow(InventoryLayout.button(column, "Close", close), 16)
 
 
 func _process(_delta: float) -> void:
 	visible = state != null and content != null and shown and state.local.is_present()
 	if not visible:
 		return
+	PanelFit.shrink(_root)
 	var key := "%d:%d:%s" % [state.local.class_id, state.abilities.version, state.local.stats]
 	if key != _drawn:
 		refresh()
@@ -112,6 +117,10 @@ func invest(slot: int) -> bool:
 
 func toggle() -> void:
 	shown = not shown
+
+
+func close() -> void:
+	shown = false
 
 
 func captures_mouse() -> bool:

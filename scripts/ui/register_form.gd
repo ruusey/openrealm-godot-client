@@ -31,7 +31,8 @@ func _init(service: DataService = null) -> void:
 func _ready() -> void:
 	add_theme_constant_override("separation", 8)
 	account_name = _field("username", false)
-	email = _field("email", false)
+	email = AccountForm.email_field()
+	add_child(email)
 	password = _field("password", true)
 	password.text_submitted.connect(func(_text: String) -> void: submit())
 	button = Button.new()
@@ -63,13 +64,13 @@ func submit() -> void:
 		return
 	set_busy(true)
 	status_changed.emit("Creating the account ...", false)
-	var result: Dictionary = await data_service.register(email.text.strip_edges(), password.text,
+	var result: Dictionary = await data_service.register(AccountForm.normalized(email.text), password.text,
 		account_name.text.strip_edges(), false)
 	set_busy(false)
 	if not result["success"]:
 		status_changed.emit("Could not register: %s" % result["result"], true)
 		return
-	registered.emit(email.text.strip_edges(), password.text)
+	registered.emit(AccountForm.normalized(email.text), password.text)
 
 
 func set_busy(busy: bool) -> void:

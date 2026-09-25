@@ -85,6 +85,7 @@ func _process(_delta: float) -> void:
 	if not visible:
 		_tooltip.hide_card()
 		return
+	PanelFit.shrink(_root)
 	state.forge.prune(state.local.inventory)
 	var key := "%d:%d:%s" % [state.forge.version, state.local.inventory.version, _flash]
 	if key != _drawn:

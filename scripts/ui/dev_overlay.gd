@@ -1,7 +1,8 @@
 class_name DevOverlay
 extends CanvasLayer
 
-## The web client's dev readout: one line, top right, off until /dev.
+## The web client's dev readout: one line, top right, on by default; /dev
+## turns it off and on.
 ##
 ## FPS, ping and draw calls in its traffic-light colours, jitter, and the
 ## render resolution with the scale DisplayScale chose -- the
@@ -16,7 +17,7 @@ const YELLOW := "#ffff66"
 const RED := "#ff6666"
 
 var client: OpenRealmClient
-var shown := false
+var shown := true
 
 var _text: RichTextLabel
 var _elapsed := REFRESH_SECONDS

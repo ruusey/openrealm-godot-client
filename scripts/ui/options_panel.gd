@@ -3,14 +3,15 @@ extends CanvasLayer
 
 ## The options: Escape in a realm opens it, as the web client's menu does.
 ##
-## Godot's own controls, on two tabs: a checkbox a setting under Display and
-## Graphics headings, each flipping its GameSettings switch the moment it is
-## clicked (and kept for next time), with the UI scale and the world zoom
-## under Display (ScaleRow); and Controls, a key an action (ControlsTab). Leave game is what Escape used to do on its
+## Godot's own controls, on three tabs, so that no tab is taller than a
+## phone held sideways: Display (VSync, the UI scale and the world zoom),
+## Graphics (a checkbox a setting, in two columns), each flipping its
+## GameSettings switch the moment it is clicked (and kept for next time);
+## and Controls, a key an action (ControlsTab). Leave game is what Escape used to do on its
 ## own: an accidental Escape now opens a menu instead of dropping the
 ## session. Close, or Escape again, puts it away.
 
-const WIDTH := 340
+const WIDTH := 560
 const HEADING := Color(1.0, 0.85, 0.42)
 
 var settings: GameSettings
@@ -56,15 +57,20 @@ func _ready() -> void:
 	column.add_child(title)
 	var tabs := TabContainer.new()
 	column.add_child(tabs)
-	var switches := VBoxContainer.new()
-	switches.name = "Display & Graphics"
-	tabs.add_child(switches)
-	_section(switches, "Display", GameSettings.DISPLAY)
+	var display := VBoxContainer.new()
+	display.name = "Display"
+	tabs.add_child(display)
+	_boxes(display, GameSettings.DISPLAY)
 	scale_row = ScaleRow.new(settings, ScaleRow.UI)
-	switches.add_child(scale_row)
+	display.add_child(scale_row)
 	zoom_row = ScaleRow.new(settings, ScaleRow.WORLD)
-	switches.add_child(zoom_row)
-	_section(switches, "Graphics", GameSettings.GRAPHICS)
+	display.add_child(zoom_row)
+	var graphics := GridContainer.new()
+	graphics.name = "Graphics"
+	graphics.columns = 2
+	graphics.add_theme_constant_override("h_separation", 16)
+	tabs.add_child(graphics)
+	_boxes(graphics, GameSettings.GRAPHICS)
 	controls = ControlsTab.new(settings)
 	tabs.add_child(controls)
 	var buttons := HBoxContainer.new()
@@ -77,6 +83,8 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	visible = shown and client != null and client.is_in_game()
+	if visible:
+		PanelFit.shrink(_root)
 
 
 func toggle() -> void:
@@ -109,8 +117,6 @@ func refresh() -> void:
 		boxes[key].set_pressed_no_signal(settings.is_on(key))
 	if scale_row != null:
 		scale_row.refresh()
-	if zoom_row != null:
-		zoom_row.refresh()
 	if controls != null and controls.is_inside_tree():
 		controls.refresh()
 
@@ -119,9 +125,7 @@ func captures_mouse() -> bool:
 	return visible and _root.get_global_rect().has_point(_root.get_global_mouse_position())
 
 
-func _section(into: Container, heading: String, table: Dictionary) -> void:
-	var label := HudWidgets.label(heading, 13, HEADING)
-	into.add_child(label)
+func _boxes(into: Container, table: Dictionary) -> void:
 	for key in table:
 		var box := CheckBox.new()
 		box.text = table[key][0]

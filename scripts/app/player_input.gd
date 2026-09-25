@@ -23,8 +23,13 @@ var mouse_captured: Callable = func() -> bool: return false
 ## Whether the chat line has the keyboard: held keys are letters then, and
 ## the player stands still -- still stepping, so the stop is sent.
 var keyboard_captured: Callable = func() -> bool: return false
+## Where the aim stick points, when there is one: INF for no touch controls
+## (the mouse decides), ZERO for a stick at rest (no shot), else the point.
+var touch_aim: Callable = func() -> Vector2: return Vector2.INF
 
 var _next_shot_ms := 0
+## The stick made digital, as the keys are: eight directions, full speed.
+var _direction := StickDirection.new()
 
 
 func _init(realm_state: RealmState, net_client: OpenRealmClient, source: Node2D,
@@ -39,24 +44,36 @@ func tick(delta: float) -> void:
 	if not client.is_in_game():
 		return
 
+	# Raw, no deadzone of the actions' own: StickDirection has the thresholds.
 	var movement := Vector2.ZERO if keyboard_captured.call() \
-		else Input.get_vector("move_left", "move_right", "move_up", "move_down")
+		else _direction.filter(Input.get_vector("move_left", "move_right", "move_up", "move_down", 0.0))
 	for packet in state.advance(delta, movement, client.stats.round_trip_ms()):
 		client.send_move(packet["seq"], packet["vx"], packet["vy"])
 
+	# The lock-on ring is the phone's: it shows what Attack will auto-aim at.
+	# A mouse aims where it points, so the desktop draws none -- and clears
+	# one left over from touch controls switched off.
+	if touch_aim.call() == Vector2.INF:
+		state.entities.lock_on = -1
 	_fire(delta)
 
 
 func _fire(_delta: float) -> void:
-	if not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) or mouse_captured.call() \
-			or keyboard_captured.call():
+	if mouse_captured.call() or keyboard_captured.call():
 		return
+	var target: Vector2 = touch_aim.call()
+	if target == Vector2.ZERO:
+		return
+	if target == Vector2.INF:
+		if not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+			return
+		target = aim_source.get_global_mouse_position()
 	# Stunned, the server refuses the shot outright -- and predicting a bullet
 	# it will never spawn is worse than not firing.
 	if AttackRate.blocked(state.local.effects) or clock.call() < _next_shot_ms:
 		return
 
-	var shot: Dictionary = state.projectiles.fire_basic_attack(aim_source.get_global_mouse_position())
+	var shot: Dictionary = state.projectiles.fire_basic_attack(target)
 	if shot.is_empty():
 		return
 	_next_shot_ms = clock.call() + int(interval() * 1000.0)

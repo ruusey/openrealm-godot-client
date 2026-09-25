@@ -76,6 +76,7 @@ func _process(_delta: float) -> void:
 	if not visible:
 		_tooltip.hide_card()
 		return
+	PanelFit.shrink(_root)
 	var now := Vector2i(state.market.version, state.local.inventory.version)
 	if now != _drawn:
 		refresh()

@@ -1,7 +1,9 @@
 class_name ControlsTab
 extends VBoxContainer
 
-## The Controls page of the options: a row an action, its key on a button.
+## The Controls page of the options: an action and its key on a button,
+## two to a row, so the page is half as tall -- one to a row, its eighteen
+## rows ran off a phone held sideways.
 ##
 ## Click the button and the next key pressed is the new one -- Escape
 ## cancels. While it waits it owns the keyboard (OptionsPanel.capturing),
@@ -24,7 +26,7 @@ func _init(game_settings: GameSettings = null) -> void:
 func _ready() -> void:
 	add_theme_constant_override("separation", 4)
 	var grid := GridContainer.new()
-	grid.columns = 2
+	grid.columns = 4
 	grid.add_theme_constant_override("h_separation", 12)
 	add_child(grid)
 	for action in KeyBindings.ACTIONS:

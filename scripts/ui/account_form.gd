@@ -37,8 +37,7 @@ func _ready() -> void:
 	sign_in = VBoxContainer.new()
 	sign_in.add_theme_constant_override("separation", 8)
 	add_child(sign_in)
-	email = LineEdit.new()
-	email.placeholder_text = "email"
+	email = email_field()
 	sign_in.add_child(email)
 
 	password = LineEdit.new()
@@ -103,7 +102,20 @@ func prefill(email_text: String, password_text: String) -> void:
 
 
 func email_text() -> String:
-	return email.text.strip_edges()
+	return normalized(email.text)
+
+
+## Emails are sent lower-case: the account is the same however it is typed.
+static func normalized(text: String) -> String:
+	return text.strip_edges().to_lower()
+
+
+## The phone's email keyboard, with @ on its main keys.
+static func email_field() -> LineEdit:
+	var field := LineEdit.new()
+	field.placeholder_text = "email"
+	field.virtual_keyboard_type = LineEdit.KEYBOARD_TYPE_EMAIL_ADDRESS
+	return field
 
 
 func password_text() -> String:

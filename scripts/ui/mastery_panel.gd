@@ -64,6 +64,8 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	visible = shown and state != null and state.local.is_present()
+	if visible:
+		PanelFit.shrink(_root)
 	if visible and str(state.progress.mastery_xp) != _drawn:
 		refresh()
 

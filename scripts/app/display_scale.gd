@@ -33,6 +33,8 @@ const WEB_WORLD := 1.25
 ## The window to follow. Set by a test; otherwise the one this node is in,
 ## when it is a real one.
 var window: Window
+## The device's pixel ratio: Main keeps it here for the touch layer and folds.
+var device_scale := 1.0
 ## A page in any browser, or the phone app: WEB_UI and WEB_WORLD apply.
 var web := OS.has_feature("web") or OS.has_feature("android")
 ## The player's own scale from the options, or 0 for automatic.
@@ -67,6 +69,18 @@ static func factor_for(window_size: Vector2i, player := 0.0, on_web := false) ->
 ## one in the desktop app.
 static func auto_world(window_size: Vector2i, on_web := false) -> float:
 	return WEB_WORLD if on_web else factor_for(window_size)
+
+
+## The page's own pixel ratio on the web -- the bridge answers null off it
+## -- the screen's density on Android (its dpi over Android's 160 baseline,
+## as the platform itself counts dp), and one anywhere else.
+static func pixel_ratio(on_web: bool, eval: Callable, on_app := false, dpi := 160) -> float:
+	if on_app:
+		return maxf(1.0, float(dpi) / 160.0)
+	if not on_web:
+		return 1.0
+	var ratio: Variant = eval.call("window.devicePixelRatio")
+	return maxf(1.0, float(ratio)) if ratio is float or ratio is int else 1.0
 
 
 static func apply(target: Window, player := 0.0, on_web := false) -> void:

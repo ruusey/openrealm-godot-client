@@ -1,26 +1,27 @@
 class_name LeaderboardPanel
 extends PanelContainer
 
-## The top characters on the server, beside the account's own.
+## The top characters on the server, in a realm's LeaderboardWindow.
 ##
 ## The web client puts its leaderboard on the character-select screen, under
 ## the account's characters, and loads it every time that screen is shown:
 ## `GET /data/stats/top?count=25`, the service's ranking -- every account's
 ## living characters by XP, best first -- drawn in the order it arrives,
 ## "Loading..." while it is on its way, "No characters yet." for an empty
-## one and the reason in red when it fails. Here it stands beside the
-## sign-in panel, since under it the class grid already fills the column.
-## The endpoint wants the session's token, so nothing shows before sign-in.
+## one and the reason in red when it fails. Here it is on the in-game Menu
+## instead, so the character select has the whole screen for a thumb, and
+## it loads every time it opens. The endpoint wants the session's token.
 
 const COUNT := 25
 const HEADING := Color("c8a86e")
 const MUTED := Color("887868")
 const ERROR := Color("cc4444")
-const WIDTH := 380
+const WIDTH := 420
 const LIST_HEIGHT := 360
 
 var game_data: GameData
 
+var head: HBoxContainer
 var rows: VBoxContainer
 var message: Label
 
@@ -34,8 +35,11 @@ func _ready() -> void:
 	custom_minimum_size.x = WIDTH
 	size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	var column := InventoryLayout.column(self)
+	head = HBoxContainer.new()
+	column.add_child(head)
 	var heading := HudWidgets.label("Leaderboard", 18, HEADING)
-	column.add_child(heading)
+	heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(heading)
 	message = HudWidgets.label("", 13, MUTED)
 	message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	message.custom_minimum_size.x = WIDTH - 24

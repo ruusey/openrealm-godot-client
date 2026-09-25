@@ -33,6 +33,7 @@ var _root: PanelContainer
 var _rows_box: VBoxContainer
 var _empty: Label
 var _listed := ""
+var fold: PanelFold
 
 
 func setup(realm_state: RealmState, game_data: GameData, trade_actions: TradeActions,
@@ -61,6 +62,8 @@ func _ready() -> void:
 	column.add_child(_rows_box)
 	_empty = HudWidgets.label("No players nearby", 10, EMPTY_COLOUR)
 	column.add_child(_empty)
+	fold = PanelFold.new(self, "Nearby", "nearby", state.settings if state != null else null,
+		func(folded: bool) -> void: _root.visible = not folded)
 	menu = PlayerMenu.new(
 		func(name: String) -> bool: return trade != null and trade.request(name),
 		func(name: String) -> bool: return chat != null and chat.say("/tp %s" % name),
@@ -75,7 +78,8 @@ func _process(_delta: float) -> void:
 		_listed = ""
 		return
 	var top := above.top() if above != null else float(PartyPanel.TOP)
-	_root.offset_top = top + (above._root.size.y + GAP if above != null and above.visible else 0.0)
+	_root.offset_top = top + (above.height() + GAP if above != null and above.visible else 0.0)
+	fold.place(Vector2(MARGIN + WIDTH - fold.chip.size.x - 2.0, _root.offset_top + 2.0))
 	var players := NearbyPlayers.list(state.entities, state.local.id, state.party.member_ids())
 	var listed := ",".join(players.map(func(p: Dictionary) -> String:
 		return "%d:%s:%d:%s" % [int(p["id"]), p.get("name", ""), int(p.get("class_id", 0)), p.get("chat_role", "")]))
@@ -132,9 +136,14 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 ## Whether a point on the screen is on the list or on its open menu.
+## Where the left column ends, for the bag to sit under: the chip, folded.
+func bottom() -> float:
+	return _root.offset_top + (PanelFold.CHIP_HEIGHT if fold.folded else _root.size.y)
+
+
 func owns(point: Vector2) -> bool:
 	return _root.get_global_rect().has_point(point) or (menu.visible and menu.get_global_rect().has_point(point))
 
 
 func captures_mouse() -> bool:
-	return visible and owns(_root.get_global_mouse_position())
+	return fold.under_mouse() or visible and _root.visible and owns(_root.get_global_mouse_position())

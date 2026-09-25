@@ -27,6 +27,7 @@ var hovered := {}
 
 var _root: Control
 var _canvas: MinimapCanvas
+var fold: PanelFold
 var _sized_for := Vector2i.ZERO
 var _mouse := Vector2(-1.0, -1.0)
 
@@ -56,11 +57,16 @@ func _ready() -> void:
 	_canvas.state = state
 	_canvas.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_root.add_child(_canvas)
+	fold = PanelFold.new(self, "Map", "minimap", state.settings if state != null else null,
+		func(folded: bool) -> void: _root.visible = not folded)
 
 
 func _process(_delta: float) -> void:
 	visible = state != null and shown and state.local.is_present() and state.minimap.image != null
 	if not visible:
+		return
+	fold.place_right(MARGIN, get_viewport().get_visible_rect().size.x - MARGIN)
+	if fold.folded:
 		return
 	var map_size := Vector2i(state.minimap.width, state.minimap.height)
 	# A new map starts at the zoom that shows it best, not the one the last
@@ -125,7 +131,12 @@ func _on_gui_input(event: InputEvent) -> void:
 
 ## A click on the map is a look at it, not a shot at the world behind it.
 func captures_mouse() -> bool:
-	return visible and _root.get_global_rect().has_point(_root.get_global_mouse_position())
+	return visible and (fold.under_mouse() or _root.visible and _root.get_global_rect().has_point(_root.get_global_mouse_position()))
+
+
+## Where the map ends, for the stats to sit under: the chip alone, folded.
+func bottom() -> float:
+	return MARGIN + (PanelFold.CHIP_HEIGHT if fold.folded else float(SIDE))
 
 
 func toggle() -> void:

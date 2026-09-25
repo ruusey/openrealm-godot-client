@@ -68,6 +68,7 @@ func _process(_delta: float) -> void:
 	if not visible:
 		_tooltip.hide_card()
 		return
+	PanelFit.shrink(_root)
 	if state.store.version != _drawn:
 		refresh()
 	if _tooltip.visible:

@@ -13,6 +13,8 @@ var players := {}
 var enemies := {}
 var containers := {}
 var portals := {}
+## The enemy the lock-on ring is under (AutoAim), or -1.
+var lock_on := -1
 
 var _short_ids := {}   # shortId -> entity id
 var _clock: Callable
@@ -31,6 +33,7 @@ func clear() -> void:
 	containers.clear()
 	portals.clear()
 	_short_ids.clear()
+	lock_on = -1
 
 
 ## Everything except one player, which is what a realm change leaves behind.

@@ -11,7 +11,9 @@ extends VBoxContainer
 ## refill the list from the account that comes back. Both then leave the
 ## player to find the new character in the list and pick it, which is the
 ## step "Create & play" skips: it is the prominent button, and the plain
-## "Create" beside it is for making one without entering the realm.
+## "Create" beside it is for making one without entering the realm. Here
+## the grid is three columns, beside the list rather than under it, each
+## option a thumb's height (TouchSize).
 ##
 ## The roster is the shipped character-classes.json in classId order, so a
 ## new class shows up on its own.
@@ -19,7 +21,7 @@ extends VBoxContainer
 signal created(characters: Array, play: bool)
 signal failed(reason: String)
 
-const COLUMNS := 4
+const COLUMNS := 3
 const ICON_PX := 32
 const HEADING := Color(0.78, 0.66, 0.43)
 
@@ -40,6 +42,7 @@ func _ready() -> void:
 	var heading := Label.new()
 	heading.text = "Create character"
 	heading.add_theme_color_override("font_color", HEADING)
+	heading.add_theme_font_size_override("font_size", TouchSize.FONT)
 	add_child(heading)
 
 	grid = GridContainer.new()
@@ -52,13 +55,12 @@ func _ready() -> void:
 	play_button = Button.new()
 	play_button.text = "Create & play"
 	play_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	play_button.add_theme_font_size_override("font_size", 18)
 	play_button.pressed.connect(func() -> void: _create(true))
-	row.add_child(play_button)
+	row.add_child(TouchSize.grow(play_button, 20))
 	create_button = Button.new()
 	create_button.text = "Create"
 	create_button.pressed.connect(func() -> void: _create(false))
-	row.add_child(create_button)
+	row.add_child(TouchSize.grow(create_button))
 	fill()
 
 
@@ -86,7 +88,7 @@ func _add_option(class_id: int) -> Button:
 	option.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	option.toggled.connect(func(_on: bool) -> void: _refresh())
-	grid.add_child(option)
+	grid.add_child(TouchSize.grow(option, 16))
 	return option
 
 
