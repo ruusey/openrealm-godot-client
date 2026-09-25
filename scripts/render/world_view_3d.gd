@@ -32,9 +32,13 @@ const SHADOW_SIZE := 32
 const CAM_HEIGHT := 620.0
 const CAM_BACK := 430.0
 const CAM_FOV := 48.0
-## Orbit: [ and ] swing the camera around the player. The billboards are
+## Orbit: Q and E swing the camera around the player. The billboards are
 ## FIXED_Y, so they turn to keep facing it and the 2.5D look holds at any angle.
 const ORBIT_SPEED := 1.8
+## The world region (in px) the ability-effect SubViewport frames, and its
+## resolution. Effects are drawn in world space and projected onto the ground.
+const FX_REGION := 2400.0
+const FX_VIEWPORT_PX := 1024
 
 var state: RealmState
 var content: GameData
@@ -52,8 +56,17 @@ var _grey_wall := StandardMaterial3D.new()
 var _floor_materials := {}
 var _wall_materials := {}
 var _shadow: ImageTexture
+var _white: ImageTexture
 var _map_built := false
 var _yaw := 0.0
+
+var _fx_viewport: SubViewport
+var _fx_renderer: EffectRenderer
+var _fx_camera: Camera2D
+var _fx_ground: MeshInstance3D
+
+var _tags: Array[Node3D] = []
+var _tag_root: Node3D
 
 
 func setup(realm_state: RealmState, game_data: GameData) -> void:
@@ -73,6 +86,10 @@ func _ready() -> void:
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color(0.7, 0.7, 0.75)
 	env.ambient_light_energy = 1.0
+	# A gentle bloom so bright projectiles, loot and effects glow a little.
+	env.glow_enabled = true
+	env.glow_intensity = 0.5
+	env.glow_bloom = 0.15
 	var world_env := WorldEnvironment.new()
 	world_env.environment = env
 	add_child(world_env)
@@ -103,18 +120,55 @@ func _ready() -> void:
 	_grey_wall.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	_shadow = _make_shadow()
 
+	_white = _make_white()
+
 	_map_root = Node3D.new()
 	add_child(_map_root)
 	_sprite_root = Node3D.new()
 	add_child(_sprite_root)
+	_tag_root = Node3D.new()
+	add_child(_tag_root)
+	_build_effect_ground()
+
+
+## The ability effects are drawn by the real 2D EffectRenderer into a
+## transparent SubViewport framed on the player, then that texture is laid flat
+## on the ground -- so all sixty-odd hand-drawn effect types appear in 3D at
+## once, in world space, without porting each. Rings, cones and beams read right
+## flat on the floor; it is the cast bars over heads that _place_tags redraws.
+func _build_effect_ground() -> void:
+	_fx_viewport = SubViewport.new()
+	_fx_viewport.size = Vector2i(FX_VIEWPORT_PX, FX_VIEWPORT_PX)
+	_fx_viewport.transparent_bg = true
+	_fx_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	add_child(_fx_viewport)
+	_fx_camera = Camera2D.new()
+	_fx_camera.zoom = Vector2(float(FX_VIEWPORT_PX) / FX_REGION, float(FX_VIEWPORT_PX) / FX_REGION)
+	_fx_viewport.add_child(_fx_camera)
+	_fx_renderer = EffectRenderer.new()
+	_fx_renderer.state = state
+	_fx_viewport.add_child(_fx_renderer)
+
+	_fx_ground = MeshInstance3D.new()
+	var plane := PlaneMesh.new()
+	plane.size = Vector2(FX_REGION, FX_REGION)
+	var material := StandardMaterial3D.new()
+	material.albedo_texture = _fx_viewport.get_texture()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	plane.material = material
+	_fx_ground.mesh = plane
+	add_child(_fx_ground)
 
 
 func _process(delta: float) -> void:
 	if state == null or content == null or state.local == null:
 		return
-	if Input.is_key_pressed(KEY_BRACKETLEFT):
+	# Q swings the view left of the player, E right.
+	if Input.is_key_pressed(KEY_Q):
 		_yaw -= ORBIT_SPEED * delta
-	if Input.is_key_pressed(KEY_BRACKETRIGHT):
+	if Input.is_key_pressed(KEY_E):
 		_yaw += ORBIT_SPEED * delta
 	var centre := state.local.render_centre()
 	_rebuild_map_if_changed()
@@ -126,6 +180,17 @@ func _process(delta: float) -> void:
 	var shots := _place_projectiles(centre)
 	for i in range(shots, _projectiles.size()):
 		_projectiles[i].visible = false
+	_update_effects(centre)
+	_place_tags(centre)
+
+
+## Follows the effect SubViewport's camera and its ground quad to the player and
+## redraws the effects into it. The quad frames exactly FX_REGION centred on the
+## player, so world positions land where the 2D renderer would put them.
+func _update_effects(centre: Vector2) -> void:
+	_fx_camera.position = centre
+	_fx_ground.position = Vector3(centre.x, 1.5, centre.y)
+	_fx_renderer.queue_redraw()
 
 
 # ── Map: ground + walls as MultiMesh, props as standing sprites ───────────────
@@ -349,6 +414,120 @@ func _configure(sprite: Sprite3D, texture: Texture2D, xz: Vector2, center_y: flo
 	shadow.pixel_size = width / float(SHADOW_SIZE)
 	# Local, so it lands on the ground whatever height the body floats at.
 	shadow.position = Vector3(0.0, 0.15 - center_y, 0.0)
+
+
+# ── Nameplates, health bars, cast bars (the 2D overlay, rebuilt in 3D) ────────
+
+const BAR_HEIGHT := 5.0
+const TAG_Y := 54.0
+const CAST_Y := 68.0
+const BAR_BACK := Color(0.0, 0.0, 0.0, 0.7)
+const HP_PLAYER := Color(0.4, 0.9, 0.4)
+const HP_ENEMY := Color(0.9, 0.3, 0.3)
+const CAST_FILL := Color(0.6, 0.85, 1.0)
+const NAME_LOCAL := Color(0.6, 1.0, 0.6)
+const NAME_OTHER := Color(0.85, 0.9, 1.0)
+
+
+## The names, health bars and cast bars the 2D overlay drew, rebuilt as 3D tags
+## above each body so they track it at any camera angle instead of floating off.
+func _place_tags(centre: Vector2) -> int:
+	var used := 0
+	for id in state.entities.players:
+		var player: Dictionary = state.entities.players[id]
+		var mid := _entity_mid(player)
+		if mid.distance_to(centre) > ENTITY_RANGE:
+			continue
+		var colour: Color = NAME_LOCAL if id == state.local.id else NAME_OTHER
+		used = _place_tag(used, mid, String(player.get("name", "")), colour, HP_PLAYER,
+			_fraction(player), TAG_Y)
+	for id in state.entities.enemies:
+		var enemy: Dictionary = state.entities.enemies[id]
+		var fraction := _fraction(enemy)
+		if fraction >= 1.0:   # a full-health enemy wears no bar, as in 2D
+			continue
+		var mid := _entity_mid(enemy)
+		if mid.distance_to(centre) > ENTITY_RANGE:
+			continue
+		used = _place_tag(used, mid, "", NAME_OTHER, HP_ENEMY, fraction, TAG_Y)
+	for id in state.abilities.casts:
+		var player: Dictionary = state.entities.players.get(id, {})
+		if player.is_empty():
+			continue
+		var mid := _entity_mid(player)
+		if mid.distance_to(centre) > ENTITY_RANGE:
+			continue
+		used = _place_tag(used, mid, "", NAME_OTHER, CAST_FILL, state.abilities.cast_progress(id), CAST_Y)
+	for i in range(used, _tags.size()):
+		_tags[i].visible = false
+	return used
+
+
+func _entity_mid(entity: Dictionary) -> Vector2:
+	var size := float(entity.get("size", GameConstants.TILE_SIZE))
+	return state.entities.render_position(entity) + Vector2(size, size) * 0.5
+
+
+func _fraction(entity: Dictionary) -> float:
+	var max_health := float(entity.get("max_health", 1))
+	if max_health <= 0.0:
+		return 1.0
+	return clampf(float(entity.get("health", 0)) / max_health, 0.0, 1.0)
+
+
+func _place_tag(index: int, xz: Vector2, name: String, name_colour: Color, bar_colour: Color,
+		fraction: float, y: float) -> int:
+	var tag := _tag_at(index)
+	tag.position = Vector3(xz.x, y, xz.y)
+	var label: Label3D = tag.get_child(0)
+	label.text = name
+	label.modulate = name_colour
+	label.visible = name != ""
+	var back: Sprite3D = tag.get_child(1)
+	var fill: Sprite3D = tag.get_child(2)
+	var width := 40.0
+	back.scale = Vector3(width, BAR_HEIGHT, 1.0)
+	fill.scale = Vector3(width * fraction, BAR_HEIGHT, 1.0)
+	fill.modulate = bar_colour
+	fill.position = Vector3(-(width - width * fraction) * 0.5, 0.0, 0.1)
+	tag.visible = true
+	return index + 1
+
+
+func _tag_at(index: int) -> Node3D:
+	while _tags.size() <= index:
+		var tag := Node3D.new()
+		var label := Label3D.new()
+		label.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
+		label.no_depth_test = true
+		label.font_size = 64
+		label.outline_size = 14
+		label.pixel_size = 0.25
+		label.position = Vector3(0.0, 14.0, 0.0)
+		tag.add_child(label)
+		tag.add_child(_bar(BAR_BACK))
+		tag.add_child(_bar(Color.WHITE))
+		_tag_root.add_child(tag)
+		_tags.append(tag)
+	return _tags[index]
+
+
+## A unit-size white billboard, scaled per frame into a bar; drawn over the
+## bodies (no_depth_test) so a name never hides behind the sprite it labels.
+func _bar(colour: Color) -> Sprite3D:
+	var sprite := Sprite3D.new()
+	sprite.texture = _white
+	sprite.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
+	sprite.shaded = false
+	sprite.no_depth_test = true
+	sprite.modulate = colour
+	return sprite
+
+
+func _make_white() -> ImageTexture:
+	var image := Image.create(1, 1, false, Image.FORMAT_RGBA8)
+	image.set_pixel(0, 0, Color.WHITE)
+	return ImageTexture.create_from_image(image)
 
 
 ## A soft round shadow, drawn once into a small texture: opaque-ish at the
