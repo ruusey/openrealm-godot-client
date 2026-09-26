@@ -20,6 +20,9 @@ extends Node3D
 
 const TILE := GameConstants.TILE_SIZE
 const COLLISION_LAYER := GameConstants.COLLISION_LAYER
+## Single-pass alpha-dilation outline for entity billboards (the 3D analogue of
+## the 2D SpriteOutline). See sprite_outline_3d.gdshader.
+const OUTLINE_SHADER := preload("res://shaders/sprite_outline_3d.gdshader")
 # Walls are perfect cubes, one tile on every edge.
 const WALL_HEIGHT := float(TILE)
 const ENTITY_RANGE := 900.0
@@ -280,8 +283,9 @@ func _add_prop(cell: Vector2i, texture: Texture2D) -> void:
 	var height := TILE * float(texture.get_height()) / float(texture.get_width())
 	var sprite := _new_billboard()
 	_map_root.add_child(sprite)
+	# Terrain props (2.5D collision tiles) aren't outlined -- only entities are.
 	_configure(sprite, texture, Vector2(cell.x * TILE + TILE * 0.5, cell.y * TILE + TILE * 0.5),
-		height, TILE, TILE, false, Color.WHITE)
+		height, TILE, TILE, false, Color.WHITE, false)
 
 
 func _floor_material_for(texture: Texture2D) -> StandardMaterial3D:
@@ -390,9 +394,14 @@ func _place(index: int, texture: Texture2D, xz: Vector2, height: float, width: f
 	return index + 1
 
 
-## A standing sprite (full billboard) with a ground shadow (child 0).
+## A standing sprite with a ground shadow (child 0). The outline shader does the
+## billboarding (render_mode billboard), so the node's own billboard stays off to
+## avoid transforming twice.
 func _new_billboard() -> Sprite3D:
-	var sprite := _sprite_node(BaseMaterial3D.BILLBOARD_ENABLED)
+	var sprite := _sprite_node(BaseMaterial3D.BILLBOARD_DISABLED)
+	var material := ShaderMaterial.new()
+	material.shader = OUTLINE_SHADER
+	sprite.material_override = material
 	sprite.add_child(_new_shadow())
 	return sprite
 
@@ -404,7 +413,7 @@ func _new_billboard() -> Sprite3D:
 ## node: bottom-anchored so the feet sit on the ground, and side-anchored so a
 ## wide attack frame's overhang falls on the facing side.
 func _configure(sprite: Sprite3D, texture: Texture2D, xz: Vector2, height: float,
-		width: float, cell: float, flip: bool, modulate: Color) -> void:
+		width: float, cell: float, flip: bool, modulate: Color, outline := true) -> void:
 	var tex_h := float(texture.get_height())
 	var tex_w := float(texture.get_width())
 	sprite.texture = texture
@@ -417,10 +426,37 @@ func _configure(sprite: Sprite3D, texture: Texture2D, xz: Vector2, height: float
 	var body_px := tex_w * cell / width if width > 0.0 else tex_w
 	var side := (tex_w - body_px) * 0.5
 	sprite.offset = Vector2(-side if flip else side, tex_h * 0.5)
+	_apply_outline(sprite, texture, modulate, outline and SpriteOutline.enabled)
 	var shadow: Sprite3D = sprite.get_child(0)
 	shadow.pixel_size = width / float(SHADOW_SIZE)
 	shadow.scale = Vector3.ONE
 	shadow.position = Vector3(0.0, 0.15, 0.0)
+
+
+## Feeds the outline shader the atlas sheet + the sprite's region so neighbour
+## taps can't bleed adjacent cells. Handles both AtlasTexture (a sheet region)
+## and a plain texture (the whole image is the region).
+func _apply_outline(sprite: Sprite3D, texture: Texture2D, modulate: Color, on: bool) -> void:
+	var material := sprite.material_override as ShaderMaterial
+	if material == null:
+		return
+	var sheet := texture
+	var sheet_size := Vector2(texture.get_width(), texture.get_height())
+	var region_min := Vector2.ZERO
+	var region_max := Vector2.ONE
+	if texture is AtlasTexture and (texture as AtlasTexture).atlas != null:
+		var atlas: AtlasTexture = texture
+		sheet = atlas.atlas
+		sheet_size = atlas.atlas.get_size()
+		if sheet_size.x > 0.0 and sheet_size.y > 0.0:
+			region_min = atlas.region.position / sheet_size
+			region_max = (atlas.region.position + atlas.region.size) / sheet_size
+	material.set_shader_parameter("sheet", sheet)
+	material.set_shader_parameter("region", Vector4(region_min.x, region_min.y, region_max.x, region_max.y))
+	material.set_shader_parameter("texel",
+		Vector2(1.0 / sheet_size.x, 1.0 / sheet_size.y) if sheet_size.x > 0.0 and sheet_size.y > 0.0 else Vector2.ZERO)
+	material.set_shader_parameter("tint", modulate)
+	material.set_shader_parameter("outline_on", on)
 
 
 # ── Projectiles: flat on the ground, turned to their heading ──────────────────
