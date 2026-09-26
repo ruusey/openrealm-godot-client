@@ -85,7 +85,7 @@ func refresh() -> void:
 		_show_players(to_screen, view)
 		_show_enemies(to_screen, view)
 	_tags.sweep()
-	_labels.show_all(state, to_screen, view)
+	_labels.show_all(state, to_screen, view, project_3d)
 	_loot.show_all(state, content, to_screen, _root.size)
 	_vignette.follow(state, to_screen, _root.size)
 
@@ -93,6 +93,19 @@ func refresh() -> void:
 ## A world point on the pixel it lands on.
 static func screen(to_screen: Transform2D, world: Vector2) -> Vector2:
 	return (to_screen * world).round()
+
+
+## The top-left screen point to hand a size×size tag so it centres on the entity.
+## In 2D the world top-left projects straight through (the transform is axis
+## aligned). In 3D the projector rotates, so a top-left anchor swings the tag
+## around the body as the view orbits -- instead project the entity's world CENTRE
+## (where the billboard sits) and back off half the tag's screen size.
+func _anchor(to_screen: Transform2D, world_topleft: Vector2, world_size: float,
+		screen_size: float) -> Vector2:
+	if not project_3d:
+		return screen(to_screen, world_topleft)
+	var centre := world_topleft + Vector2(world_size, world_size) * 0.5
+	return (screen(to_screen, centre) - Vector2(screen_size, screen_size) * 0.5).round()
 
 
 func tag_count() -> int:
@@ -115,7 +128,8 @@ func _show_players(to_screen: Transform2D, view: Rect2) -> void:
 			label = local.name
 		var chips_on := on.is_on("show_status_chips")
 		var tag: EntityTag = _tags.acquire(["player", id])
-		tag.show_player(screen(to_screen, position), size, label if on.is_on("show_names") else "",
+		tag.show_player(_anchor(to_screen, position, float(GameConstants.PLAYER_RENDER_SIZE), size),
+			size, label if on.is_on("show_names") else "",
 			NameColours.over_head(String(player.get("chat_role", "")), is_local, LOCAL_NAME),
 			local.health if is_local else int(player.get("health", 0)),
 			int(local.stats.get("hp", 0)) if is_local else int(player.get("max_health", 0)),
@@ -138,7 +152,8 @@ func _show_enemies(to_screen: Transform2D, view: Rect2) -> void:
 			continue
 		var maximum: int = maxi(enemy.get("max_health", 1), 1)
 		var tag: EntityTag = _tags.acquire(["enemy", id])
-		tag.show_enemy(screen(to_screen, position), float(enemy.get("size", 16)) * zoom,
+		var enemy_size := float(enemy.get("size", 16))
+		tag.show_enemy(_anchor(to_screen, position, enemy_size, enemy_size * zoom), enemy_size * zoom,
 			enemy.get("health", maximum), maximum,
 			enemy.get("effects", []) if state.settings.is_on("show_status_chips") else [], enemy.get("effect_stacks", []))
 		chips += tag.chip_count()

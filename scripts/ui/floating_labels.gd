@@ -25,11 +25,11 @@ func _init(root: Control) -> void:
 	_numbers = ControlPool.new(root, func() -> Control: return _label(TagStyles.damage_label()))
 
 
-func show_all(state: RealmState, to_screen: Transform2D, view: Rect2) -> void:
+func show_all(state: RealmState, to_screen: Transform2D, view: Rect2, project_3d := false) -> void:
 	captions = 0
 	texts = 0
 	if state != null:
-		_show_captions(state, to_screen, view)
+		_show_captions(state, to_screen, view, project_3d)
 		_show_numbers(state, to_screen, view)
 	_captions.sweep()
 	_numbers.sweep()
@@ -43,8 +43,9 @@ static func number_scale(fade: float) -> float:
 ## for the one you are standing on the web client's whole card, boxed.
 ## targetLabel is empty on a portal with no realm behind it (the vault, an
 ## exit), and those get no caption at all.
-func _show_captions(state: RealmState, to_screen: Transform2D, view: Rect2) -> void:
-	var tile := float(GameConstants.TILE_SIZE) * to_screen.get_scale().x
+func _show_captions(state: RealmState, to_screen: Transform2D, view: Rect2, project_3d: bool) -> void:
+	var world_tile := float(GameConstants.TILE_SIZE)
+	var tile := world_tile * to_screen.get_scale().x
 	for id in state.entities.portals:
 		var portal: Dictionary = state.entities.portals[id]
 		var position := state.entities.render_position(portal)
@@ -61,8 +62,14 @@ func _show_captions(state: RealmState, to_screen: Transform2D, view: Rect2) -> v
 		else:
 			label.remove_theme_stylebox_override("normal")
 		label.reset_size()
-		var at := EntityOverlay.screen(to_screen, position)
-		label.position = Vector2(at.x + tile * 0.5 - label.size.x * 0.5, at.y + tile + 4.0).round()
+		# In 3D the projector rotates, so anchor on the portal's world CENTRE (its
+		# billboard) rather than the top-left, which would swing on orbit.
+		if project_3d:
+			var centre := EntityOverlay.screen(to_screen, position + Vector2(world_tile, world_tile) * 0.5)
+			label.position = Vector2(centre.x - label.size.x * 0.5, centre.y + tile * 0.5 + 4.0).round()
+		else:
+			var at := EntityOverlay.screen(to_screen, position)
+			label.position = Vector2(at.x + tile * 0.5 - label.size.x * 0.5, at.y + tile + 4.0).round()
 		captions += 1
 
 
