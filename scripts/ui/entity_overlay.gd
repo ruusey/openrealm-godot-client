@@ -113,7 +113,7 @@ func tag_count() -> int:
 
 
 func _show_players(to_screen: Transform2D, view: Rect2) -> void:
-	var size := float(GameConstants.PLAYER_RENDER_SIZE) * to_screen.get_scale().x
+	var scale := to_screen.get_scale().x
 	var local := state.local
 	var on: GameSettings = state.settings
 	for id in state.entities.players:
@@ -127,8 +127,13 @@ func _show_players(to_screen: Transform2D, view: Rect2) -> void:
 		if is_local and label == "":
 			label = local.name
 		var chips_on := on.is_on("show_status_chips")
+		# Scale the tag to the player's body (/size), matching EntityQueue's render
+		# size, so the name/bars stay pinned below a resized player.
+		var body_size: float = local.size if is_local else float(player.get("size", GameConstants.PLAYER_SIZE))
+		var render_world := float(GameConstants.PLAYER_RENDER_SIZE) * (body_size / float(GameConstants.PLAYER_SIZE))
+		var size := render_world * scale
 		var tag: EntityTag = _tags.acquire(["player", id])
-		tag.show_player(_anchor(to_screen, position, float(GameConstants.PLAYER_RENDER_SIZE), size),
+		tag.show_player(_anchor(to_screen, position, render_world, size),
 			size, label if on.is_on("show_names") else "",
 			NameColours.over_head(String(player.get("chat_role", "")), is_local, LOCAL_NAME),
 			local.health if is_local else int(player.get("health", 0)),
