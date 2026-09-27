@@ -15,6 +15,8 @@ static func local_class(state: RealmState) -> void:
 	var own: Dictionary = state.entities.players.get(state.local.id, {})
 	if not own.is_empty():
 		state.local.class_id = int(own.get("class_id", state.local.class_id))
+		# /size resizes the body; the new size rides the LoadPacket rebroadcast.
+		state.local.size = float(own.get("size", state.local.size))
 
 
 ## The heavy update reaches every player in view -- the server strips the

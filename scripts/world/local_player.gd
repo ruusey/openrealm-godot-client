@@ -17,6 +17,10 @@ const SLOWED := 21
 var id := 0
 var name := ""
 var class_id := 0
+## Body size in world px. Defaults to the standard player size; the /size command
+## changes it and it arrives on the wire (NetPlayer.size), driving both the shot
+## origin (centre) and the rendered scale.
+var size := float(GameConstants.PLAYER_SIZE)
 ## Setting it also settles the slide (below) on the new place, so a spawn, a
 ## realm change or a test that puts the player somewhere draws it there
 ## outright; only the predictor, which sets previous_position afterwards,
@@ -78,7 +82,7 @@ func speed_per_tick() -> float:
 
 
 func centre() -> Vector2:
-	return position + Vector2(GameConstants.PLAYER_SIZE, GameConstants.PLAYER_SIZE) * 0.5
+	return position + Vector2(size, size) * 0.5
 
 
 ## Where the player is drawn: between the last two ticks, plus whatever is
@@ -96,7 +100,7 @@ func render_position() -> Vector2:
 
 
 func render_centre() -> Vector2:
-	return render_position() + Vector2(GameConstants.PLAYER_SIZE, GameConstants.PLAYER_SIZE) * 0.5
+	return render_position() + Vector2(size, size) * 0.5
 
 
 func interpolated() -> Vector2:

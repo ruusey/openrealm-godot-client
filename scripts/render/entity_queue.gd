@@ -69,12 +69,16 @@ func _queue_players(queue: Array, state: RealmState, content: GameData,
 			frame = pose.frame
 			mirrored = pose.facing_left
 		var texture := content.classes_art.frame(class_id, action, facing, frame, int(player.get("dye_id", 0)))
+		# Scale the sprite by the body size so /size visibly resizes the player;
+		# default size renders at the usual PLAYER_RENDER_SIZE.
+		var body_size: float = state.local.size if is_local else float(player.get("size", GameConstants.PLAYER_SIZE))
+		var render_size := PLAYER_RENDER_SIZE * (body_size / float(GameConstants.PLAYER_SIZE))
 		queue.append({
 			"kind": "players",
 			"pos": position,
-			"size": PLAYER_RENDER_SIZE,
+			"size": render_size,
 			"draw": frame_size(texture, content.classes_art.cell_size(class_id),
-				PLAYER_RENDER_SIZE),
+				render_size),
 			"texture": texture,
 			"tint": Color(0.4, 1.0, 0.5) if is_local else Color(0.3, 0.6, 1.0),
 			"modulate": StatusTint.of(state.local.effects if is_local

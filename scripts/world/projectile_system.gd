@@ -190,15 +190,18 @@ func fire_basic_attack(target: Vector2) -> Dictionary:
 	var archetype := _content.archetype_for_item(int(weapon.get("itemId", -1)))
 	# Match the server's bullet count: a Multishot Gem adds one more.
 	var extra := 1 if int(weapon.get("gemstoneType", 0)) == MULTISHOT_GEM else 0
+	# Origin is the body centre (matches the server's getCenteredPosition), so a
+	# resized player (/size) still fires from the middle of the sprite rather than
+	# its top-left corner.
 	if not bool(archetype.get("melee", false)):
 		bullets.merge(ShotPredictor.build(shot, group_id, definitions,
-			base_angle, _player.position, archetype, _clock.call(), extra))
+			base_angle, centre, archetype, _clock.call(), extra))
 
 	return {
 		"projectileId": shot,
 		"projectileGroupId": group_id,
 		"destX": target.x,
 		"destY": target.y,
-		"srcX": _player.position.x,
-		"srcY": _player.position.y,
+		"srcX": centre.x,
+		"srcY": centre.y,
 	}
