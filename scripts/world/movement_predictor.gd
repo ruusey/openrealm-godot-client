@@ -54,7 +54,8 @@ func predict(delta: float, input: Vector2) -> Array:
 		var before := _player.position
 		_player.position = step(before, input)
 		_player.previous_position = before
-		_history.append({"seq": input_seq, "input": input, "position": _player.position})
+		_history.append({"seq": input_seq, "input": input, "position": _player.position,
+			"snapshot": _effect_snapshot()})
 		if _history.size() > MAX_INPUT_HISTORY:
 			_history.pop_front()
 		if _send_policy.should_send(input):
@@ -80,12 +81,17 @@ func predict(delta: float, input: Vector2) -> Array:
 func step(position: Vector2, input: Vector2) -> Vector2:
 	if input.length_squared() <= 0.000001 or _player.effects.has(LocalPlayer.PARALYZED):
 		return position
+	return _move(position, input, pace_at(position))
 
+
+## The movement math shared by the live step and reconciliation replay: clamp to
+## a unit vector, then each axis tested from where the tick STARTED, sliding along
+## a corner when only the diagonal is blocked.
+func _move(position: Vector2, input: Vector2, pace: float) -> Vector2:
 	var vector := input
 	if vector.length() > 1.0:
 		vector = vector.normalized()
-
-	var delta := vector * pace_at(position)
+	var delta := vector * pace
 	var size := GameConstants.PLAYER_SIZE
 	var x_blocked := _tiles.blocks(position + Vector2(delta.x, 0.0), size)
 	var y_blocked := _tiles.blocks(position + Vector2(0.0, delta.y), size)
@@ -106,6 +112,42 @@ func pace_at(position: Vector2) -> float:
 	if _tiles.slows(position, GameConstants.PLAYER_SIZE):
 		pace /= 3.0
 	return pace
+
+
+## One replayed tick during reconciliation, run at the SPD/SPEEDY/SLOWED/PARALYZED
+## that were true when the input was made (its snapshot) rather than the current
+## set -- so a slow that landed or ended mid-history replays exactly as the server
+## stepped it. SLOWED/PARALYZED also honour the *current* effect, so once we learn
+## of a slow the server already applied, the still-unprocessed inputs replay at the
+## slowed speed the server is about to (mirrors the web client).
+func _replay_step(position: Vector2, input: Vector2, snap: Dictionary) -> Vector2:
+	var paralyzed: bool = snap.get("paralyzed", false) or _player.effects.has(LocalPlayer.PARALYZED)
+	if input.length_squared() <= 0.000001 or paralyzed:
+		return position
+	var base := _snapshot_speed_per_tick(snap)
+	if _tiles.slows(position, GameConstants.PLAYER_SIZE):
+		base /= 3.0
+	return _move(position, input, base)
+
+
+## The per-tick speed from a captured input snapshot, matching speed_per_tick().
+func _snapshot_speed_per_tick(snap: Dictionary) -> float:
+	var tiles_per_second := 4.0 + 5.6 * (float(snap.get("spd", 15)) / 75.0)
+	if snap.get("speedy", false) or _player.effects.has(LocalPlayer.SPEEDY):
+		tiles_per_second *= 1.5
+	if snap.get("slowed", false) or _player.effects.has(LocalPlayer.SLOWED):
+		tiles_per_second *= 0.5
+	return tiles_per_second * float(GameConstants.TILE_SIZE) / GameConstants.TICK_RATE
+
+
+## The effect state to record with an input, for accurate replay later.
+func _effect_snapshot() -> Dictionary:
+	return {
+		"slowed": _player.effects.has(LocalPlayer.SLOWED),
+		"speedy": _player.effects.has(LocalPlayer.SPEEDY),
+		"paralyzed": _player.effects.has(LocalPlayer.PARALYZED),
+		"spd": float(_player.stats.get("spd", 15)),
+	}
 
 
 func apply_position_ack(data: Dictionary) -> void:
@@ -130,7 +172,7 @@ func apply_position_ack(data: Dictionary) -> void:
 	# gap looked small lets it compound.
 	var replayed := server_position
 	for entry in _history:
-		replayed = step(replayed, entry["input"])
+		replayed = _replay_step(replayed, entry["input"], entry.get("snapshot", {}))
 		entry["position"] = replayed
 
 	var predicted := _player.position
