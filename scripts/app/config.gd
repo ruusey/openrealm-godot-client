@@ -81,6 +81,14 @@ static func parse(args: PackedStringArray, on_web := OS.has_feature("web"),
 	if on_app:
 		on_web = true
 		origin = {"host": PageOrigin.PRODUCTION_HOST, "port": 0, "secure": true}
+	# A shipped desktop build (Windows/Linux) has no page to read an origin from,
+	# so it would otherwise keep the 127.0.0.1 dev default and fail to load game
+	# data. Point it at prod the same way Android/web-on-openrealm.net do (socket
+	# + content over TLS through nginx). Editor and unversioned dev builds keep the
+	# local default; an explicit --host still overrides below.
+	elif not on_web and _is_released_build():
+		on_web = true
+		origin = {"host": PageOrigin.PRODUCTION_HOST, "port": 0, "secure": true}
 	var config := ClientConfig.new()
 	config.websocket = on_web
 	config.content_http = on_web
@@ -125,6 +133,16 @@ static func parse(args: PackedStringArray, on_web := OS.has_feature("web"),
 			_:
 				push_warning("ClientConfig: ignoring unknown argument '%s'" % arg)
 	return config
+
+
+## True for a CI-shipped build: not the editor, and carrying a real version (CI
+## stamps application/config/version from the git tag; local stays "dev"). Used to
+## point desktop releases at prod without changing local dev runs.
+static func _is_released_build() -> bool:
+	if OS.has_feature("editor"):
+		return false
+	var version := String(ProjectSettings.get_setting("application/config/version", ""))
+	return version != "" and version != "dev"
 
 
 ## Where content comes from. The data service in a browser, which has no
