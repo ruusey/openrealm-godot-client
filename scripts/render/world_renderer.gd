@@ -26,6 +26,9 @@ var particles := ParticleRenderer.new()
 var bullets := BulletRenderer.new()
 var effects := EffectRenderer.new()
 var debug := CollisionOverlay.new()
+## The layers redrawn every frame (all but the chunk-cached ground), built once
+## so _process doesn't allocate an array literal per frame.
+var _redraw_layers: Array = []
 
 var show_collision: bool:
 	get: return debug.show_collision
@@ -46,6 +49,7 @@ func _ready() -> void:
 	for layer in [tiles, entities, wall_tops, particles, bullets, effects, debug]:
 		layer.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		add_child(layer)
+	_redraw_layers = [entities, wall_tops, particles, bullets, effects, debug]
 	_wire()
 
 
@@ -76,7 +80,7 @@ var draw_stats: Dictionary:
 ## Everything that moves, every frame; the ground only where it changed.
 func _process(_delta: float) -> void:
 	tiles.refresh()
-	for layer in [entities, wall_tops, particles, bullets, effects, debug]:
+	for layer in _redraw_layers:
 		layer.queue_redraw()
 
 

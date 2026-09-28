@@ -10,9 +10,10 @@ extends RefCounted
 ## the web client does it this way too, sharing one texture so the copies
 ## batch.
 ##
-## Eight offsets, not four: the diagonals fill the corner pixels that a
-## cardinal-only stroke leaves as a missing sliver on concave edges, like the
-## notches of a plus-shaped projectile.
+## Four cardinal offsets, not eight: dropping the diagonals halves the outline
+## draw calls (this stamps once per offset per sprite, so it multiplies across a
+## horde). The only loss is a corner-pixel sliver on concave edges, barely
+## perceptible on pixel art -- a worthwhile trade for the draw-call saving.
 ##
 ## One world unit, not a screen pixel. The web client's note is worth keeping:
 ## at a fractional device pixel the stroke antialiases into near-invisibility
@@ -26,8 +27,6 @@ const TINT := Color(0.0, 0.0, 0.0, 0.85)
 const OFFSETS := [
 	Vector2(OFFSET, 0.0), Vector2(-OFFSET, 0.0),
 	Vector2(0.0, OFFSET), Vector2(0.0, -OFFSET),
-	Vector2(OFFSET, OFFSET), Vector2(OFFSET, -OFFSET),
-	Vector2(-OFFSET, OFFSET), Vector2(-OFFSET, -OFFSET),
 ]
 
 

@@ -29,6 +29,10 @@ var _light_emitters_built := false
 ## Projectile group ids fired by MAGIC-family weapons; their bullets glow.
 var _magic_groups := {}
 var _magic_groups_built := false
+## tile id -> AtlasTexture, so the per-frame wall/tile passes skip rebuilding a
+## string atlas key per cell. Populated once content is ready.
+var _tex_by_id := {}
+var _top_face_by_id := {}
 
 
 ## Content first, then every sheet it refers to. Awaited, because over HTTP
@@ -67,7 +71,12 @@ var projectile_groups: Dictionary:
 # --- tiles -----------------------------------------------------------------
 
 func tile_texture(tile_id: int) -> AtlasTexture:
-	return sprites.atlas_for(library.tiles.get(tile_id, {}))
+	if _tex_by_id.has(tile_id):
+		return _tex_by_id[tile_id]
+	var texture := sprites.atlas_for(library.tiles.get(tile_id, {}))
+	if ready:
+		_tex_by_id[tile_id] = texture
+	return texture
 
 
 ## How tall to draw this tile, in world pixels. Wall art is 8x16: the upper
@@ -87,7 +96,12 @@ func tile_render_height(tile_id: int) -> float:
 ## above the entities so a character behind the wall is covered by it while
 ## one standing in front of its south-spilling face is not.
 func tile_top_face(tile_id: int) -> AtlasTexture:
-	return sprites.top_face_for(library.tiles.get(tile_id, {}), DEFAULT_TILE_SPRITE_SIZE)
+	if _top_face_by_id.has(tile_id):
+		return _top_face_by_id[tile_id]
+	var texture := sprites.top_face_for(library.tiles.get(tile_id, {}), DEFAULT_TILE_SPRITE_SIZE)
+	if ready:
+		_top_face_by_id[tile_id] = texture
+	return texture
 
 
 func tile_data(tile_id: int) -> Dictionary:

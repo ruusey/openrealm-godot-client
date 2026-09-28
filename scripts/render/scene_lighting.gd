@@ -23,11 +23,15 @@ const BULLET_LIGHT_COLOR := Color(0.72, 0.62, 1.0)
 const BULLET_LIGHT_ENERGY := 1.3
 const BULLET_LIGHT_RADIUS := 1.1
 const MAX_TILE_LIGHTS := 24
-## The most solid cells in view we cast shadows from at once; a whole walled
-## room's perimeter fits well inside this.
-const MAX_OCCLUDERS := 384
+## Only the few nearest tile lights cast shadows -- a shadow pass runs per caster
+## per frame, so casting from all 24 is the dominant 2D cost; the eye reads the
+## nearest few and the player's own light, not a distant candle's cast shadow.
+const TILE_SHADOW_CASTERS := 3
+## The merge collapses wall runs into a handful of rects, so this cap is only ever
+## approached by a huge open field; 96 covers any room without leaking light.
+const MAX_OCCLUDERS := 96
 ## Tiles do not move, so the view is rescanned every Nth frame, not every frame.
-const SCAN_EVERY := 10
+const SCAN_EVERY := 20
 
 var _state: RealmState
 var _content: GameData
@@ -48,6 +52,10 @@ func setup(state: RealmState, content: GameData) -> void:
 	add_child(_ambient)
 	var glow := _soft_texture()
 	_light(_player, glow, Color(1.0, 0.88, 0.7), PLAYER_ENERGY, _scale_for(3.5))
+	# The player's light is the one soft caster -- it moves, so its shadows are what
+	# the eye follows; the few tile casters use the cheap hard filter.
+	_player.shadow_filter = Light2D.SHADOW_FILTER_PCF5
+	_player.shadow_filter_smooth = 1.5
 	for i in MAX_TILE_LIGHTS:
 		var light := PointLight2D.new()
 		_light(light, glow, Color.WHITE, TILE_LIGHT_ENERGY, 1.0)
@@ -77,8 +85,7 @@ func _light(light: PointLight2D, glow: GradientTexture2D, colour: Color, energy:
 	light.energy = energy
 	light.texture_scale = scale
 	light.shadow_enabled = true
-	light.shadow_filter = Light2D.SHADOW_FILTER_PCF5
-	light.shadow_filter_smooth = 1.5
+	light.shadow_filter = Light2D.SHADOW_FILTER_NONE
 	add_child(light)
 
 
@@ -124,7 +131,7 @@ func _place_bullet_lights() -> void:
 			var size := float(bullet.get("size", 8))
 			var at: Vector2 = bullet["pos"] + Vector2(size, size) * 0.5
 			found.append([at.distance_squared_to(centre), at])
-		found.sort_custom(func(a, b): return a[0] < b[0])
+		found.sort_custom(_nearer)
 	for i in _bullet_lights.size():
 		var light := _bullet_lights[i]
 		light.visible = i < found.size()
@@ -152,7 +159,7 @@ func _rescan() -> void:
 					found.append([at.distance_squared_to(centre), at, kind])
 			if _occludes(solid.get(cell, -1)):
 				walls.append(cell)
-	found.sort_custom(func(a, b): return a[0] < b[0])
+	found.sort_custom(_nearer)
 	for i in _pool.size():
 		var light := _pool[i]
 		light.visible = i < found.size()
@@ -163,6 +170,8 @@ func _rescan() -> void:
 			light.texture_scale = _scale_for(kind["radius"])
 			light.set_meta("flickers", kind["flickers"])
 			light.energy = TILE_LIGHT_ENERGY
+			# found is distance-sorted, so the nearest few are the casters.
+			light.shadow_enabled = i < TILE_SHADOW_CASTERS
 	var rects := _merge_wall_rects(walls)
 	for i in _occluders.size():
 		var occluder := _occluders[i]
@@ -182,6 +191,12 @@ func _rescan() -> void:
 func _occludes(tile_id: int) -> bool:
 	return tile_id > 0 and not _emitters.has(tile_id) \
 		and (_content.tile_is_wall(tile_id) or _content.tile_has_collision(tile_id))
+
+
+## Distance-first comparator, hoisted so a fresh closure isn't allocated every
+## scan and every bullet-light pass.
+static func _nearer(a: Array, b: Array) -> bool:
+	return a[0] < b[0]
 
 
 ## A light `radius` tiles across its bright half, on the 256px texture.

@@ -26,9 +26,13 @@ func build(state: RealmState, content: GameData, view: Rect2) -> Array:
 	_queue_containers(queue, state, content, view)
 	_queue_portals(queue, state, content, view)
 
-	queue.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
-		return a["pos"].y + a["size"] < b["pos"].y + b["size"])
+	queue.sort_custom(_by_feet)
 	return queue
+
+
+## Feet-depth comparator, hoisted so no closure is allocated per frame.
+static func _by_feet(a: Dictionary, b: Dictionary) -> bool:
+	return a["pos"].y + a["size"] < b["pos"].y + b["size"]
 
 
 ## How big to draw a frame, in world pixels.
