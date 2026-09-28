@@ -10,7 +10,11 @@ extends Node2D
 ## The UI sits on its own CanvasLayers, so none of it is darkened. Governed by
 ## the "lighting" graphics setting (Options > Graphics, or F3), on by default.
 
-const AMBIENT := Color(0.6, 0.62, 0.72)
+const AMBIENT := Color(0.48, 0.5, 0.6)
+## Additive over the darkened world; well above 1 so a candle reads as a bright
+## warm pool, not a faint tint.
+const TILE_LIGHT_ENERGY := 2.6
+const PLAYER_ENERGY := 1.3
 const MAX_TILE_LIGHTS := 24
 ## The most solid cells in view we cast shadows from at once; a whole walled
 ## room's perimeter fits well inside this.
@@ -35,10 +39,10 @@ func setup(state: RealmState, content: GameData) -> void:
 	_ambient.color = AMBIENT
 	add_child(_ambient)
 	var glow := _soft_texture()
-	_light(_player, glow, Color(1.0, 0.88, 0.7), 0.85, _scale_for(3.5))
+	_light(_player, glow, Color(1.0, 0.88, 0.7), PLAYER_ENERGY, _scale_for(3.5))
 	for i in MAX_TILE_LIGHTS:
 		var light := PointLight2D.new()
-		_light(light, glow, Color.WHITE, 1.0, 1.0)
+		_light(light, glow, Color.WHITE, TILE_LIGHT_ENERGY, 1.0)
 		light.visible = false
 		_pool.append(light)
 	var square := _square_occluder()
@@ -84,7 +88,8 @@ func _process(delta: float) -> void:
 	for i in _pool.size():
 		var light := _pool[i]
 		if light.visible and light.get_meta("flickers", false):
-			light.energy = 1.0 + 0.12 * sin(_time * 9.0 + i * 1.7) + 0.06 * sin(_time * 23.0 + i)
+			light.energy = TILE_LIGHT_ENERGY \
+				* (1.0 + 0.12 * sin(_time * 9.0 + i * 1.7) + 0.06 * sin(_time * 23.0 + i))
 
 
 ## The glowing tiles in view get a light each (nearest the player first), and the
@@ -117,7 +122,7 @@ func _rescan() -> void:
 			light.color = kind["color"]
 			light.texture_scale = _scale_for(kind["radius"])
 			light.set_meta("flickers", kind["flickers"])
-			light.energy = 1.0
+			light.energy = TILE_LIGHT_ENERGY
 	for i in _occluders.size():
 		var occluder := _occluders[i]
 		occluder.visible = i < walls.size()
@@ -153,9 +158,9 @@ static func _square_occluder() -> OccluderPolygon2D:
 ## visible ring.
 static func _soft_texture() -> GradientTexture2D:
 	var gradient := Gradient.new()
-	gradient.offsets = PackedFloat32Array([0.0, 0.35, 0.7, 1.0])
+	gradient.offsets = PackedFloat32Array([0.0, 0.5, 0.8, 1.0])
 	gradient.colors = PackedColorArray([
-		Color(1, 1, 1, 1), Color(1, 1, 1, 0.55), Color(1, 1, 1, 0.15), Color(1, 1, 1, 0)])
+		Color(1, 1, 1, 1), Color(1, 1, 1, 0.75), Color(1, 1, 1, 0.28), Color(1, 1, 1, 0)])
 	var texture := GradientTexture2D.new()
 	texture.gradient = gradient
 	texture.fill = GradientTexture2D.FILL_RADIAL
