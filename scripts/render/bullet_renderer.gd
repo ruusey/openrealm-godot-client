@@ -18,6 +18,11 @@ extends Node2D
 ## simply stops once the budget is spent.
 const OUTLINE_BUDGET := 256
 
+## A wand/staff/tome bolt carries a soft arcane bloom, drawn under the sprite as
+## stacked translucent discs -- immediate-mode, so no dependence on the 2D light
+## budget (which the candle-lit nexus can already exhaust).
+const MAGIC_GLOW := Color(0.62, 0.5, 1.0)
+
 var state: RealmState
 var content: GameData
 ## Spin is a function of the wall clock -- see ProjectileArt.spun -- so the
@@ -92,6 +97,8 @@ func paint(canvas: CanvasItem, state: RealmState, content: GameData,
 			if afterimage.a > 0.0:
 				BulletAfterimage.stamp(canvas, texture, centre, size, angle, rotation, afterimage)
 				afterimaged += 1
+			if content.is_magic_projectile(group_id):
+				_draw_magic_glow(canvas, centre, size)
 			_draw_one(canvas, texture, centre, size, rotation, _take_outline())
 	return drawn
 
@@ -119,6 +126,14 @@ static func _draw_one(canvas: CanvasItem, texture: Texture2D, centre: Vector2,
 		SpriteOutline.stamp(canvas, texture, body)
 	canvas.draw_texture_rect(texture, body, false)
 	canvas.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+## Stacked translucent discs make a soft bloom under a magic bolt, drawn before
+## the sprite so the bolt sits on top of its own glow.
+static func _draw_magic_glow(canvas: CanvasItem, centre: Vector2, size: float) -> void:
+	canvas.draw_circle(centre, size * 2.2, Color(MAGIC_GLOW.r, MAGIC_GLOW.g, MAGIC_GLOW.b, 0.10))
+	canvas.draw_circle(centre, size * 1.5, Color(MAGIC_GLOW.r, MAGIC_GLOW.g, MAGIC_GLOW.b, 0.20))
+	canvas.draw_circle(centre, size * 0.95, Color(MAGIC_GLOW.r, MAGIC_GLOW.g, MAGIC_GLOW.b, 0.34))
 
 
 ## A LINE_SEGMENT wall is a row of sprites stacked along the axis
