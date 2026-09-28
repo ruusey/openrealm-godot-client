@@ -24,7 +24,7 @@ var _ambient := CanvasModulate.new()
 var _player := PointLight2D.new()
 var _pool: Array[PointLight2D] = []
 var _occluders: Array[LightOccluder2D] = []
-var _emitters := {}   # tile id -> [colour, radius in tiles, flickers]
+var _emitters := {}   # GameData.light_emitters(): tile id -> {color, radius, flickers}
 var _frames := 0
 var _time := 0.0
 
@@ -90,8 +90,7 @@ func _process(delta: float) -> void:
 ## The glowing tiles in view get a light each (nearest the player first), and the
 ## walls and solid props an occluder each, so those lights throw shadows.
 func _rescan() -> void:
-	if _emitters.is_empty():
-		_index_emitters()
+	_emitters = _content.light_emitters()
 	var tile := float(GameConstants.TILE_SIZE)
 	var solid: Dictionary = _state.tiles.layers.get(GameConstants.COLLISION_LAYER, {})
 	var view := ViewRect.of(self)
@@ -113,11 +112,11 @@ func _rescan() -> void:
 		var light := _pool[i]
 		light.visible = i < found.size()
 		if light.visible:
-			var kind: Array = found[i][2]
+			var kind: Dictionary = found[i][2]
 			light.position = found[i][1]
-			light.color = kind[0]
-			light.texture_scale = _scale_for(kind[1])
-			light.set_meta("flickers", kind[2])
+			light.color = kind["color"]
+			light.texture_scale = _scale_for(kind["radius"])
+			light.set_meta("flickers", kind["flickers"])
 			light.energy = 1.0
 	for i in _occluders.size():
 		var occluder := _occluders[i]
@@ -132,22 +131,6 @@ func _rescan() -> void:
 func _occludes(tile_id: int) -> bool:
 	return tile_id > 0 and not _emitters.has(tile_id) \
 		and (_content.tile_is_wall(tile_id) or _content.tile_has_collision(tile_id))
-
-
-## Tiles carrying a data.light block, read once the content is in.
-func _index_emitters() -> void:
-	for id in _content.library.tiles:
-		var light := _content.tile_light(id)
-		var strength := float(light.get("strength", 0.0))
-		if strength <= 0.0:
-			continue
-		var colour := _colour_of(str(light.get("color", "#ffffff")))
-		var flickers := str(light.get("style", "steady")) == "flicker"
-		_emitters[id] = [colour, strength, flickers]
-
-
-static func _colour_of(hex: String) -> Color:
-	return Color.html(hex) if Color.html_is_valid(hex) else Color.WHITE
 
 
 ## A light `radius` tiles across its bright half, on the 256px texture.

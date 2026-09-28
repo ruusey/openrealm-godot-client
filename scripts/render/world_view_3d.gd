@@ -47,6 +47,19 @@ const FX_VIEWPORT_PX := 2048
 ## The world span used to fit the overlay's affine projector to the 3D camera.
 const OVERLAY_PROBE := 120.0
 
+## Dynamic lighting (the "lighting" setting, shared data.light emitters with the
+## 2D SceneLighting). Off restores the old full-bright look; on darkens the scene
+## and lets torches, lava and crystals pool real 3D light the walls occlude.
+const MAX_LIGHTS_3D := 24
+const LIGHT_SCAN_EVERY := 10
+const LIGHT_HEIGHT := float(TILE) * 0.6
+const TORCH_ENERGY := 2.2
+const PLAYER_LIGHT_RANGE := float(TILE) * 4.0
+const PLAYER_LIGHT_ENERGY := 1.6
+const AMBIENT_LIT := Color(0.32, 0.33, 0.42)
+const AMBIENT_LIT_ENERGY := 0.45
+const SUN_LIT_ENERGY := 0.25
+
 var state: RealmState
 var content: GameData
 ## The real pinned overlay, driven through this camera while 3D is up.
@@ -72,6 +85,15 @@ var _map_built := false
 var _yaw := 0.0
 var _pitch := PITCH_DEFAULT
 
+var _sun: DirectionalLight3D
+var _env: Environment
+var _player_light: OmniLight3D
+var _lights: Array[OmniLight3D] = []
+var _light_frames := 0
+var _light_time := 0.0
+var _lit := false
+var _lit_applied := false
+
 var _fx_viewport: SubViewport
 var _fx_renderer: EffectRenderer
 var _fx_camera: Camera2D
@@ -84,10 +106,10 @@ func setup(realm_state: RealmState, game_data: GameData) -> void:
 
 
 func _ready() -> void:
-	var light := DirectionalLight3D.new()
-	light.rotation_degrees = Vector3(-55.0, -35.0, 0.0)
-	light.light_energy = 1.1
-	add_child(light)
+	_sun = DirectionalLight3D.new()
+	_sun.rotation_degrees = Vector3(-55.0, -35.0, 0.0)
+	_sun.light_energy = 1.1
+	add_child(_sun)
 
 	var env := Environment.new()
 	env.background_mode = Environment.BG_COLOR
@@ -97,6 +119,7 @@ func _ready() -> void:
 	env.ambient_light_energy = 1.0
 	# No glow/bloom: it blurred the bright ability effects (and pixel art in
 	# general) into a fuzzy haze. Effects must read crisp like the rest of the scene.
+	_env = env
 	var world_env := WorldEnvironment.new()
 	world_env.environment = env
 	add_child(world_env)
@@ -126,7 +149,7 @@ func _ready() -> void:
 	_floor_mesh.size = Vector2(TILE, TILE)
 	_wall_mesh = _make_wall_mesh()
 	_grey_wall.albedo_color = Color(0.5, 0.48, 0.54)
-	_grey_wall.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_grey_wall.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL
 	_grey_wall.cull_mode = BaseMaterial3D.CULL_DISABLED
 	_shadow = _make_shadow()
 
@@ -135,6 +158,7 @@ func _ready() -> void:
 	_sprite_root = Node3D.new()
 	add_child(_sprite_root)
 	_build_effect_ground()
+	_build_lights()
 
 
 func _process(delta: float) -> void:
@@ -158,6 +182,7 @@ func _process(delta: float) -> void:
 	_place_projectiles(centre)
 	_update_effects(centre)
 	_update_overlay(centre)
+	_update_lighting(delta, centre)
 
 
 ## The mouse's world point on the ground (y=0) through the 3D camera, as a 2D
@@ -290,7 +315,8 @@ func _floor_material_for(texture: Texture2D) -> StandardMaterial3D:
 	var material := StandardMaterial3D.new()
 	_apply_atlas(material, texture)
 	material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	# Lit, so the dynamic lights pool on the ground; the floor plane faces up.
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL
 	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
 	material.alpha_scissor_threshold = 0.5
 	_floor_materials[texture] = material
@@ -305,9 +331,10 @@ func _wall_material_for(texture: Texture2D) -> StandardMaterial3D:
 	var material := StandardMaterial3D.new()
 	_apply_atlas(material, texture)
 	material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	# The cube mesh below carries its own winding; unshaded ignores normals, so
-	# skip culling rather than risk an inside-out face.
+	# Lit, so lights fall on the wall faces; the mesh carries generated normals.
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL
+	# The cube's faces are drawn from one side each; two-sided keeps a face lit
+	# even when the orbit looks at its back.
 	material.cull_mode = BaseMaterial3D.CULL_DISABLED
 	_wall_materials[texture] = material
 	return material
@@ -329,6 +356,7 @@ func _make_wall_mesh() -> ArrayMesh:
 	_wall_quad(builder, Vector3(-h, h, -h), Vector3(-h, h, h), Vector3(-h, -h, h), Vector3(-h, -h, -h), 0.5, 1.0)
 	# Top: the upper half of the sprite.
 	_wall_quad(builder, Vector3(-h, h, -h), Vector3(h, h, -h), Vector3(h, h, h), Vector3(-h, h, h), 0.0, 0.5)
+	builder.generate_normals()
 	return builder.commit()
 
 
@@ -524,6 +552,84 @@ func _update_effects(centre: Vector2) -> void:
 	_fx_renderer.queue_redraw()
 
 
+# ── Dynamic lighting: an omni per glowing tile, plus one on the player ─────────
+
+func _build_lights() -> void:
+	_player_light = OmniLight3D.new()
+	_player_light.light_color = Color(1.0, 0.88, 0.7)
+	_player_light.omni_range = PLAYER_LIGHT_RANGE
+	_player_light.light_energy = PLAYER_LIGHT_ENERGY
+	_player_light.shadow_enabled = true
+	_player_light.visible = false
+	add_child(_player_light)
+	for i in MAX_LIGHTS_3D:
+		var light := OmniLight3D.new()
+		light.shadow_enabled = true
+		light.visible = false
+		_lights.append(light)
+		add_child(light)
+
+
+func _update_lighting(delta: float, centre: Vector2) -> void:
+	var on := state.settings.is_on("lighting")
+	if not _lit_applied or on != _lit:
+		_lit = on
+		_lit_applied = true
+		_apply_lighting(on)
+	if not on:
+		return
+	_light_time += delta
+	_player_light.position = Vector3(centre.x, LIGHT_HEIGHT, centre.y)
+	if _light_frames % LIGHT_SCAN_EVERY == 0:
+		_place_lights(centre)
+	_light_frames += 1
+	for i in _lights.size():
+		var light := _lights[i]
+		if light.visible and light.get_meta("flickers", false):
+			light.light_energy = TORCH_ENERGY \
+				* (1.0 + 0.12 * sin(_light_time * 9.0 + i * 1.7) + 0.06 * sin(_light_time * 23.0 + i))
+
+
+## Dark ambient and a low sun when lit; the old full-bright albedo when off.
+func _apply_lighting(on: bool) -> void:
+	_env.ambient_light_color = AMBIENT_LIT if on else Color.WHITE
+	_env.ambient_light_energy = AMBIENT_LIT_ENERGY if on else 1.0
+	_sun.light_energy = SUN_LIT_ENERGY if on else 0.0
+	_player_light.visible = on
+	if not on:
+		for light in _lights:
+			light.visible = false
+
+
+## The glowing tiles near the player, nearest first, one omni each.
+func _place_lights(centre: Vector2) -> void:
+	var emitters := content.light_emitters()
+	var tile := float(TILE)
+	var reach := ceili(ENTITY_RANGE / tile)
+	var origin := Vector2i(floori(centre.x / tile), floori(centre.y / tile))
+	var found := []
+	for gy in range(origin.y - reach, origin.y + reach + 1):
+		for gx in range(origin.x - reach, origin.x + reach + 1):
+			var cell := Vector2i(gx, gy)
+			for layer in state.tiles.layers:
+				var kind: Variant = emitters.get(state.tiles.layers[layer].get(cell, -1))
+				if kind != null:
+					var at := Vector2(gx + 0.5, gy + 0.5) * tile
+					found.append([at.distance_squared_to(centre), at, kind])
+	found.sort_custom(func(a, b): return a[0] < b[0])
+	for i in _lights.size():
+		var light := _lights[i]
+		light.visible = i < found.size()
+		if light.visible:
+			var kind: Dictionary = found[i][2]
+			var at: Vector2 = found[i][1]
+			light.position = Vector3(at.x, LIGHT_HEIGHT, at.y)
+			light.light_color = kind["color"]
+			light.omni_range = float(kind["radius"]) * tile * 2.0
+			light.set_meta("flickers", kind["flickers"])
+			light.light_energy = TORCH_ENERGY
+
+
 # ── Shared sprite + texture helpers ───────────────────────────────────────────
 
 func _sprite_node(billboard: int) -> Sprite3D:
@@ -531,7 +637,9 @@ func _sprite_node(billboard: int) -> Sprite3D:
 	sprite.billboard = billboard
 	sprite.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	sprite.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
-	sprite.shaded = false
+	# Standing bodies (billboards) take the light so they darken away from it and
+	# warm up by a torch; flat projectiles stay self-bright.
+	sprite.shaded = billboard == BaseMaterial3D.BILLBOARD_ENABLED
 	return sprite
 
 

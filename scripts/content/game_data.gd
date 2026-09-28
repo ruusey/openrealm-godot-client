@@ -22,6 +22,10 @@ var abilities := AbilityCatalog.new(library, sprites)
 ## What experience means: level, and fame past the last level.
 var levels := ExperienceLevels.new()
 var ready := false
+## tile id -> {color, radius in tiles, flickers}; built once from data.light,
+## shared by the 2D SceneLighting and the 3D view. See light_emitters().
+var _light_emitters := {}
+var _light_emitters_built := false
 
 
 ## Content first, then every sheet it refers to. Awaited, because over HTTP
@@ -108,6 +112,27 @@ func tile_name(tile_id: int) -> String:
 func tile_light(tile_id: int) -> Dictionary:
 	var light: Variant = tile_data(tile_id).get("light")
 	return light if light is Dictionary else {}
+
+
+## Every light-emitting tile id -> {color: Color, radius: reach in tiles,
+## flickers: bool}, parsed once from data.light. The one source of truth both
+## the 2D and 3D lighting scan against.
+func light_emitters() -> Dictionary:
+	if _light_emitters_built:
+		return _light_emitters
+	_light_emitters_built = true
+	for id in library.tiles:
+		var light := tile_light(id)
+		var strength := float(light.get("strength", 0.0))
+		if strength <= 0.0:
+			continue
+		var hex := str(light.get("color", "#ffffff"))
+		_light_emitters[id] = {
+			"color": Color.html(hex) if Color.html_is_valid(hex) else Color.WHITE,
+			"radius": strength,
+			"flickers": str(light.get("style", "steady")) == "flicker",
+		}
+	return _light_emitters
 
 
 # --- entities --------------------------------------------------------------
