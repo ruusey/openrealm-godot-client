@@ -95,7 +95,6 @@ var _projectiles: Array[Sprite3D] = []
 var _projectile_shadows: Array[Sprite3D] = []
 var _entity_queue := EntityQueue.new()
 var _floor_mesh := PlaneMesh.new()
-var _wall_mesh: ArrayMesh
 var _grey_wall := StandardMaterial3D.new()
 var _floor_materials := {}
 var _wall_materials := {}
@@ -170,7 +169,6 @@ func _ready() -> void:
 	add_child(_backdrop)
 
 	_floor_mesh.size = Vector2(TILE, TILE)
-	_wall_mesh = _make_wall_mesh()
 	_grey_wall.albedo_color = Color(0.5, 0.48, 0.54)
 	_grey_wall.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL
 	_grey_wall.cull_mode = BaseMaterial3D.CULL_DISABLED
@@ -278,7 +276,8 @@ func _rebuild_map_if_changed() -> void:
 		child.queue_free()
 
 	var floor_cells := {}
-	var wall_cells := {}
+	var wall_cells := {}   # texture -> Array[Vector2i]
+	var wall_set := {}     # Vector2i -> true, so a face between two walls is culled
 	var layers := tiles.layers.keys()
 	layers.sort()
 	for layer in layers:
@@ -289,8 +288,10 @@ func _rebuild_map_if_changed() -> void:
 				continue
 			var texture := content.tile_texture(tile_id)
 			if content.tile_is_wall(tile_id):
-				_group(wall_cells, texture, Vector3(cell.x * TILE + TILE * 0.5,
-					WALL_HEIGHT * 0.5, cell.y * TILE + TILE * 0.5))
+				if not wall_cells.has(texture):
+					wall_cells[texture] = []
+				wall_cells[texture].append(cell)
+				wall_set[cell] = true
 			elif layer == COLLISION_LAYER:
 				# Every collision-layer tile stands up as a 2.5D billboard.
 				_add_prop(cell, texture)
@@ -300,8 +301,14 @@ func _rebuild_map_if_changed() -> void:
 
 	for texture in floor_cells:
 		_add_multimesh(_floor_mesh, _floor_material_for(texture), floor_cells[texture], false)
+	# Each texture's walls become one face-culled chunk mesh: a run of touching
+	# walls is a single hollow shell, not a stack of overlapping cubes, so the
+	# buried faces (and their overdraw + z-fighting seams) are gone.
 	for texture in wall_cells:
-		_add_multimesh(_wall_mesh, _wall_material_for(texture), wall_cells[texture])
+		var instance := MeshInstance3D.new()
+		instance.mesh = _build_wall_chunk(wall_cells[texture], wall_set)
+		instance.material_override = _wall_material_for(texture)
+		_map_root.add_child(instance)
 	_map_built = true
 
 
@@ -369,22 +376,29 @@ func _wall_material_for(texture: Texture2D) -> StandardMaterial3D:
 	return material
 
 
-## A one-tile cube whose UVs split the 8x16 wall art the way the sprite is
-## authored: the upper half (mesh v 0..0.5) is the top face, the lower half
-## (v 0.5..1) the front face, repeated on all four sides. The wall material's
-## atlas offset/scale then maps that 0..1 onto the tile's region, so each face
-## gets the correct 8x8 half instead of the whole sprite squished onto it.
-func _make_wall_mesh() -> ArrayMesh:
+## One mesh for all of a texture's walls, keeping only the faces exposed to a
+## non-wall neighbour (plus every top). A face buried between two adjacent walls
+## is never seen, so dropping it removes that overdraw and the seam the
+## overlapping cubes used to show. UVs split the 8x16 art the way the sprite is
+## authored: top face v 0..0.5, the four sides v 0.5..1; the material's atlas
+## offset/scale then maps that onto the tile's region.
+func _build_wall_chunk(cells: Array, wall_set: Dictionary) -> ArrayMesh:
 	var h := TILE * 0.5
 	var builder := SurfaceTool.new()
 	builder.begin(Mesh.PRIMITIVE_TRIANGLES)
-	# Sides: top edge -> v 0.5 (top of the front face), bottom edge -> v 1.0.
-	_wall_quad(builder, Vector3(-h, h, h), Vector3(h, h, h), Vector3(h, -h, h), Vector3(-h, -h, h), 0.5, 1.0)
-	_wall_quad(builder, Vector3(h, h, -h), Vector3(-h, h, -h), Vector3(-h, -h, -h), Vector3(h, -h, -h), 0.5, 1.0)
-	_wall_quad(builder, Vector3(h, h, h), Vector3(h, h, -h), Vector3(h, -h, -h), Vector3(h, -h, h), 0.5, 1.0)
-	_wall_quad(builder, Vector3(-h, h, -h), Vector3(-h, h, h), Vector3(-h, -h, h), Vector3(-h, -h, -h), 0.5, 1.0)
-	# Top: the upper half of the sprite.
-	_wall_quad(builder, Vector3(-h, h, -h), Vector3(h, h, -h), Vector3(h, h, h), Vector3(-h, h, h), 0.0, 0.5)
+	for cell in cells:
+		var c := Vector3(cell.x * TILE + TILE * 0.5, WALL_HEIGHT * 0.5, cell.y * TILE + TILE * 0.5)
+		# Top always shows.
+		_wall_quad(builder, c + Vector3(-h, h, -h), c + Vector3(h, h, -h), c + Vector3(h, h, h), c + Vector3(-h, h, h), 0.0, 0.5)
+		# Each side only when the neighbour in that direction isn't a wall.
+		if not wall_set.has(Vector2i(cell.x, cell.y + 1)):
+			_wall_quad(builder, c + Vector3(-h, h, h), c + Vector3(h, h, h), c + Vector3(h, -h, h), c + Vector3(-h, -h, h), 0.5, 1.0)
+		if not wall_set.has(Vector2i(cell.x, cell.y - 1)):
+			_wall_quad(builder, c + Vector3(h, h, -h), c + Vector3(-h, h, -h), c + Vector3(-h, -h, -h), c + Vector3(h, -h, -h), 0.5, 1.0)
+		if not wall_set.has(Vector2i(cell.x + 1, cell.y)):
+			_wall_quad(builder, c + Vector3(h, h, h), c + Vector3(h, h, -h), c + Vector3(h, -h, -h), c + Vector3(h, -h, h), 0.5, 1.0)
+		if not wall_set.has(Vector2i(cell.x - 1, cell.y)):
+			_wall_quad(builder, c + Vector3(-h, h, -h), c + Vector3(-h, h, h), c + Vector3(-h, -h, h), c + Vector3(-h, -h, -h), 0.5, 1.0)
 	builder.generate_normals()
 	return builder.commit()
 
