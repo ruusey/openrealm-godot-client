@@ -10,11 +10,11 @@ extends Node2D
 ## The UI sits on its own CanvasLayers, so none of it is darkened. Governed by
 ## the "lighting" graphics setting (Options > Graphics, or F3), on by default.
 
-const AMBIENT := Color(0.48, 0.5, 0.6)
+const AMBIENT := Color(0.44, 0.46, 0.56)
 ## Additive over the darkened world; well above 1 so a candle reads as a bright
 ## warm pool, not a faint tint.
-const TILE_LIGHT_ENERGY := 2.6
-const PLAYER_ENERGY := 1.3
+const TILE_LIGHT_ENERGY := 4.5
+const PLAYER_ENERGY := 1.9
 const MAX_TILE_LIGHTS := 24
 ## The most solid cells in view we cast shadows from at once; a whole walled
 ## room's perimeter fits well inside this.
