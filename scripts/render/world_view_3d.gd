@@ -53,9 +53,9 @@ const OVERLAY_PROBE := 120.0
 const MAX_LIGHTS_3D := 24
 const LIGHT_SCAN_EVERY := 10
 const LIGHT_HEIGHT := float(TILE) * 0.6
-const TORCH_ENERGY := 4.8
+const TORCH_ENERGY := 3.8
 const PLAYER_LIGHT_RANGE := float(TILE) * 4.0
-const PLAYER_LIGHT_ENERGY := 3.0
+const PLAYER_LIGHT_ENERGY := 2.4
 const AMBIENT_LIT := Color(0.32, 0.33, 0.42)
 const AMBIENT_LIT_ENERGY := 0.45
 ## Enough that the sun's wall shadows read while the torches still carry the mood.
@@ -63,8 +63,8 @@ const SUN_LIT_ENERGY := 0.5
 ## Wand/staff/tome bullets carry a travelling arcane glow.
 const MAX_BULLET_LIGHTS_3D := 20
 const BULLET_LIGHT_COLOR := Color(0.72, 0.62, 1.0)
-const BULLET_LIGHT_ENERGY := 3.0
-const BULLET_LIGHT_RANGE := float(TILE) * 1.7
+const BULLET_LIGHT_ENERGY := 1.8
+const BULLET_LIGHT_RANGE := float(TILE) * 1.4
 
 var state: RealmState
 var content: GameData

@@ -131,9 +131,9 @@ static func _draw_one(canvas: CanvasItem, texture: Texture2D, centre: Vector2,
 ## Stacked translucent discs make a soft bloom under a magic bolt, drawn before
 ## the sprite so the bolt sits on top of its own glow.
 static func _draw_magic_glow(canvas: CanvasItem, centre: Vector2, size: float) -> void:
-	canvas.draw_circle(centre, size * 2.2, Color(MAGIC_GLOW.r, MAGIC_GLOW.g, MAGIC_GLOW.b, 0.10))
-	canvas.draw_circle(centre, size * 1.5, Color(MAGIC_GLOW.r, MAGIC_GLOW.g, MAGIC_GLOW.b, 0.20))
-	canvas.draw_circle(centre, size * 0.95, Color(MAGIC_GLOW.r, MAGIC_GLOW.g, MAGIC_GLOW.b, 0.34))
+	canvas.draw_circle(centre, size * 1.8, Color(MAGIC_GLOW.r, MAGIC_GLOW.g, MAGIC_GLOW.b, 0.04))
+	canvas.draw_circle(centre, size * 1.2, Color(MAGIC_GLOW.r, MAGIC_GLOW.g, MAGIC_GLOW.b, 0.08))
+	canvas.draw_circle(centre, size * 0.8, Color(MAGIC_GLOW.r, MAGIC_GLOW.g, MAGIC_GLOW.b, 0.13))
 
 
 ## A LINE_SEGMENT wall is a row of sprites stacked along the axis

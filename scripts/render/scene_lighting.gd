@@ -13,15 +13,15 @@ extends Node2D
 const AMBIENT := Color(0.62, 0.64, 0.72)
 ## Additive over the darkened world; a candle reads as a warm pool without
 ## blowing out the tiles around it.
-const TILE_LIGHT_ENERGY := 2.6
-const PLAYER_ENERGY := 1.2
-## Wand/staff/tome bullets carry a travelling arcane glow; a small pool follows
-## the nearest of them. Not shadow-casting -- a fast mover flickering shadows is
-## noise, and cheaper.
+const TILE_LIGHT_ENERGY := 2.0
+const PLAYER_ENERGY := 1.1
+## Wand/staff/tome bullets carry a faint travelling arcane glow; a small pool
+## follows the nearest of them. Not shadow-casting -- a fast mover flickering
+## shadows is noise, and cheaper.
 const MAX_BULLET_LIGHTS := 20
 const BULLET_LIGHT_COLOR := Color(0.72, 0.62, 1.0)
-const BULLET_LIGHT_ENERGY := 2.4
-const BULLET_LIGHT_RADIUS := 1.3
+const BULLET_LIGHT_ENERGY := 1.3
+const BULLET_LIGHT_RADIUS := 1.1
 const MAX_TILE_LIGHTS := 24
 ## The most solid cells in view we cast shadows from at once; a whole walled
 ## room's perimeter fits well inside this.
