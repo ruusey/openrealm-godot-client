@@ -25,6 +25,10 @@ const WALL_HEIGHT := float(TILE)
 const ENTITY_RANGE := 900.0
 const BULLET_HEIGHT := 12.0
 const SHADOW_SIZE := 32
+## A ground shadow is offset this fraction of the sprite's height along the sun's
+## ground direction, so it reads as a cast shadow (and shows when the camera is
+## behind the sprite) instead of a disc hidden under the body.
+const SHADOW_CAST_FACTOR := 0.4
 ## Camera distance from the player. Pitch (degrees above the ground) rides the
 ## mouse wheel; yaw rides Q/E. Sprites are full billboards, so they always face
 ## the camera and tilt to match whatever pitch is chosen -- no foreshortening,
@@ -114,6 +118,9 @@ var _yaw := 0.0
 var _pitch := PITCH_DEFAULT
 
 var _sun: DirectionalLight3D
+## The sun's travel direction projected onto the ground, so shadows cast the way
+## the sun's do; filled from the sun in _ready.
+var _shadow_ground_dir := Vector2.ZERO
 var _env: Environment
 var _player_light: OmniLight3D
 var _lights: Array[OmniLight3D] = []
@@ -142,6 +149,12 @@ func _ready() -> void:
 	# the GL-compatibility (web) renderer supports, unlike positional/omni shadows.
 	_sun.shadow_enabled = true
 	add_child(_sun)
+	# Where the sun's rays travel across the ground -- the direction a shadow falls,
+	# so the ground-shadow discs cast the same way the sun's real wall shadows do.
+	var sun_forward := -_sun.transform.basis.z
+	_shadow_ground_dir = Vector2(sun_forward.x, sun_forward.z)
+	if _shadow_ground_dir.length() > 0.001:
+		_shadow_ground_dir = _shadow_ground_dir.normalized()
 
 	var env := Environment.new()
 	env.background_mode = Environment.BG_COLOR
@@ -501,7 +514,11 @@ func _configure(sprite: Sprite3D, texture: Texture2D, xz: Vector2, height: float
 	var shadow: Sprite3D = sprite.get_child(0)
 	shadow.pixel_size = width / float(SHADOW_SIZE)
 	shadow.scale = Vector3.ONE
-	shadow.position = Vector3(0.0, 0.15, 0.0)
+	# Cast along the sun's ground direction (the billboard node isn't rotated -- its
+	# billboarding is render-only -- so the child's local axes are world axes), so
+	# the shadow falls to the lit-away side and shows even from behind the sprite.
+	var cast := _shadow_ground_dir * height * SHADOW_CAST_FACTOR
+	shadow.position = Vector3(cast.x, 0.15, cast.y)
 
 
 # ── Projectiles: flat on the ground, turned to their heading ──────────────────
