@@ -52,7 +52,10 @@ const OVERLAY_PROBE := 120.0
 ## Dynamic lighting (the "lighting" setting, shared data.light emitters with the
 ## 2D SceneLighting). Off restores the old full-bright look; on darkens the scene
 ## and lets torches, lava and crystals pool real 3D light the walls occlude.
-const MAX_LIGHTS_3D := 24
+## Kept under max_lights_per_object (24) once the player light and a few bullet
+## lights are added, so every active emitter near you actually lands on the floor
+## and wall meshes instead of being dropped by the per-object cap.
+const MAX_LIGHTS_3D := 16
 const LIGHT_SCAN_EVERY := 10
 ## Sits at wall-top height so the light spills over the top faces too, not just
 ## the sides -- 3D lights are real, so height matters (unlike the flat 2D pools).
@@ -76,8 +79,9 @@ const AMBIENT_LIT := Color(0.34, 0.35, 0.44)
 const AMBIENT_LIT_ENERGY := 0.5
 ## Enough that the sun's wall shadows read while the torches still carry the mood.
 const SUN_LIT_ENERGY := 0.5
-## Wand/staff/tome bullets carry a travelling arcane glow.
-const MAX_BULLET_LIGHTS_3D := 20
+## Wand/staff/tome bullets carry a travelling arcane glow. Kept small so a volley
+## doesn't evict the candle/torch lights from the per-object light budget.
+const MAX_BULLET_LIGHTS_3D := 6
 const BULLET_LIGHT_COLOR := Color(0.72, 0.62, 1.0)
 const BULLET_LIGHT_ENERGY := 4.0
 const BULLET_LIGHT_RANGE := float(TILE) * 2.0
