@@ -59,15 +59,21 @@ const LIGHT_SCAN_EVERY := 10
 const LIGHT_HEIGHT := float(TILE) * 1.0
 ## 3D is lit independently of the 2D client -- real per-fragment lighting reads far
 ## dimmer than the 2D additive pools, so these run hotter. Tune these, not 2D's.
-const TORCH_ENERGY := 6.0
+## High, because the pools are deliberately tight (below) -- a concentrated bright
+## glow reads far better than a large dim wash, and it's what makes a lone candle
+## pop against the ambient.
+const TORCH_ENERGY := 10.0
 ## Reach multiplier on a tile's data light strength (px = strength * tile * this).
-## Higher than a 2D pool because it also compensates the shared strength values
-## that were trimmed for the 2D magma.
-const LIGHT_REACH_MUL := 3.0
+## Kept tight: a big radius smears the energy into an invisible wash AND makes
+## clustered emitters (lava) overlap and blow out, so tightening it both makes a
+## single candle glow and shrinks the bright-lava-vs-dim-candle gap.
+const LIGHT_REACH_MUL := 1.6
 const PLAYER_LIGHT_RANGE := float(TILE) * 4.5
 const PLAYER_LIGHT_ENERGY := 3.5
-const AMBIENT_LIT := Color(0.36, 0.37, 0.46)
-const AMBIENT_LIT_ENERGY := 0.6
+## Low enough that emitter pools clearly pop, high enough the scene stays readable
+## (the player carries their own light, so dark corners are fine).
+const AMBIENT_LIT := Color(0.34, 0.35, 0.44)
+const AMBIENT_LIT_ENERGY := 0.5
 ## Enough that the sun's wall shadows read while the torches still carry the mood.
 const SUN_LIT_ENERGY := 0.5
 ## Wand/staff/tome bullets carry a travelling arcane glow.
