@@ -58,7 +58,13 @@ const PLAYER_LIGHT_RANGE := float(TILE) * 4.0
 const PLAYER_LIGHT_ENERGY := 3.0
 const AMBIENT_LIT := Color(0.32, 0.33, 0.42)
 const AMBIENT_LIT_ENERGY := 0.45
-const SUN_LIT_ENERGY := 0.25
+## Enough that the sun's wall shadows read while the torches still carry the mood.
+const SUN_LIT_ENERGY := 0.5
+## Wand/staff/tome bullets carry a travelling arcane glow.
+const MAX_BULLET_LIGHTS_3D := 20
+const BULLET_LIGHT_COLOR := Color(0.72, 0.62, 1.0)
+const BULLET_LIGHT_ENERGY := 3.0
+const BULLET_LIGHT_RANGE := float(TILE) * 1.7
 
 var state: RealmState
 var content: GameData
@@ -89,6 +95,7 @@ var _sun: DirectionalLight3D
 var _env: Environment
 var _player_light: OmniLight3D
 var _lights: Array[OmniLight3D] = []
+var _bullet_lights: Array[OmniLight3D] = []
 var _light_frames := 0
 var _light_time := 0.0
 var _lit := false
@@ -109,6 +116,9 @@ func _ready() -> void:
 	_sun = DirectionalLight3D.new()
 	_sun.rotation_degrees = Vector3(-55.0, -35.0, 0.0)
 	_sun.light_energy = 1.1
+	# The key light the walls actually cast from: directional shadows are the ones
+	# the GL-compatibility (web) renderer supports, unlike positional/omni shadows.
+	_sun.shadow_enabled = true
 	add_child(_sun)
 
 	var env := Environment.new()
@@ -274,7 +284,7 @@ func _rebuild_map_if_changed() -> void:
 					0.5 * float(layer), cell.y * TILE + TILE * 0.5))
 
 	for texture in floor_cells:
-		_add_multimesh(_floor_mesh, _floor_material_for(texture), floor_cells[texture])
+		_add_multimesh(_floor_mesh, _floor_material_for(texture), floor_cells[texture], false)
 	for texture in wall_cells:
 		_add_multimesh(_wall_mesh, _wall_material_for(texture), wall_cells[texture])
 	_map_built = true
@@ -286,7 +296,8 @@ func _group(groups: Dictionary, texture: Texture2D, position: Vector3) -> void:
 	groups[texture].append(position)
 
 
-func _add_multimesh(mesh: Mesh, material: StandardMaterial3D, positions: Array) -> void:
+func _add_multimesh(mesh: Mesh, material: StandardMaterial3D, positions: Array,
+		casts_shadow := true) -> void:
 	var multi := MultiMesh.new()
 	multi.transform_format = MultiMesh.TRANSFORM_3D
 	multi.mesh = mesh
@@ -296,6 +307,9 @@ func _add_multimesh(mesh: Mesh, material: StandardMaterial3D, positions: Array) 
 	var instance := MultiMeshInstance3D.new()
 	instance.multimesh = multi
 	instance.material_override = material
+	# The floor lies flat and would only self-shadow; walls are what cast.
+	instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if casts_shadow \
+		else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_map_root.add_child(instance)
 
 
@@ -568,6 +582,14 @@ func _build_lights() -> void:
 		light.visible = false
 		_lights.append(light)
 		add_child(light)
+	for i in MAX_BULLET_LIGHTS_3D:
+		var light := OmniLight3D.new()
+		light.light_color = BULLET_LIGHT_COLOR
+		light.light_energy = BULLET_LIGHT_ENERGY
+		light.omni_range = BULLET_LIGHT_RANGE
+		light.visible = false
+		_bullet_lights.append(light)
+		add_child(light)
 
 
 func _update_lighting(delta: float, centre: Vector2) -> void:
@@ -583,6 +605,7 @@ func _update_lighting(delta: float, centre: Vector2) -> void:
 	if _light_frames % LIGHT_SCAN_EVERY == 0:
 		_place_lights(centre)
 	_light_frames += 1
+	_place_bullet_lights(centre)
 	for i in _lights.size():
 		var light := _lights[i]
 		if light.visible and light.get_meta("flickers", false):
@@ -598,6 +621,8 @@ func _apply_lighting(on: bool) -> void:
 	_player_light.visible = on
 	if not on:
 		for light in _lights:
+			light.visible = false
+		for light in _bullet_lights:
 			light.visible = false
 
 
@@ -628,6 +653,28 @@ func _place_lights(centre: Vector2) -> void:
 			light.omni_range = float(kind["radius"]) * tile * 2.0
 			light.set_meta("flickers", kind["flickers"])
 			light.light_energy = TORCH_ENERGY
+
+
+## The nearest wand/staff/tome bullets in flight, one travelling omni each.
+func _place_bullet_lights(centre: Vector2) -> void:
+	var magic := content.magic_projectile_groups()
+	var found := []
+	if not magic.is_empty():
+		for id in state.projectiles.bullets:
+			var bullet: Dictionary = state.projectiles.bullets[id]
+			if not magic.has(int(bullet.get("group_id", -1))):
+				continue
+			var size := maxf(float(bullet.get("size", 8)), 4.0)
+			var mid: Vector2 = bullet["pos"] + Vector2(size, size) * 0.5
+			if mid.distance_to(centre) <= ENTITY_RANGE:
+				found.append([mid.distance_squared_to(centre), mid])
+		found.sort_custom(func(a, b): return a[0] < b[0])
+	for i in _bullet_lights.size():
+		var light := _bullet_lights[i]
+		light.visible = i < found.size()
+		if light.visible:
+			var mid: Vector2 = found[i][1]
+			light.position = Vector3(mid.x, BULLET_HEIGHT, mid.y)
 
 
 # ── Shared sprite + texture helpers ───────────────────────────────────────────

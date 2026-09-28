@@ -15,6 +15,13 @@ const AMBIENT := Color(0.44, 0.46, 0.56)
 ## warm pool, not a faint tint.
 const TILE_LIGHT_ENERGY := 4.5
 const PLAYER_ENERGY := 1.9
+## Wand/staff/tome bullets carry a travelling arcane glow; a small pool follows
+## the nearest of them. Not shadow-casting -- a fast mover flickering shadows is
+## noise, and cheaper.
+const MAX_BULLET_LIGHTS := 20
+const BULLET_LIGHT_COLOR := Color(0.72, 0.62, 1.0)
+const BULLET_LIGHT_ENERGY := 2.4
+const BULLET_LIGHT_RADIUS := 1.3
 const MAX_TILE_LIGHTS := 24
 ## The most solid cells in view we cast shadows from at once; a whole walled
 ## room's perimeter fits well inside this.
@@ -27,6 +34,7 @@ var _content: GameData
 var _ambient := CanvasModulate.new()
 var _player := PointLight2D.new()
 var _pool: Array[PointLight2D] = []
+var _bullet_lights: Array[PointLight2D] = []
 var _occluders: Array[LightOccluder2D] = []
 var _emitters := {}   # GameData.light_emitters(): tile id -> {color, radius, flickers}
 var _frames := 0
@@ -45,6 +53,12 @@ func setup(state: RealmState, content: GameData) -> void:
 		_light(light, glow, Color.WHITE, TILE_LIGHT_ENERGY, 1.0)
 		light.visible = false
 		_pool.append(light)
+	for i in MAX_BULLET_LIGHTS:
+		var light := PointLight2D.new()
+		_light(light, glow, BULLET_LIGHT_COLOR, BULLET_LIGHT_ENERGY, _scale_for(BULLET_LIGHT_RADIUS))
+		light.shadow_enabled = false
+		light.visible = false
+		_bullet_lights.append(light)
 	var square := _square_occluder()
 	for i in MAX_OCCLUDERS:
 		var occluder := LightOccluder2D.new()
@@ -75,6 +89,8 @@ func _process(delta: float) -> void:
 		_player.visible = live
 		for light in _pool:
 			light.visible = false
+		for light in _bullet_lights:
+			light.visible = false
 		for occluder in _occluders:
 			occluder.visible = false
 		_frames = 0
@@ -90,6 +106,29 @@ func _process(delta: float) -> void:
 		if light.visible and light.get_meta("flickers", false):
 			light.energy = TILE_LIGHT_ENERGY \
 				* (1.0 + 0.12 * sin(_time * 9.0 + i * 1.7) + 0.06 * sin(_time * 23.0 + i))
+	# Bullets move every frame, so this is not on the tile scan's cadence.
+	_place_bullet_lights()
+
+
+## The nearest wand/staff/tome bullets in flight, one travelling light each.
+func _place_bullet_lights() -> void:
+	var magic := _content.magic_projectile_groups()
+	var found := []
+	if not magic.is_empty():
+		var centre := _state.local.render_centre()
+		for id in _state.projectiles.bullets:
+			var bullet: Dictionary = _state.projectiles.bullets[id]
+			if not magic.has(int(bullet.get("group_id", -1))):
+				continue
+			var size := float(bullet.get("size", 8))
+			var at: Vector2 = bullet["pos"] + Vector2(size, size) * 0.5
+			found.append([at.distance_squared_to(centre), at])
+		found.sort_custom(func(a, b): return a[0] < b[0])
+	for i in _bullet_lights.size():
+		var light := _bullet_lights[i]
+		light.visible = i < found.size()
+		if light.visible:
+			light.position = found[i][1]
 
 
 ## The glowing tiles in view get a light each (nearest the player first), and the
