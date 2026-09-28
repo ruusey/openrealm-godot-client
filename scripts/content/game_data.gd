@@ -120,6 +120,10 @@ func tile_light(tile_id: int) -> Dictionary:
 func light_emitters() -> Dictionary:
 	if _light_emitters_built:
 		return _light_emitters
+	# Don't cache an empty map before the content has loaded, or a scan that ran
+	# during the (slow, over-HTTP) load would freeze the lighting off for good.
+	if library.tiles.is_empty():
+		return _light_emitters
 	_light_emitters_built = true
 	for id in library.tiles:
 		var light := tile_light(id)
