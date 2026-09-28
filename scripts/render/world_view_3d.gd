@@ -72,6 +72,9 @@ var content: GameData
 var overlay: EntityOverlay
 ## Player input, told the orbit angle so WASD stays screen-relative.
 var input: PlayerInput
+## True while a chat line or an options rebind owns the keyboard, so Q/E do not
+## orbit the camera out from under someone who is typing.
+var keyboard_captured: Callable = func() -> bool: return false
 
 var _camera: Camera3D
 var _backdrop: MeshInstance3D
@@ -174,14 +177,15 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if state == null or content == null or state.local == null:
 		return
-	# Q swings the view left of the player, E right.
-	if Input.is_key_pressed(KEY_Q):
-		_yaw += ORBIT_SPEED * delta
-	if Input.is_key_pressed(KEY_E):
-		_yaw -= ORBIT_SPEED * delta
+	# Q swings the view left of the player, E right -- but not while typing.
+	if not keyboard_captured.call():
+		if Input.is_key_pressed(KEY_Q):
+			_yaw += ORBIT_SPEED * delta
+		if Input.is_key_pressed(KEY_E):
+			_yaw -= ORBIT_SPEED * delta
 	if input != null:
 		input.view_yaw = _yaw
-		input.world_mouse = _mouse_world
+		input.world_mouse = get_ground_point
 	var centre := state.local.render_centre()
 	_rebuild_map_if_changed()
 	_follow_camera(centre)
@@ -196,8 +200,9 @@ func _process(delta: float) -> void:
 
 
 ## The mouse's world point on the ground (y=0) through the 3D camera, as a 2D
-## (x, z), so shooting aims where the cursor is at any orbit. Null off-plane.
-func _mouse_world() -> Variant:
+## (x, z), so shooting and ability casts aim where the cursor is at any orbit.
+## Null off-plane.
+func get_ground_point() -> Variant:
 	if _camera == null:
 		return null
 	var mouse := get_viewport().get_mouse_position()

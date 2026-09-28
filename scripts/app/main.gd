@@ -179,6 +179,10 @@ func _enable_3d_view() -> void:
 	_view_3d.overlay = screens.overlay
 	# So WASD turns with the orbit -- screen-up is always forward.
 	_view_3d.input = input
+	_view_3d.keyboard_captured = screens.captures_keyboard
+	# Abilities aim at the ground point under the cursor through the 3D camera,
+	# the same unprojection shooting already uses -- not the flat 2D mouse.
+	caster.world_mouse = _view_3d.get_ground_point
 	add_child(_view_3d)
 
 
@@ -233,6 +237,10 @@ func _process(delta: float) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not event is InputEventKey or not event.pressed or event.echo:
+		return
+	# A key typed into the chat line (or being rebound in the options) is text, not
+	# a command; only ESC still gets through, to close the panel it opened.
+	if event.keycode != KEY_ESCAPE and screens.captures_keyboard():
 		return
 	match event.keycode:
 		KEY_F1:

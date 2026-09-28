@@ -24,6 +24,10 @@ var aim_source: Node2D
 ## The touch controls' point to cast at, when they are on; INF, or unset,
 ## leaves it to the mouse.
 var aim_point: Callable = Callable()
+## In 3D, the mouse's world point on the ground through the orbited camera; the
+## 2D camera's get_global_mouse_position is wrong there. Returns a Vector2, or
+## null to fall back to the 2D mouse. Mirrors PlayerInput.world_mouse.
+var world_mouse: Callable = func() -> Variant: return null
 
 
 func _init(realm_state: RealmState, net_client: OpenRealmClient, game_data: GameData,
@@ -36,7 +40,10 @@ func _init(realm_state: RealmState, net_client: OpenRealmClient, game_data: Game
 
 func cast_at_cursor(slot: int) -> bool:
 	var at: Vector2 = aim_point.call() if aim_point.is_valid() else Vector2.INF
-	return cast(slot, aim_source.get_global_mouse_position() if at == Vector2.INF else at)
+	if at == Vector2.INF:
+		var world: Variant = world_mouse.call()
+		at = world if world is Vector2 else aim_source.get_global_mouse_position()
+	return cast(slot, at)
 
 
 func cast(slot: int, target: Vector2) -> bool:
