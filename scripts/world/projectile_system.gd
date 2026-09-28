@@ -21,6 +21,9 @@ const CONSUME_LINGER_MS := 50
 var bullets := {}
 ## Round-trip time, used to fast-forward freshly received bullets.
 var latency_ms := 0.0
+## A smoothed round-trip, so a single RTT spike can't teleport a just-loaded
+## bullet a quarter-second forward in one frame (a visible spawn jump).
+var _catchup_latency := 0.0
 
 var _player: LocalPlayer
 var _content: GameData
@@ -48,6 +51,9 @@ func clear() -> void:
 ## Adopts the bullets in a LoadPacket, skipping any we already drew locally.
 func apply_load(data: Dictionary) -> void:
 	var now: int = _clock.call()
+	# EMA the round-trip before it drives catch-up, so a lag spike doesn't jerk a
+	# freshly loaded bullet forward.
+	_catchup_latency = _catchup_latency * 0.8 + latency_ms * 0.2
 	for wire in data.get("bullets", []):
 		var id := int(wire.get("id", 0))
 		if bullets.has(id):
@@ -59,7 +65,7 @@ func apply_load(data: Dictionary) -> void:
 		var bullet := Projectile.from_wire(wire, now)
 		if _entities != null and ProjectileKind.is_anchored(bullet):
 			ProjectileTracking.capture_anchor(bullet, _entities, _player)
-		ProjectileMotion.catch_up(bullet, latency_ms * 0.5)
+		ProjectileMotion.catch_up(bullet, _catchup_latency * 0.5)
 		bullets[id] = bullet
 		_note_shooter(wire)
 

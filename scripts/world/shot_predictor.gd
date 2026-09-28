@@ -11,8 +11,11 @@ extends RefCounted
 
 ## Fan spread for weapons whose archetype does not specify one.
 const DEFAULT_SPREAD_RAD := 0.12
-## A prediction and an incoming bullet are the same shot within this angle.
-const ANGLE_TOLERANCE := 0.20
+## A prediction and an incoming bullet are the same shot within this angle. Wide
+## enough to cover a multishot fan's outer arms (a 7-shot fan spans ~0.3 rad
+## either side of centre) so those bullets claim their prediction instead of
+## double-drawing a ghost beside the real one.
+const ANGLE_TOLERANCE := 0.40
 
 
 ## Returns the predicted bullets for one shot, keyed by their local (negative)
