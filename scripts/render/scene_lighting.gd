@@ -10,11 +10,11 @@ extends Node2D
 ## The UI sits on its own CanvasLayers, so none of it is darkened. Governed by
 ## the "lighting" graphics setting (Options > Graphics, or F3), on by default.
 
-const AMBIENT := Color(0.44, 0.46, 0.56)
-## Additive over the darkened world; well above 1 so a candle reads as a bright
-## warm pool, not a faint tint.
-const TILE_LIGHT_ENERGY := 4.5
-const PLAYER_ENERGY := 1.9
+const AMBIENT := Color(0.62, 0.64, 0.72)
+## Additive over the darkened world; a candle reads as a warm pool without
+## blowing out the tiles around it.
+const TILE_LIGHT_ENERGY := 2.6
+const PLAYER_ENERGY := 1.2
 ## Wand/staff/tome bullets carry a travelling arcane glow; a small pool follows
 ## the nearest of them. Not shadow-casting -- a fast mover flickering shadows is
 ## noise, and cheaper.
@@ -59,10 +59,11 @@ func setup(state: RealmState, content: GameData) -> void:
 		light.shadow_enabled = false
 		light.visible = false
 		_bullet_lights.append(light)
-	var square := _square_occluder()
 	for i in MAX_OCCLUDERS:
 		var occluder := LightOccluder2D.new()
-		occluder.occluder = square
+		var polygon := OccluderPolygon2D.new()
+		polygon.closed = true
+		occluder.occluder = polygon
 		occluder.visible = false
 		_occluders.append(occluder)
 		add_child(occluder)
@@ -162,11 +163,17 @@ func _rescan() -> void:
 			light.texture_scale = _scale_for(kind["radius"])
 			light.set_meta("flickers", kind["flickers"])
 			light.energy = TILE_LIGHT_ENERGY
+	var rects := _merge_wall_rects(walls)
 	for i in _occluders.size():
 		var occluder := _occluders[i]
-		occluder.visible = i < walls.size()
+		occluder.visible = i < rects.size()
 		if occluder.visible:
-			occluder.position = Vector2(walls[i]) * tile
+			var rect: Rect2i = rects[i]
+			occluder.position = Vector2(rect.position) * tile
+			var wide := float(rect.size.x) * tile
+			var tall := float(rect.size.y) * tile
+			occluder.occluder.polygon = PackedVector2Array([
+				Vector2(0, 0), Vector2(wide, 0), Vector2(wide, tall), Vector2(0, tall)])
 
 
 ## A wall, or a solid prop on the collision layer, casts a shadow. Base-layer
@@ -182,15 +189,40 @@ func _scale_for(radius_tiles: float) -> float:
 	return radius_tiles * 2.0 * GameConstants.TILE_SIZE / 256.0
 
 
-## A single tile-sized square, shared by every occluder in the pool; each is
-## moved onto its own solid cell.
-static func _square_occluder() -> OccluderPolygon2D:
-	var tile := float(GameConstants.TILE_SIZE)
-	var polygon := OccluderPolygon2D.new()
-	polygon.polygon = PackedVector2Array([
-		Vector2(0, 0), Vector2(tile, 0), Vector2(tile, tile), Vector2(0, tile)])
-	polygon.closed = true
-	return polygon
+## Contiguous wall/prop cells merged into maximal rectangles, so a wall run casts
+## one clean shadow rather than a stripe of per-tile ones -- and a walled room
+## fits in a handful of occluders instead of blowing the pool's cap and leaking
+## light through the tiles that didn't fit. Cells arrive row-major, so the first
+## unclaimed one is always a rectangle's top-left.
+func _merge_wall_rects(cells: Array) -> Array:
+	var solid := {}
+	for cell in cells:
+		solid[cell] = true
+	var claimed := {}
+	var rects := []
+	for cell in cells:
+		if claimed.has(cell):
+			continue
+		var wide := 1
+		while solid.has(Vector2i(cell.x + wide, cell.y)) \
+				and not claimed.has(Vector2i(cell.x + wide, cell.y)):
+			wide += 1
+		var tall := 1
+		while _row_solid(solid, claimed, cell, wide, tall):
+			tall += 1
+		for dy in tall:
+			for dx in wide:
+				claimed[Vector2i(cell.x + dx, cell.y + dy)] = true
+		rects.append(Rect2i(cell.x, cell.y, wide, tall))
+	return rects
+
+
+func _row_solid(solid: Dictionary, claimed: Dictionary, origin: Vector2i, wide: int, row: int) -> bool:
+	for dx in wide:
+		var cell := Vector2i(origin.x + dx, origin.y + row)
+		if not solid.has(cell) or claimed.has(cell):
+			return false
+	return true
 
 
 ## White at the centre to nothing at the edge, eased so the fall-off has no
