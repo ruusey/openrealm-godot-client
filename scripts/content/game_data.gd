@@ -103,6 +103,13 @@ func tile_name(tile_id: int) -> String:
 	return library.tiles.get(tile_id, {}).get("name", "Unknown_%d" % tile_id)
 
 
+## The light a tile emits, or an empty dict for the vast majority that emit
+## none. {strength: reach in tiles, color: "#rrggbb", style: "flicker"|"steady"}.
+func tile_light(tile_id: int) -> Dictionary:
+	var light: Variant = tile_data(tile_id).get("light")
+	return light if light is Dictionary else {}
+
+
 # --- entities --------------------------------------------------------------
 
 func enemy_texture(enemy_id: int) -> AtlasTexture:

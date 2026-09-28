@@ -34,6 +34,7 @@ const GRAPHICS := {
 	"sprite_outlines": ["Sprite outlines", true],
 	"loot_preview": ["Loot bag preview", true],
 	"wall_bands": ["Wall side-bands", true],
+	"lighting": ["Dynamic lighting", true],
 	"show_transition_screen": ["Show the realm transition screen", true],
 }
 

@@ -26,6 +26,7 @@ var screens: Screens
 var trace := MotionTrace.new()
 
 var _world: WorldRenderer
+var _lighting: SceneLighting
 var _camera: Camera2D
 var _view_3d: WorldView3D
 var _data_service: DataService
@@ -68,6 +69,12 @@ func _ready() -> void:
 	_world = WorldRenderer.new()
 	_world.setup(state, game_data)
 	add_child(_world)
+
+	# A sibling over the same world canvas: its ambient and point lights darken
+	# and relight the tiles, not the UI (which is on CanvasLayers of its own).
+	_lighting = SceneLighting.new()
+	_lighting.setup(state, game_data)
+	add_child(_lighting)
 
 	_camera = Camera2D.new()
 	_camera.zoom = Vector2(CAMERA_ZOOM, CAMERA_ZOOM)
@@ -160,6 +167,9 @@ func _url_wants_3d() -> bool:
 func _enable_3d_view() -> void:
 	_world.hide()
 	_world.set_process(false)
+	# The 2D lights have nothing to light once the flat world is hidden.
+	_lighting.hide()
+	_lighting.set_process(false)
 	_view_3d = WorldView3D.new()
 	_view_3d.setup(state, game_data)
 	# The overlay (names, bars, damage numbers, bubbles, loot) keeps drawing, but
@@ -229,6 +239,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			print("\n[packet mix]\n%s" % client.stats.mix())
 		KEY_F2:
 			_world.show_collision = not _world.show_collision
+		KEY_F3:
+			state.settings.set_on("lighting", not state.settings.is_on("lighting"))
 		# Tilde rather than an F key: on a Mac the F row is brightness and
 		# volume unless fn is held, which is not something to do mid-fight.
 		KEY_QUOTELEFT:
