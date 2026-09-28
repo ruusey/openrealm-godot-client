@@ -43,7 +43,9 @@ const ORBIT_SPEED := 1.8
 # visible ground -- kept tight, and the resolution high, so effects stay crisp
 # instead of magnified into a blur.
 const FX_REGION := 1600.0
-const FX_VIEWPORT_PX := 2048
+## 1024 (was 2048): a 2048 target re-rasterises ~16 MB every frame; at this grazing
+## angle with the linear filter 1024 is indistinguishable, at a quarter the fill.
+const FX_VIEWPORT_PX := 1024
 ## The world span used to fit the overlay's affine projector to the 3D camera.
 const OVERLAY_PROBE := 120.0
 
@@ -52,19 +54,27 @@ const OVERLAY_PROBE := 120.0
 ## and lets torches, lava and crystals pool real 3D light the walls occlude.
 const MAX_LIGHTS_3D := 24
 const LIGHT_SCAN_EVERY := 10
-const LIGHT_HEIGHT := float(TILE) * 0.6
-const TORCH_ENERGY := 3.8
-const PLAYER_LIGHT_RANGE := float(TILE) * 4.0
-const PLAYER_LIGHT_ENERGY := 2.4
-const AMBIENT_LIT := Color(0.32, 0.33, 0.42)
-const AMBIENT_LIT_ENERGY := 0.45
+## Sits at wall-top height so the light spills over the top faces too, not just
+## the sides -- 3D lights are real, so height matters (unlike the flat 2D pools).
+const LIGHT_HEIGHT := float(TILE) * 1.0
+## 3D is lit independently of the 2D client -- real per-fragment lighting reads far
+## dimmer than the 2D additive pools, so these run hotter. Tune these, not 2D's.
+const TORCH_ENERGY := 6.0
+## Reach multiplier on a tile's data light strength (px = strength * tile * this).
+## Higher than a 2D pool because it also compensates the shared strength values
+## that were trimmed for the 2D magma.
+const LIGHT_REACH_MUL := 3.0
+const PLAYER_LIGHT_RANGE := float(TILE) * 4.5
+const PLAYER_LIGHT_ENERGY := 3.5
+const AMBIENT_LIT := Color(0.36, 0.37, 0.46)
+const AMBIENT_LIT_ENERGY := 0.6
 ## Enough that the sun's wall shadows read while the torches still carry the mood.
 const SUN_LIT_ENERGY := 0.5
 ## Wand/staff/tome bullets carry a travelling arcane glow.
 const MAX_BULLET_LIGHTS_3D := 20
 const BULLET_LIGHT_COLOR := Color(0.72, 0.62, 1.0)
-const BULLET_LIGHT_ENERGY := 1.8
-const BULLET_LIGHT_RANGE := float(TILE) * 1.4
+const BULLET_LIGHT_ENERGY := 4.0
+const BULLET_LIGHT_RANGE := float(TILE) * 2.0
 
 var state: RealmState
 var content: GameData
@@ -566,9 +576,20 @@ func _build_effect_ground() -> void:
 
 
 func _update_effects(centre: Vector2) -> void:
-	_fx_camera.position = centre
-	_fx_ground.position = Vector3(centre.x, 1.5, centre.y)
-	_fx_renderer.queue_redraw()
+	# The 16 MB ground viewport is re-rendered only while there is something to show;
+	# most frames have no ground effect, so this skips the whole pass then.
+	var abilities := state.abilities
+	var has_fx := not (abilities.effects.is_empty() and abilities.rings.is_empty()
+		and abilities.casts.is_empty())
+	if has_fx:
+		_fx_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+		_fx_camera.position = centre
+		_fx_ground.position = Vector3(centre.x, 1.5, centre.y)
+		_fx_renderer.queue_redraw()
+	elif _fx_viewport.render_target_update_mode == SubViewport.UPDATE_ALWAYS:
+		# Effects just ended: one last (empty) render clears the ground, then stop.
+		_fx_renderer.queue_redraw()
+		_fx_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
 
 
 # ── Dynamic lighting: an omni per glowing tile, plus one on the player ─────────
@@ -578,12 +599,15 @@ func _build_lights() -> void:
 	_player_light.light_color = Color(1.0, 0.88, 0.7)
 	_player_light.omni_range = PLAYER_LIGHT_RANGE
 	_player_light.light_energy = PLAYER_LIGHT_ENERGY
-	_player_light.shadow_enabled = true
+	# No omni shadows: the GL-compat (web) backend doesn't render positional-light
+	# shadows anyway, so this is wasted setup. The sun casts the (world-fixed) wall
+	# shadows; a point light's own shadow would look wrong here regardless.
+	_player_light.shadow_enabled = false
 	_player_light.visible = false
 	add_child(_player_light)
 	for i in MAX_LIGHTS_3D:
 		var light := OmniLight3D.new()
-		light.shadow_enabled = true
+		light.shadow_enabled = false
 		light.visible = false
 		_lights.append(light)
 		add_child(light)
@@ -655,7 +679,7 @@ func _place_lights(centre: Vector2) -> void:
 			var at: Vector2 = found[i][1]
 			light.position = Vector3(at.x, LIGHT_HEIGHT, at.y)
 			light.light_color = kind["color"]
-			light.omni_range = float(kind["radius"]) * tile * 2.0
+			light.omni_range = float(kind["radius"]) * tile * LIGHT_REACH_MUL
 			light.set_meta("flickers", kind["flickers"])
 			light.light_energy = TORCH_ENERGY
 

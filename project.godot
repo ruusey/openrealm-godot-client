@@ -169,3 +169,7 @@ quick_slot_8={
 textures/canvas_textures/default_texture_filter=0
 renderer/rendering_method="gl_compatibility"
 environment/defaults/default_clear_color=Color(0, 0, 0, 1)
+# The 3D view's sun is the only shadow caster; 2048 is ample for this look and
+# halves the shadow-atlas cost vs the 4096 default.
+lights_and_shadows/directional_shadow/size=2048
+lights_and_shadows/directional_shadow/size.mobile=2048
