@@ -50,6 +50,14 @@ const FX_REGION := 1600.0
 ## 1024 (was 2048): a 2048 target re-rasterises ~16 MB every frame; at this grazing
 ## angle with the linear filter 1024 is indistinguishable, at a quarter the fill.
 const FX_VIEWPORT_PX := 1024
+## The ground is the 2D TileRenderer (base tiles + feather blending) rendered into
+## a SubViewport and projected onto the floor plane, so 3D gets the exact soft
+## tile seams the 2D client has. Region covers the visible floor + orbit; the
+## texture is re-rasterised only when the player crosses GROUND_MOVE_STEP, and the
+## TileRenderer chunk-caches, so most re-centres redraw nothing.
+const GROUND_REGION := 1800.0
+const GROUND_VIEWPORT_PX := 2048
+const GROUND_MOVE_STEP := float(TILE) * 4.0
 ## The world span used to fit the overlay's affine projector to the 3D camera.
 const OVERLAY_PROBE := 120.0
 
@@ -115,9 +123,7 @@ var _entities: Array[Sprite3D] = []
 var _projectiles: Array[Sprite3D] = []
 var _projectile_shadows: Array[Sprite3D] = []
 var _entity_queue := EntityQueue.new()
-var _floor_mesh := PlaneMesh.new()
 var _grey_wall := StandardMaterial3D.new()
-var _floor_materials := {}
 var _wall_materials := {}
 var _shadow: ImageTexture
 var _map_built := false
@@ -143,6 +149,13 @@ var _fx_viewport: SubViewport
 var _fx_renderer: EffectRenderer
 var _fx_camera: Camera2D
 var _fx_ground: MeshInstance3D
+
+var _ground_viewport: SubViewport
+var _ground_renderer: TileRenderer
+var _ground_camera: Camera2D
+var _ground_plane: MeshInstance3D
+## Where the projected ground was last re-rasterised; INF forces the first render.
+var _ground_centre := Vector2(INF, INF)
 
 
 func setup(realm_state: RealmState, game_data: GameData) -> void:
@@ -200,7 +213,6 @@ func _ready() -> void:
 	_backdrop.mesh = plane
 	add_child(_backdrop)
 
-	_floor_mesh.size = Vector2(TILE, TILE)
 	_grey_wall.albedo_color = Color(0.5, 0.48, 0.54)
 	_grey_wall.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL
 	_grey_wall.cull_mode = BaseMaterial3D.CULL_DISABLED
@@ -211,6 +223,7 @@ func _ready() -> void:
 	_sprite_root = Node3D.new()
 	add_child(_sprite_root)
 	_build_effect_ground()
+	_build_projected_ground()
 	_build_lights()
 
 
@@ -235,6 +248,7 @@ func _process(delta: float) -> void:
 		_entities[i].visible = false
 	_place_projectiles(centre)
 	_update_effects(centre)
+	_update_projected_ground(centre)
 	_update_overlay(centre)
 	_update_lighting(delta, centre)
 
@@ -300,14 +314,14 @@ func _update_overlay(centre: Vector2) -> void:
 
 func _rebuild_map_if_changed() -> void:
 	var tiles := state.tiles
+	# The change flags are NOT cleared here -- the projected ground's TileRenderer
+	# owns that (its refresh() clears them). Walls just rebuild whenever they're set,
+	# which streams them in the same way; the flags are consumed later in the frame.
 	if _map_built and not tiles.cleared and tiles.changed_cells.is_empty():
 		return
-	tiles.cleared = false
-	tiles.changed_cells.clear()
 	for child in _map_root.get_children():
 		child.queue_free()
 
-	var floor_cells := {}
 	var wall_cells := {}   # texture -> Array[Vector2i]
 	var wall_set := {}     # Vector2i -> true, so a face between two walls is culled
 	var layers := tiles.layers.keys()
@@ -318,21 +332,17 @@ func _rebuild_map_if_changed() -> void:
 			var tile_id: int = cells[cell]
 			if tile_id <= 0:
 				continue
-			var texture := content.tile_texture(tile_id)
 			if content.tile_is_wall(tile_id):
+				var texture := content.tile_texture(tile_id)
 				if not wall_cells.has(texture):
 					wall_cells[texture] = []
 				wall_cells[texture].append(cell)
 				wall_set[cell] = true
 			elif layer == COLLISION_LAYER:
 				# Every collision-layer tile stands up as a 2.5D billboard.
-				_add_prop(cell, texture)
-			elif texture != null:
-				_group(floor_cells, texture, Vector3(cell.x * TILE + TILE * 0.5,
-					0.5 * float(layer), cell.y * TILE + TILE * 0.5))
+				_add_prop(cell, content.tile_texture(tile_id))
+			# Floor tiles are drawn by the projected ground (_build_projected_ground).
 
-	for texture in floor_cells:
-		_add_multimesh(_floor_mesh, _floor_material_for(texture), floor_cells[texture], false)
 	# Each texture's walls become one face-culled chunk mesh: a run of touching
 	# walls is a single hollow shell, not a stack of overlapping cubes, so the
 	# buried faces (and their overdraw + z-fighting seams) are gone.
@@ -344,29 +354,6 @@ func _rebuild_map_if_changed() -> void:
 	_map_built = true
 
 
-func _group(groups: Dictionary, texture: Texture2D, position: Vector3) -> void:
-	if not groups.has(texture):
-		groups[texture] = []
-	groups[texture].append(position)
-
-
-func _add_multimesh(mesh: Mesh, material: StandardMaterial3D, positions: Array,
-		casts_shadow := true) -> void:
-	var multi := MultiMesh.new()
-	multi.transform_format = MultiMesh.TRANSFORM_3D
-	multi.mesh = mesh
-	multi.instance_count = positions.size()
-	for i in positions.size():
-		multi.set_instance_transform(i, Transform3D(Basis(), positions[i]))
-	var instance := MultiMeshInstance3D.new()
-	instance.multimesh = multi
-	instance.material_override = material
-	# The floor lies flat and would only self-shadow; walls are what cast.
-	instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if casts_shadow \
-		else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	_map_root.add_child(instance)
-
-
 func _add_prop(cell: Vector2i, texture: Texture2D) -> void:
 	if texture == null or texture.get_width() <= 0:
 		return
@@ -375,20 +362,6 @@ func _add_prop(cell: Vector2i, texture: Texture2D) -> void:
 	_map_root.add_child(sprite)
 	_configure(sprite, texture, Vector2(cell.x * TILE + TILE * 0.5, cell.y * TILE + TILE * 0.5),
 		height, TILE, TILE, false, Color.WHITE)
-
-
-func _floor_material_for(texture: Texture2D) -> StandardMaterial3D:
-	if _floor_materials.has(texture):
-		return _floor_materials[texture]
-	var material := StandardMaterial3D.new()
-	_apply_atlas(material, texture)
-	material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	# Lit, so the dynamic lights pool on the ground; the floor plane faces up.
-	material.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL
-	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
-	material.alpha_scissor_threshold = 0.5
-	_floor_materials[texture] = material
-	return material
 
 
 func _wall_material_for(texture: Texture2D) -> StandardMaterial3D:
@@ -640,6 +613,62 @@ func _update_effects(centre: Vector2) -> void:
 		# Effects just ended: one last (empty) render clears the ground, then stop.
 		_fx_renderer.queue_redraw()
 		_fx_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
+
+
+# ── Ground: the 2D TileRenderer (feather-blended) projected onto the floor ─────
+
+## The whole ground is the real 2D tile renderer -- base tiles plus the feather
+## blend pass -- drawn top-down into a SubViewport and mapped onto the floor plane,
+## so 3D gets the exact soft tile seams the 2D client has, lit by the omnis/sun.
+func _build_projected_ground() -> void:
+	_ground_viewport = SubViewport.new()
+	_ground_viewport.size = Vector2i(GROUND_VIEWPORT_PX, GROUND_VIEWPORT_PX)
+	_ground_viewport.transparent_bg = true
+	# Static ground: re-rendered manually on move/map-change, not every frame.
+	_ground_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
+	add_child(_ground_viewport)
+	_ground_camera = Camera2D.new()
+	_ground_camera.zoom = Vector2(float(GROUND_VIEWPORT_PX) / GROUND_REGION,
+		float(GROUND_VIEWPORT_PX) / GROUND_REGION)
+	_ground_viewport.add_child(_ground_camera)
+	# The TileRenderer culls via ViewRect.of -> the SubViewport's current camera.
+	_ground_renderer = TileRenderer.new()
+	_ground_renderer.state = state
+	_ground_renderer.content = content
+	_ground_renderer.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_ground_viewport.add_child(_ground_renderer)
+
+	_ground_plane = MeshInstance3D.new()
+	var plane := PlaneMesh.new()
+	plane.size = Vector2(GROUND_REGION, GROUND_REGION)
+	var material := StandardMaterial3D.new()
+	material.albedo_texture = _ground_viewport.get_texture()
+	# Lit like the old floor so the omnis/sun pool on it; nearest keeps pixel-art
+	# crisp; scissor so void cells discard and the sun's wall shadows land on it.
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
+	material.alpha_scissor_threshold = 0.5
+	material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	plane.material = material
+	_ground_plane.mesh = plane
+	_ground_plane.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(_ground_plane)
+
+
+## refresh() runs every frame -- it updates the chunk cache and, crucially, owns
+## clearing tiles.cleared/changed_cells (the wall rebuild reads them earlier in the
+## frame). The viewport is only re-rasterised when the player crosses
+## GROUND_MOVE_STEP or the tiles changed, so most frames cost nothing.
+func _update_projected_ground(centre: Vector2) -> void:
+	var moved := _ground_centre.distance_to(centre) >= GROUND_MOVE_STEP
+	var dirty := state.tiles.cleared or not state.tiles.changed_cells.is_empty()
+	if moved:
+		_ground_centre = centre
+		_ground_camera.position = centre
+		_ground_plane.position = Vector3(centre.x, 0.0, centre.y)
+	_ground_renderer.refresh()
+	if moved or dirty:
+		_ground_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
 
 
 # ── Dynamic lighting: an omni per glowing tile, plus one on the player ─────────
