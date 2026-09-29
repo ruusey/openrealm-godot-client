@@ -135,14 +135,15 @@ static func parse(args: PackedStringArray, on_web := OS.has_feature("web"),
 	return config
 
 
-## True for a CI-shipped build: not the editor, and carrying a real version (CI
-## stamps application/config/version from the git tag; local stays "dev"). Used to
-## point desktop releases at prod without changing local dev runs.
+## True for a shipped (exported) build: anything that isn't the editor. A packaged
+## Windows/Linux EXE has no local data repo or server beside it, so it must target
+## prod. This used to also require a CI-stamped application/config/version, but that
+## proved unreliable in the export -- the EXE read no version and fell back to the
+## 127.0.0.1 + src/main/resources dev defaults. Local dev runs from the editor
+## (editor feature present) still keep the local default; an explicit --host on an
+## exported build still overrides prod.
 static func _is_released_build() -> bool:
-	if OS.has_feature("editor"):
-		return false
-	var version := String(ProjectSettings.get_setting("application/config/version", ""))
-	return version != "" and version != "dev"
+	return not OS.has_feature("editor")
 
 
 ## Where content comes from. The data service in a browser, which has no

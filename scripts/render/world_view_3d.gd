@@ -527,12 +527,16 @@ func _place_projectiles(centre: Vector2) -> void:
 		var heading := BulletRenderer.rotation_for(angle, offset, turn, additive)
 		var length := float(bullet.get("length", 0.0))
 		if length > 0.0 and ProjectileKind.has_flag(bullet, ProjectileKind.LINE_SEGMENT):
+			# A wall tile points ALONG the line -- no PI/2 (that term aligns a
+			# TRAVELLING bullet to its heading), exactly as the 2D _draw_wall does.
+			# Reusing `heading` here turned every tile 90 degrees into a row of dashes.
+			var tile_heading := -angle + offset + turn
 			var axis := Vector2(cos(angle), -sin(angle))
 			var half := length * 0.5
 			var steps := maxi(1, int(round(length / size)))
 			for s in steps + 1:
 				var point := mid + axis * (-half + float(s) / float(steps) * length)
-				used = _emit_projectile(used, texture, point, size, heading)
+				used = _emit_projectile(used, texture, point, size, tile_heading)
 		elif mid.distance_to(centre) <= ENTITY_RANGE:
 			used = _emit_projectile(used, texture, mid, size, heading)
 	for i in range(used, _projectiles.size()):
