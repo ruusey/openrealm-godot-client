@@ -15,13 +15,11 @@ const AMBIENT := Color(0.62, 0.64, 0.72)
 ## blowing out the tiles around it.
 const TILE_LIGHT_ENERGY := 2.0
 const PLAYER_ENERGY := 1.1
-## Wand/staff/tome bullets carry a faint travelling arcane glow; a small pool
-## follows the nearest of them. Not shadow-casting -- a fast mover flickering
-## shadows is noise, and cheaper.
+## Projectiles whose group carries a data.light get a travelling glow; a small
+## pool follows the nearest of them, coloured and sized from that data. Not
+## shadow-casting -- a fast mover flickering shadows is noise, and cheaper.
 const MAX_BULLET_LIGHTS := 20
-const BULLET_LIGHT_COLOR := Color(0.72, 0.62, 1.0)
-const BULLET_LIGHT_ENERGY := 1.3
-const BULLET_LIGHT_RADIUS := 1.1
+const BULLET_LIGHT_ENERGY := 1.6
 const MAX_TILE_LIGHTS := 24
 ## Only the few nearest tile lights cast shadows -- a shadow pass runs per caster
 ## per frame, so casting from all 24 is the dominant 2D cost; the eye reads the
@@ -43,6 +41,9 @@ var _occluders: Array[LightOccluder2D] = []
 var _emitters := {}   # GameData.light_emitters(): tile id -> {color, radius, flickers}
 var _frames := 0
 var _time := 0.0
+## Whether the ambient is currently dimmed for a dungeon, so it only re-sets the
+## CanvasModulate colour when that changes rather than every frame.
+var _dungeon_dark := false
 
 
 func setup(state: RealmState, content: GameData) -> void:
@@ -63,7 +64,7 @@ func setup(state: RealmState, content: GameData) -> void:
 		_pool.append(light)
 	for i in MAX_BULLET_LIGHTS:
 		var light := PointLight2D.new()
-		_light(light, glow, BULLET_LIGHT_COLOR, BULLET_LIGHT_ENERGY, _scale_for(BULLET_LIGHT_RADIUS))
+		_light(light, glow, Color.WHITE, BULLET_LIGHT_ENERGY, 1.0)
 		light.shadow_enabled = false
 		light.visible = false
 		_bullet_lights.append(light)
@@ -104,6 +105,11 @@ func _process(delta: float) -> void:
 		_frames = 0
 	if not live:
 		return
+	# Dungeons (not the vault) read a third darker than the overworld.
+	var dark := _in_dungeon()
+	if dark != _dungeon_dark:
+		_dungeon_dark = dark
+		_ambient.color = AMBIENT.darkened(0.33) if dark else AMBIENT
 	_time += delta
 	_player.position = _state.local.render_centre()
 	if _frames % SCAN_EVERY == 0:
@@ -118,25 +124,30 @@ func _process(delta: float) -> void:
 	_place_bullet_lights()
 
 
-## The nearest wand/staff/tome bullets in flight, one travelling light each.
+## The nearest light-emitting bullets in flight, one travelling light each,
+## coloured and sized from the projectile group's data.light.
 func _place_bullet_lights() -> void:
-	var magic := _content.magic_projectile_groups()
 	var found := []
-	if not magic.is_empty():
-		var centre := _state.local.render_centre()
-		for id in _state.projectiles.bullets:
-			var bullet: Dictionary = _state.projectiles.bullets[id]
-			if not magic.has(int(bullet.get("group_id", -1))):
-				continue
-			var size := float(bullet.get("size", 8))
-			var at: Vector2 = bullet["pos"] + Vector2(size, size) * 0.5
-			found.append([at.distance_squared_to(centre), at])
-		found.sort_custom(_nearer)
+	var centre := _state.local.render_centre()
+	for id in _state.projectiles.bullets:
+		var bullet: Dictionary = _state.projectiles.bullets[id]
+		var light_def := _content.projectile_light(int(bullet.get("group_id", -1)))
+		var strength := float(light_def.get("strength", 0.0))
+		if strength <= 0.0:
+			continue
+		var size := float(bullet.get("size", 8))
+		var at: Vector2 = bullet["pos"] + Vector2(size, size) * 0.5
+		var hex := str(light_def.get("color", "#ffffff"))
+		var colour := Color.html(hex) if Color.html_is_valid(hex) else Color.WHITE
+		found.append([at.distance_squared_to(centre), at, colour, strength])
+	found.sort_custom(_nearer)
 	for i in _bullet_lights.size():
 		var light := _bullet_lights[i]
 		light.visible = i < found.size()
 		if light.visible:
 			light.position = found[i][1]
+			light.color = found[i][2]
+			light.texture_scale = _scale_for(found[i][3])
 
 
 ## The glowing tiles in view get a light each (nearest the player first), and the
@@ -191,6 +202,11 @@ func _rescan() -> void:
 func _occludes(tile_id: int) -> bool:
 	return tile_id > 0 and not _emitters.has(tile_id) \
 		and (_content.tile_is_wall(tile_id) or _content.tile_has_collision(tile_id))
+
+
+## In an assembled dungeon that isn't the personal vault -- where the ambient dims.
+func _in_dungeon() -> bool:
+	return _state.tiles.dungeon_id >= 0 and not _content.maps.is_vault(_state.tiles.map_id)
 
 
 ## Distance-first comparator, hoisted so a fresh closure isn't allocated every

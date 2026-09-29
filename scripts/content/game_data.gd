@@ -26,9 +26,6 @@ var ready := false
 ## shared by the 2D SceneLighting and the 3D view. See light_emitters().
 var _light_emitters := {}
 var _light_emitters_built := false
-## Projectile group ids fired by MAGIC-family weapons; their bullets glow.
-var _magic_groups := {}
-var _magic_groups_built := false
 ## tile id -> AtlasTexture, so the per-frame wall/tile passes skip rebuilding a
 ## string atlas key per cell. Populated once content is ready.
 var _tex_by_id := {}
@@ -184,27 +181,12 @@ func item_projectile_group(item_id: int) -> int:
 	return int(library.items.get(item_id, {}).get("damage", {}).get("projectileGroupId", 0))
 
 
-## Projectile group ids a wand/staff/tome fires (archetype family MAGIC), so a
-## renderer can glow those bullets. Derived from item archetypes once, not a flag.
-func magic_projectile_groups() -> Dictionary:
-	if _magic_groups_built:
-		return _magic_groups
-	if library.items.is_empty() or library.weapon_archetypes.is_empty():
-		return _magic_groups
-	_magic_groups_built = true
-	for item_id in library.items:
-		var item: Dictionary = library.items[item_id]
-		var archetype: Dictionary = library.weapon_archetypes.get(int(item.get("archetypeId", 0)), {})
-		if str(archetype.get("family", "")) != "MAGIC":
-			continue
-		var group := int(item.get("damage", {}).get("projectileGroupId", 0))
-		if group > 0:
-			_magic_groups[group] = true
-	return _magic_groups
-
-
-func is_magic_projectile(group_id: int) -> bool:
-	return magic_projectile_groups().has(group_id)
+## The light a projectile group emits, or an empty dict. Authored per group in
+## projectile-groups.json (peer of spriteKey/fx), same {strength, color, style}
+## shape as a tile's data.light -- so any projectile can glow, not just magic.
+func projectile_light(group_id: int) -> Dictionary:
+	var light: Variant = library.projectile_groups.get(group_id, {}).get("light")
+	return light if light is Dictionary else {}
 
 
 func item_name(item_id: int) -> String:

@@ -56,11 +56,14 @@ const OVERLAY_PROBE := 120.0
 ## Dynamic lighting (the "lighting" setting, shared data.light emitters with the
 ## 2D SceneLighting). Off restores the old full-bright look; on darkens the scene
 ## and lets torches, lava and crystals pool real 3D light the walls occlude.
-## Kept under max_lights_per_object (24) once the player light and a few bullet
-## lights are added, so every active emitter near you actually lands on the floor
-## and wall meshes instead of being dropped by the per-object cap.
-const MAX_LIGHTS_3D := 16
+## The nearest emitters that get an omni. Higher than before so a lava-heavy
+## highland lights many pools at once; fits under max_lights_per_object (32) with
+## the player + bullet lights. See LIGHT_RANGE for how far out they're gathered.
+const MAX_LIGHTS_3D := 24
 const LIGHT_SCAN_EVERY := 10
+## How far out emitter tiles are gathered (px), wider than the entity load range
+## so lava pools past the visible edge still throw light before you reach them.
+const LIGHT_RANGE := ENTITY_RANGE * 1.6
 ## Sits at wall-top height so the light spills over the top faces too, not just
 ## the sides -- 3D lights are real, so height matters (unlike the flat 2D pools).
 const LIGHT_HEIGHT := float(TILE) * 1.0
@@ -81,8 +84,12 @@ const PLAYER_LIGHT_ENERGY := 3.5
 ## (the player carries their own light, so dark corners are fine).
 const AMBIENT_LIT := Color(0.34, 0.35, 0.44)
 const AMBIENT_LIT_ENERGY := 0.5
-## Enough that the sun's wall shadows read while the torches still carry the mood.
-const SUN_LIT_ENERGY := 0.5
+## Inside a (non-vault) dungeon, ambient and sun drop to this fraction so it reads
+## a third darker than the overworld.
+const DUNGEON_DIM := 0.67
+## Enough that the sun's wall shadows read while the torches still carry the mood;
+## toned down ~10% from 0.5.
+const SUN_LIT_ENERGY := 0.45
 ## Wand/staff/tome bullets carry a travelling arcane glow. Kept small so a volley
 ## doesn't evict the candle/torch lights from the per-object light budget.
 const MAX_BULLET_LIGHTS_3D := 6
@@ -129,6 +136,8 @@ var _light_frames := 0
 var _light_time := 0.0
 var _lit := false
 var _lit_applied := false
+## Whether the ambient/sun are currently dimmed for a dungeon.
+var _dark := false
 
 var _fx_viewport: SubViewport
 var _fx_renderer: EffectRenderer
@@ -664,10 +673,12 @@ func _build_lights() -> void:
 
 func _update_lighting(delta: float, centre: Vector2) -> void:
 	var on := state.settings.is_on("lighting")
-	if not _lit_applied or on != _lit:
+	var dark := on and _in_dungeon()
+	if not _lit_applied or on != _lit or dark != _dark:
 		_lit = on
+		_dark = dark
 		_lit_applied = true
-		_apply_lighting(on)
+		_apply_lighting(on, dark)
 	if not on:
 		return
 	_light_time += delta
@@ -683,11 +694,13 @@ func _update_lighting(delta: float, centre: Vector2) -> void:
 				* (1.0 + 0.12 * sin(_light_time * 9.0 + i * 1.7) + 0.06 * sin(_light_time * 23.0 + i))
 
 
-## Dark ambient and a low sun when lit; the old full-bright albedo when off.
-func _apply_lighting(on: bool) -> void:
+## Dark ambient and a low sun when lit; the old full-bright albedo when off. In a
+## dungeon both drop by DUNGEON_DIM so it reads a third darker.
+func _apply_lighting(on: bool, dark: bool) -> void:
+	var dim := DUNGEON_DIM if dark else 1.0
 	_env.ambient_light_color = AMBIENT_LIT if on else Color.WHITE
-	_env.ambient_light_energy = AMBIENT_LIT_ENERGY if on else 1.0
-	_sun.light_energy = SUN_LIT_ENERGY if on else 0.0
+	_env.ambient_light_energy = (AMBIENT_LIT_ENERGY * dim) if on else 1.0
+	_sun.light_energy = (SUN_LIT_ENERGY * dim) if on else 0.0
 	_player_light.visible = on
 	if not on:
 		for light in _lights:
@@ -696,11 +709,16 @@ func _apply_lighting(on: bool) -> void:
 			light.visible = false
 
 
+## In an assembled dungeon that isn't the personal vault -- where lighting dims.
+func _in_dungeon() -> bool:
+	return state.tiles.dungeon_id >= 0 and not content.maps.is_vault(state.tiles.map_id)
+
+
 ## The glowing tiles near the player, nearest first, one omni each.
 func _place_lights(centre: Vector2) -> void:
 	var emitters := content.light_emitters()
 	var tile := float(TILE)
-	var reach := ceili(ENTITY_RANGE / tile)
+	var reach := ceili(LIGHT_RANGE / tile)
 	var origin := Vector2i(floori(centre.x / tile), floori(centre.y / tile))
 	var found := []
 	for gy in range(origin.y - reach, origin.y + reach + 1):
@@ -727,24 +745,29 @@ func _place_lights(centre: Vector2) -> void:
 
 ## The nearest wand/staff/tome bullets in flight, one travelling omni each.
 func _place_bullet_lights(centre: Vector2) -> void:
-	var magic := content.magic_projectile_groups()
 	var found := []
-	if not magic.is_empty():
-		for id in state.projectiles.bullets:
-			var bullet: Dictionary = state.projectiles.bullets[id]
-			if not magic.has(int(bullet.get("group_id", -1))):
-				continue
-			var size := maxf(float(bullet.get("size", 8)), 4.0)
-			var mid: Vector2 = bullet["pos"] + Vector2(size, size) * 0.5
-			if mid.distance_to(centre) <= ENTITY_RANGE:
-				found.append([mid.distance_squared_to(centre), mid])
-		found.sort_custom(func(a, b): return a[0] < b[0])
+	for id in state.projectiles.bullets:
+		var bullet: Dictionary = state.projectiles.bullets[id]
+		var light_def := content.projectile_light(int(bullet.get("group_id", -1)))
+		var strength := float(light_def.get("strength", 0.0))
+		if strength <= 0.0:
+			continue
+		var size := maxf(float(bullet.get("size", 8)), 4.0)
+		var mid: Vector2 = bullet["pos"] + Vector2(size, size) * 0.5
+		if mid.distance_to(centre) > ENTITY_RANGE:
+			continue
+		var hex := str(light_def.get("color", "#ffffff"))
+		var colour := Color.html(hex) if Color.html_is_valid(hex) else Color.WHITE
+		found.append([mid.distance_squared_to(centre), mid, colour, strength])
+	found.sort_custom(func(a, b): return a[0] < b[0])
 	for i in _bullet_lights.size():
 		var light := _bullet_lights[i]
 		light.visible = i < found.size()
 		if light.visible:
 			var mid: Vector2 = found[i][1]
 			light.position = Vector3(mid.x, BULLET_HEIGHT, mid.y)
+			light.light_color = found[i][2]
+			light.omni_range = float(found[i][3]) * float(TILE) * LIGHT_REACH_MUL
 
 
 # ── Shared sprite + texture helpers ───────────────────────────────────────────

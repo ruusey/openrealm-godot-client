@@ -51,6 +51,17 @@ func _init() -> void:
 	for table in [DISPLAY, GRAPHICS]:
 		for key in table:
 			_values[key] = table[key][1]
+	# Mobile GPUs can't afford the dynamic lights (20-30 fps in testing), so the
+	# setting starts off there. A returning player's saved choice still wins, since
+	# load_from overwrites these defaults.
+	if _mobile_default_off():
+		_values["lighting"] = false
+
+
+## True on a phone/tablet (native or a touch web build), where lighting defaults off.
+static func _mobile_default_off() -> bool:
+	return OS.has_feature("android") or OS.has_feature("ios") \
+		or (OS.has_feature("web") and DisplayServer.is_touchscreen_available())
 
 
 func is_on(key: String) -> bool:
