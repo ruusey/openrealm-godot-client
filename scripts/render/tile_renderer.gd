@@ -34,6 +34,10 @@ var feathers_drawn: int:
 
 var state: RealmState
 var content: GameData
+## The 3D view projects this onto its floor and draws props/walls as real 3D
+## objects, so in that mode only the base terrain (and its feather blending) is
+## painted -- otherwise props/walls would appear twice: flat here and standing.
+var ground_only := false
 var chunks := GroundChunks.new()
 ## What the chunks in view put down, over their own cells: "tiles",
 ## "feathers", "shadows", "bands", "rings", "bottoms".
@@ -79,6 +83,10 @@ func paint_cells(canvas: CanvasItem, own: Rect2i) -> Dictionary:
 	var layers := tiles.layers.keys()
 	layers.sort()
 	for layer in layers:
+		# In ground-only mode (the 3D projected floor) only the terrain is drawn;
+		# props/walls/their shadows+bands are the 3D view's own geometry.
+		if ground_only and layer != BASE_LAYER:
+			continue
 		var cells: Dictionary = tiles.layers[layer]
 		# Props cast their shadows, and walls their bands, before any of them
 		# is drawn: ahead of the layer they live on, not after the terrain.
@@ -106,7 +114,8 @@ func paint_cells(canvas: CanvasItem, own: Rect2i) -> Dictionary:
 		elif layer == GameConstants.COLLISION_LAYER:
 			bands.paint_over(canvas, tiles, content, first, last)
 	# The billboards' lower edges, over every layer so nothing covers them.
-	billboards.paint_bottoms(canvas, tiles, content, first, last, own)
+	if not ground_only:
+		billboards.paint_bottoms(canvas, tiles, content, first, last, own)
 	return {"tiles": drawn, "feathers": feathers.drawn, "shadows": shadows.drawn, "bands": bands.drawn,
 		"rings": billboards.ringed, "bottoms": billboards.drawn}
 

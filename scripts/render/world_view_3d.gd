@@ -639,6 +639,9 @@ func _build_projected_ground() -> void:
 	_ground_renderer = TileRenderer.new()
 	_ground_renderer.state = state
 	_ground_renderer.content = content
+	# Only the terrain -- props and walls are the 3D view's own billboards/boxes, so
+	# painting them flat here too would double every sprite (flat + standing).
+	_ground_renderer.ground_only = true
 	_ground_renderer.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_ground_viewport.add_child(_ground_renderer)
 
