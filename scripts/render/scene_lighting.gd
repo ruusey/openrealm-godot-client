@@ -21,13 +21,11 @@ const PLAYER_ENERGY := 1.1
 const MAX_BULLET_LIGHTS := 20
 const BULLET_LIGHT_ENERGY := 1.6
 const MAX_TILE_LIGHTS := 24
-## Only the few nearest tile lights cast shadows -- a shadow pass runs per caster
-## per frame, so casting from all 24 is the dominant 2D cost; the eye reads the
-## nearest few and the player's own light, not a distant candle's cast shadow.
-const TILE_SHADOW_CASTERS := 3
+## Shadow casting is per-platform (see _shadow_casters): a shadow pass runs per
+## caster per frame, so web casts none and native casts from every visible light.
 ## The merge collapses wall runs into a handful of rects, so this cap is only ever
-## approached by a huge open field; 96 covers any room without leaking light.
-const MAX_OCCLUDERS := 96
+## approached by a huge open field; 192 covers a native viewport without leaking.
+const MAX_OCCLUDERS := 192
 ## Tiles do not move, so the view is rescanned every Nth frame, not every frame.
 const SCAN_EVERY := 20
 
@@ -53,6 +51,10 @@ var _bullet_energy := BULLET_LIGHT_ENERGY
 ## The 2D scan already covers the whole viewport; this is how many of the emitters
 ## in it get a light. Native lights them all; web keeps the tighter cap.
 var _max_tile_lights := MAX_TILE_LIGHTS if OS.has_feature("web") else 64
+## How many of the nearest tile lights cast wall shadows. Web: 0 (no shadow passes
+## at all). Native: all of them, so a light's occlusion doesn't cut off with range
+## -- a distant candle's glow is still blocked by the wall in front of it.
+var _shadow_casters := 0 if OS.has_feature("web") else 64
 
 
 func setup(state: RealmState, content: GameData) -> void:
@@ -196,8 +198,8 @@ func _rescan() -> void:
 			light.texture_scale = _scale_for(kind["radius"])
 			light.set_meta("flickers", kind["flickers"])
 			light.energy = _tile_energy
-			# found is distance-sorted, so the nearest few are the casters (native only).
-			light.shadow_enabled = not _web and i < TILE_SHADOW_CASTERS
+			# found is distance-sorted; the nearest _shadow_casters cast (all on native).
+			light.shadow_enabled = i < _shadow_casters
 	var rects := _merge_wall_rects(walls)
 	for i in _occluders.size():
 		var occluder := _occluders[i]
