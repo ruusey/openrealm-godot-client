@@ -47,9 +47,9 @@ const ORBIT_SPEED := 1.8
 # visible ground -- kept tight, and the resolution high, so effects stay crisp
 # instead of magnified into a blur.
 const FX_REGION := 1600.0
-## 1024 (was 2048): a 2048 target re-rasterises ~16 MB every frame; at this grazing
-## angle with the linear filter 1024 is indistinguishable, at a quarter the fill.
-const FX_VIEWPORT_PX := 1024
+## The effect target resolution is platform-split (see _fx_px): native renders the
+## cast animations at 2048 with MSAA, so they read smooth and crisp instead of the
+## coarse, aliased blur a bare 1024 gave; web stays at 1024 for the fill budget.
 ## The ground is the 2D TileRenderer (base tiles + feather blending) rendered into
 ## a SubViewport and projected onto the floor plane, so 3D gets the exact soft
 ## tile seams the 2D client has. Region covers the visible floor + orbit; the
@@ -84,18 +84,16 @@ const TORCH_ENERGY := 10.0
 ## clustered emitters (lava) overlap and blow out, so tightening it both makes a
 ## single candle glow and shrinks the bright-lava-vs-dim-candle gap.
 const LIGHT_REACH_MUL := 1.6
-const PLAYER_LIGHT_RANGE := float(TILE) * 4.5
-const PLAYER_LIGHT_ENERGY := 3.5
-## Low enough that emitter pools clearly pop, high enough the scene stays readable
-## (the player carries their own light, so dark corners are fine).
-const AMBIENT_LIT := Color(0.34, 0.35, 0.44)
-const AMBIENT_LIT_ENERGY := 0.5
-## Inside a (non-vault) dungeon, ambient and sun drop to this fraction so it reads
-## a third darker than the overworld.
-const DUNGEON_DIM := 0.67
-## Enough that the sun's wall shadows read while the torches still carry the mood;
-## toned down ~10% from 0.5.
-const SUN_LIT_ENERGY := 0.45
+## Overworld/hub ambient reads like daylight -- the scene stands on its own and the
+## torches/lava are warm accents over it, not the only light. A dark base with bright
+## pools reads as a cave, wrong for a town; the drama lives in dungeons (DUNGEON_DIM).
+const AMBIENT_LIT := Color(0.6, 0.61, 0.67)
+const AMBIENT_LIT_ENERGY := 0.9
+## Inside a (non-vault) dungeon, ambient and sun drop to this fraction -- markedly
+## darker than the daylit overworld, so a dungeon's torch pools carry real contrast.
+const DUNGEON_DIM := 0.42
+## A daytime sun: strong enough to shade the billboards and throw crisp wall shadows.
+const SUN_LIT_ENERGY := 0.6
 ## Wand/staff/tome bullets carry a travelling arcane glow. Kept small so a volley
 ## doesn't evict the candle/torch lights from the per-object light budget.
 const MAX_BULLET_LIGHTS_3D := 6
@@ -133,7 +131,6 @@ var _sun: DirectionalLight3D
 ## the sun's do; filled from the sun in _ready.
 var _shadow_ground_dir := Vector2.ZERO
 var _env: Environment
-var _player_light: OmniLight3D
 var _lights: Array[OmniLight3D] = []
 var _bullet_lights: Array[OmniLight3D] = []
 var _light_frames := 0
@@ -162,6 +159,8 @@ var _max_lights := 12 if OS.has_feature("web") else 48
 var _light_range := LIGHT_RANGE if OS.has_feature("web") else 2400.0
 var _ground_px := 1024 if OS.has_feature("web") else GROUND_VIEWPORT_PX
 var _torch_energy := TORCH_ENERGY * (1.0 if OS.has_feature("web") else 1.5)
+## Effect target: native renders the cast animations at 2048, web at 1024.
+var _fx_px := 1024 if OS.has_feature("web") else 2048
 
 
 func setup(realm_state: RealmState, game_data: GameData) -> void:
@@ -580,12 +579,16 @@ func _emit_projectile(index: int, texture: Texture2D, xz: Vector2, size: float, 
 
 func _build_effect_ground() -> void:
 	_fx_viewport = SubViewport.new()
-	_fx_viewport.size = Vector2i(FX_VIEWPORT_PX, FX_VIEWPORT_PX)
+	_fx_viewport.size = Vector2i(_fx_px, _fx_px)
 	_fx_viewport.transparent_bg = true
+	# MSAA anti-aliases the effect renderer's vector shapes (arcs, rings, slashes) so
+	# their edges read smooth instead of the jagged staircase a bare target gave -- the
+	# main reason the cast animations looked coarse projected onto the 3D ground.
+	_fx_viewport.msaa_2d = Viewport.MSAA_2X if OS.has_feature("web") else Viewport.MSAA_4X
 	_fx_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	add_child(_fx_viewport)
 	_fx_camera = Camera2D.new()
-	_fx_camera.zoom = Vector2(float(FX_VIEWPORT_PX) / FX_REGION, float(FX_VIEWPORT_PX) / FX_REGION)
+	_fx_camera.zoom = Vector2(float(_fx_px) / FX_REGION, float(_fx_px) / FX_REGION)
 	_fx_viewport.add_child(_fx_camera)
 	_fx_renderer = EffectRenderer.new()
 	_fx_renderer.state = state
@@ -687,16 +690,6 @@ func _update_projected_ground(centre: Vector2) -> void:
 # ── Dynamic lighting: an omni per glowing tile, plus one on the player ─────────
 
 func _build_lights() -> void:
-	_player_light = OmniLight3D.new()
-	_player_light.light_color = Color(1.0, 0.88, 0.7)
-	_player_light.omni_range = PLAYER_LIGHT_RANGE
-	_player_light.light_energy = PLAYER_LIGHT_ENERGY * _glow_mul
-	# No omni shadows: the GL-compat (web) backend doesn't render positional-light
-	# shadows anyway, so this is wasted setup. The sun casts the (world-fixed) wall
-	# shadows; a point light's own shadow would look wrong here regardless.
-	_player_light.shadow_enabled = false
-	_player_light.visible = false
-	add_child(_player_light)
 	for i in _max_lights:
 		var light := OmniLight3D.new()
 		light.shadow_enabled = false
@@ -724,7 +717,6 @@ func _update_lighting(delta: float, centre: Vector2) -> void:
 	if not on:
 		return
 	_light_time += delta
-	_player_light.position = Vector3(centre.x, LIGHT_HEIGHT, centre.y)
 	if _light_frames % LIGHT_SCAN_EVERY == 0:
 		_place_lights(centre)
 	_light_frames += 1
@@ -743,7 +735,6 @@ func _apply_lighting(on: bool, dark: bool) -> void:
 	_env.ambient_light_color = AMBIENT_LIT if on else Color.WHITE
 	_env.ambient_light_energy = (AMBIENT_LIT_ENERGY * dim) if on else 1.0
 	_sun.light_energy = (SUN_LIT_ENERGY * dim) if on else 0.0
-	_player_light.visible = on
 	if not on:
 		for light in _lights:
 			light.visible = false

@@ -1,11 +1,12 @@
 class_name SceneLighting
 extends Node2D
 
-## Smooth light over pixel-art tiles: a dark ambient across the world canvas, a
-## light carried by the player, and one at each glowing tile near it. Which
-## tiles glow, and in what colour and reach, is data -- a tile's data.light in
-## tiles.json -- not a guess from its name. Walls and solid props occlude the
-## light, so a lit room throws shadows past its walls.
+## Smooth light over pixel-art tiles: an ambient across the world canvas and a
+## light at each glowing tile near the player. Which tiles glow, and in what colour
+## and reach, is data -- a tile's data.light in tiles.json -- not a guess from its
+## name. Walls and solid props occlude the light, so a lit room throws shadows past
+## its walls. The player carries no light of their own (they don't emit) -- a
+## lantern item may add one later.
 ##
 ## The UI sits on its own CanvasLayers, so none of it is darkened. Governed by
 ## the "lighting" graphics setting (Options > Graphics, or F3), on by default.
@@ -21,7 +22,6 @@ const DUNGEON_DARKEN := 0.5
 ## Additive over the darkened world; a candle reads as a warm pool without
 ## blowing out the tiles around it.
 const TILE_LIGHT_ENERGY := 2.0
-const PLAYER_ENERGY := 1.1
 ## Projectiles whose group carries a data.light get a travelling glow; a small
 ## pool follows the nearest of them, coloured and sized from that data. Not
 ## shadow-casting -- a fast mover flickering shadows is noise, and cheaper.
@@ -42,7 +42,6 @@ const SCAN_EVERY := 20
 var _state: RealmState
 var _content: GameData
 var _ambient := CanvasModulate.new()
-var _player := PointLight2D.new()
 var _pool: Array[PointLight2D] = []
 var _bullet_lights: Array[PointLight2D] = []
 var _occluders: Array[LightOccluder2D] = []
@@ -78,7 +77,6 @@ func setup(state: RealmState, content: GameData) -> void:
 	_tile_energy = TILE_LIGHT_ENERGY * glow_mul
 	_bullet_energy = BULLET_LIGHT_ENERGY * glow_mul
 	var glow := _soft_texture()
-	_light(_player, glow, Color(1.0, 0.88, 0.7), PLAYER_ENERGY * glow_mul, _scale_for(3.5))
 	for i in _max_tile_lights:
 		var light := PointLight2D.new()
 		_light(light, glow, Color.WHITE, _tile_energy, 1.0)
@@ -123,7 +121,6 @@ func _process(delta: float) -> void:
 		and _state.local != null and _state.tiles.width > 0
 	if _ambient.visible != live:
 		_ambient.visible = live
-		_player.visible = live
 		for light in _pool:
 			light.visible = false
 		for light in _bullet_lights:
@@ -139,7 +136,6 @@ func _process(delta: float) -> void:
 		_dungeon_dark = dark
 		_ambient.color = _ambient_color(dark)
 	_time += delta
-	_player.position = _state.local.render_centre()
 	if _frames % SCAN_EVERY == 0:
 		_rescan()
 	_frames += 1
