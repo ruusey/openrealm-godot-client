@@ -26,6 +26,9 @@ const MAX_TILE_LIGHTS := 24
 ## The merge collapses wall runs into a handful of rects, so this cap is only ever
 ## approached by a huge open field; 192 covers a native viewport without leaking.
 const MAX_OCCLUDERS := 192
+## Penumbra width for the PCF13 filter. Wide enough that a shadow edge fades over
+## several pixels -- soft and natural, not a hard-lined wedge.
+const SHADOW_SMOOTH := 5.0
 ## Tiles do not move, so the view is rescanned every Nth frame, not every frame.
 const SCAN_EVERY := 20
 
@@ -69,11 +72,6 @@ func setup(state: RealmState, content: GameData) -> void:
 	_bullet_energy = BULLET_LIGHT_ENERGY * glow_mul
 	var glow := _soft_texture()
 	_light(_player, glow, Color(1.0, 0.88, 0.7), PLAYER_ENERGY * glow_mul, _scale_for(3.5))
-	# The player's light is the one soft caster (native only) -- it moves, so its
-	# shadows are what the eye follows; the few tile casters use the cheap hard filter.
-	if not _web:
-		_player.shadow_filter = Light2D.SHADOW_FILTER_PCF5
-		_player.shadow_filter_smooth = 1.5
 	for i in _max_tile_lights:
 		var light := PointLight2D.new()
 		_light(light, glow, Color.WHITE, _tile_energy, 1.0)
@@ -105,7 +103,11 @@ func _light(light: PointLight2D, glow: GradientTexture2D, colour: Color, energy:
 	light.energy = energy
 	light.texture_scale = scale
 	light.shadow_enabled = not _web
-	light.shadow_filter = Light2D.SHADOW_FILTER_NONE
+	if not _web:
+		# PCF13 + a wide smooth gives a soft penumbra -- the shadow edge fades and
+		# light bleeds gradually behind an object, instead of a hard black wedge.
+		light.shadow_filter = Light2D.SHADOW_FILTER_PCF13
+		light.shadow_filter_smooth = SHADOW_SMOOTH
 	add_child(light)
 
 
