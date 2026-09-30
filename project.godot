@@ -176,5 +176,9 @@ lights_and_shadows/directional_shadow/size.mobile=2048
 # The GL-compat renderer lights each mesh with at most this many lights (default
 # 8). The 3D floor/walls are big single meshes, so 8 meant most torches/candles
 # never reached them however bright -- raised so the nearby emitters all land.
-limits/opengl/max_lights_per_object=32
-limits/opengl/max_renderable_lights=192
+# Native lights the whole viewport, so the big floor/wall meshes must accept many
+# lights; web keeps a tight cap (a .web feature override) for GL-compat perf.
+limits/opengl/max_lights_per_object=64
+limits/opengl/max_lights_per_object.web=24
+limits/opengl/max_renderable_lights=256
+limits/opengl/max_renderable_lights.web=64

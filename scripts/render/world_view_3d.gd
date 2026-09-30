@@ -64,10 +64,8 @@ const OVERLAY_PROBE := 120.0
 ## Dynamic lighting (the "lighting" setting, shared data.light emitters with the
 ## 2D SceneLighting). Off restores the old full-bright look; on darkens the scene
 ## and lets torches, lava and crystals pool real 3D light the walls occlude.
-## The nearest emitters that get an omni. Higher than before so a lava-heavy
-## highland lights many pools at once; fits under max_lights_per_object (32) with
-## the player + bullet lights. See LIGHT_RANGE for how far out they're gathered.
-const MAX_LIGHTS_3D := 24
+## How many nearest emitters get an omni and how far out they're gathered are set
+## per-platform in _max_lights / _light_range below (native lights the whole view).
 const LIGHT_SCAN_EVERY := 10
 ## How far out emitter tiles are gathered (px), wider than the entity load range
 ## so lava pools past the visible edge still throw light before you reach them.
@@ -156,10 +154,12 @@ var _ground_camera: Camera2D
 var _ground_plane: MeshInstance3D
 ## Where the projected ground was last re-rasterised; INF forces the first render.
 var _ground_centre := Vector2(INF, INF)
-## Web GL-compat is far tighter than native: fewer lights and a smaller ground
-## target there. Native has headroom, so it also runs the glows 50% brighter.
+## Web GL-compat is far tighter than native: fewer lights, a smaller gather range
+## and ground target there. Native has the headroom to light the whole viewport
+## (many more emitters, gathered far past the player) and runs glows 50% brighter.
 var _glow_mul := 1.0 if OS.has_feature("web") else 1.5
-var _max_lights := 12 if OS.has_feature("web") else MAX_LIGHTS_3D
+var _max_lights := 12 if OS.has_feature("web") else 48
+var _light_range := LIGHT_RANGE if OS.has_feature("web") else 2400.0
 var _ground_px := 1024 if OS.has_feature("web") else GROUND_VIEWPORT_PX
 var _torch_energy := TORCH_ENERGY * (1.0 if OS.has_feature("web") else 1.5)
 
@@ -760,7 +760,7 @@ func _in_dungeon() -> bool:
 func _place_lights(centre: Vector2) -> void:
 	var emitters := content.light_emitters()
 	var tile := float(TILE)
-	var reach := ceili(LIGHT_RANGE / tile)
+	var reach := ceili(_light_range / tile)
 	var origin := Vector2i(floori(centre.x / tile), floori(centre.y / tile))
 	var found := []
 	for gy in range(origin.y - reach, origin.y + reach + 1):

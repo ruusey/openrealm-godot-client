@@ -50,6 +50,9 @@ var _dungeon_dark := false
 var _web := OS.has_feature("web")
 var _tile_energy := TILE_LIGHT_ENERGY
 var _bullet_energy := BULLET_LIGHT_ENERGY
+## The 2D scan already covers the whole viewport; this is how many of the emitters
+## in it get a light. Native lights them all; web keeps the tighter cap.
+var _max_tile_lights := MAX_TILE_LIGHTS if OS.has_feature("web") else 64
 
 
 func setup(state: RealmState, content: GameData) -> void:
@@ -67,7 +70,7 @@ func setup(state: RealmState, content: GameData) -> void:
 	if not _web:
 		_player.shadow_filter = Light2D.SHADOW_FILTER_PCF5
 		_player.shadow_filter_smooth = 1.5
-	for i in MAX_TILE_LIGHTS:
+	for i in _max_tile_lights:
 		var light := PointLight2D.new()
 		_light(light, glow, Color.WHITE, _tile_energy, 1.0)
 		light.visible = false
