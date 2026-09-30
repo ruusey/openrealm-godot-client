@@ -35,6 +35,7 @@ const GRAPHICS := {
 	"loot_preview": ["Loot bag preview", true],
 	"wall_bands": ["Wall side-bands", true],
 	"lighting": ["Dynamic lighting", true],
+	"bloom": ["Light bloom", true],
 	"show_transition_screen": ["Show the realm transition screen", true],
 }
 
@@ -56,6 +57,7 @@ func _init() -> void:
 	# load_from overwrites these defaults.
 	if _mobile_default_off():
 		_values["lighting"] = false
+		_values["bloom"] = false
 
 
 ## True on a phone/tablet (native or a touch web build), where lighting defaults off.

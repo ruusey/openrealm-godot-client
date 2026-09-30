@@ -169,6 +169,11 @@ quick_slot_8={
 textures/canvas_textures/default_texture_filter=0
 renderer/rendering_method="gl_compatibility"
 environment/defaults/default_clear_color=Color(0, 0, 0, 1)
+# A float 2D framebuffer so the additive light pools can exceed 1.0; that headroom
+# is what SceneLighting's bloom WorldEnvironment thresholds on -- only the
+# over-bright candles/torches/glowing shots halo, the pixel art under them stays
+# clamped and crisp. Visually neutral on its own (SDR content still clips at 1.0).
+viewport/hdr_2d=true
 # The 3D view's sun is the only shadow caster; 2048 is ample for this look and
 # halves the shadow-atlas cost vs the 4096 default.
 lights_and_shadows/directional_shadow/size=2048

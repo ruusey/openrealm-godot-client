@@ -42,6 +42,14 @@ const SCAN_EVERY := 20
 var _state: RealmState
 var _content: GameData
 var _ambient := CanvasModulate.new()
+## A viewport glow that blooms only what the HDR 2D buffer lets exceed 1.0 -- the
+## additive light pools -- so the candles/torches/glowing shots halo while the
+## pixel art under the ambient stays crisp. Held off (environment null) until the
+## lighting is live AND the bloom setting is on. (The 3D view runs its own
+## glow-less environment on purpose -- full-screen glow hazed its effects.)
+var _world_env := WorldEnvironment.new()
+var _glow: Environment
+var _bloom_active := false
 var _pool: Array[PointLight2D] = []
 var _bullet_lights: Array[PointLight2D] = []
 var _occluders: Array[LightOccluder2D] = []
@@ -73,6 +81,8 @@ func setup(state: RealmState, content: GameData) -> void:
 	_content = content
 	_ambient.color = _ambient_color(false)
 	add_child(_ambient)
+	_glow = _glow_environment()
+	add_child(_world_env)
 	var glow_mul := 1.0 if _web else 1.5
 	_tile_energy = TILE_LIGHT_ENERGY * glow_mul
 	_bullet_energy = BULLET_LIGHT_ENERGY * glow_mul
@@ -129,7 +139,9 @@ func _process(delta: float) -> void:
 			occluder.visible = false
 		_frames = 0
 	if not live:
+		_set_bloom(false)
 		return
+	_set_bloom(_state.settings.is_on("bloom"))
 	# Dungeons (not the vault) read a third darker than the overworld.
 	var dark := _in_dungeon()
 	if dark != _dungeon_dark:
@@ -238,6 +250,38 @@ func _ambient_color(dark: bool) -> Color:
 ## In an assembled dungeon that isn't the personal vault -- where the ambient dims.
 func _in_dungeon() -> bool:
 	return _state.tiles.dungeon_id >= 0 and not _content.maps.is_vault(_state.tiles.map_id)
+
+
+## Attach or detach the glow environment; a null environment on the WorldEnvironment
+## is the off state, so the glow pass only runs while bloom is wanted.
+func _set_bloom(on: bool) -> void:
+	if on == _bloom_active:
+		return
+	_bloom_active = on
+	_world_env.environment = _glow if on else null
+
+
+## Glow tuned to bloom only the over-bright light pools: the HDR threshold sits at
+## 1.0 so nothing under the ambient (all <= 1.0) blooms, and glow_bloom stays 0 so
+## there is no flat haze added to every pixel -- only what the additive lights push
+## past 1.0 halos. The mid levels give a soft, wide falloff without a hard ring.
+func _glow_environment() -> Environment:
+	var env := Environment.new()
+	env.background_mode = Environment.BG_CANVAS
+	env.glow_enabled = true
+	env.glow_intensity = 0.9
+	env.glow_strength = 1.0
+	env.glow_bloom = 0.0
+	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SCREEN
+	env.glow_hdr_threshold = 1.0
+	env.glow_hdr_scale = 2.0
+	for level in 7:
+		env.set_glow_level(level, 0.0)
+	env.set_glow_level(1, 0.4)
+	env.set_glow_level(2, 1.0)
+	env.set_glow_level(3, 1.0)
+	env.set_glow_level(4, 0.6)
+	return env
 
 
 ## Distance-first comparator, hoisted so a fresh closure isn't allocated every
