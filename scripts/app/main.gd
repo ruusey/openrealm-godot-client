@@ -109,6 +109,11 @@ func _ready() -> void:
 	# A click on a panel is not a shot at, or a cast into, the world behind it.
 	input.mouse_captured = screens.captures_mouse
 	ability_input.mouse_captured = screens.captures_mouse
+	# The melee-reach reticle aims where a shot would: the 3D ground raycast when
+	# that's live (set on input by WorldView3D), else the 2D world mouse.
+	screens.overlay.world_aim = func() -> Variant:
+		var aimed: Variant = input.world_mouse.call()
+		return aimed if aimed is Vector2 else _world.get_global_mouse_position()
 	# And a key typed into the chat line is a letter, not a move or a cast.
 	for ticker in [input, portals, inventory_input, ability_input]:
 		ticker.keyboard_captured = screens.captures_keyboard

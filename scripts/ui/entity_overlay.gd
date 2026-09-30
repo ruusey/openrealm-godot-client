@@ -36,6 +36,11 @@ var _tags: ControlPool
 var _labels: FloatingLabels
 var _loot: LootPreviews
 var _vignette: BlindVignette
+var _melee: MeleeReticle
+## Supplies the aim point (mouse's world position): the 3D ground raycast, or the
+## 2D camera's global mouse. Returns a Vector2, or anything else for "no aim".
+## Wired by Main; only the melee reticle reads it.
+var world_aim: Callable = func() -> Variant: return null
 
 ## The 3D view drives these: with project_3d on, the overlay places its tags
 ## through world_projector (an affine world->screen fit to the 3D camera at the
@@ -60,6 +65,8 @@ func _ready() -> void:
 	add_child(_root)
 	_tags = ControlPool.new(_root, func() -> Control: return EntityTag.new())
 	_labels = FloatingLabels.new(_root)
+	_melee = MeleeReticle.new()
+	_root.add_child(_melee)
 	# Over the names and numbers, under the dark: where the web keeps it.
 	var loot_root := Control.new()
 	loot_root.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -85,6 +92,7 @@ func refresh() -> void:
 		_show_players(to_screen, view)
 		_show_enemies(to_screen, view)
 	_tags.sweep()
+	_melee.place(state, content, to_screen, world_aim.call())
 	_labels.show_all(state, to_screen, view, project_3d)
 	_loot.show_all(state, content, to_screen, _root.size)
 	_vignette.follow(state, to_screen, _root.size)
