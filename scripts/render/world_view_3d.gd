@@ -156,6 +156,12 @@ var _ground_camera: Camera2D
 var _ground_plane: MeshInstance3D
 ## Where the projected ground was last re-rasterised; INF forces the first render.
 var _ground_centre := Vector2(INF, INF)
+## Web GL-compat is far tighter than native: fewer lights and a smaller ground
+## target there. Native has headroom, so it also runs the glows 50% brighter.
+var _glow_mul := 1.0 if OS.has_feature("web") else 1.5
+var _max_lights := 12 if OS.has_feature("web") else MAX_LIGHTS_3D
+var _ground_px := 1024 if OS.has_feature("web") else GROUND_VIEWPORT_PX
+var _torch_energy := TORCH_ENERGY * (1.0 if OS.has_feature("web") else 1.5)
 
 
 func setup(realm_state: RealmState, game_data: GameData) -> void:
@@ -626,14 +632,14 @@ func _update_effects(centre: Vector2) -> void:
 ## so 3D gets the exact soft tile seams the 2D client has, lit by the omnis/sun.
 func _build_projected_ground() -> void:
 	_ground_viewport = SubViewport.new()
-	_ground_viewport.size = Vector2i(GROUND_VIEWPORT_PX, GROUND_VIEWPORT_PX)
+	_ground_viewport.size = Vector2i(_ground_px, _ground_px)
 	_ground_viewport.transparent_bg = true
 	# Static ground: re-rendered manually on move/map-change, not every frame.
 	_ground_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
 	add_child(_ground_viewport)
 	_ground_camera = Camera2D.new()
-	_ground_camera.zoom = Vector2(float(GROUND_VIEWPORT_PX) / GROUND_REGION,
-		float(GROUND_VIEWPORT_PX) / GROUND_REGION)
+	_ground_camera.zoom = Vector2(float(_ground_px) / GROUND_REGION,
+		float(_ground_px) / GROUND_REGION)
 	_ground_viewport.add_child(_ground_camera)
 	# The TileRenderer culls via ViewRect.of -> the SubViewport's current camera.
 	_ground_renderer = TileRenderer.new()
@@ -684,14 +690,14 @@ func _build_lights() -> void:
 	_player_light = OmniLight3D.new()
 	_player_light.light_color = Color(1.0, 0.88, 0.7)
 	_player_light.omni_range = PLAYER_LIGHT_RANGE
-	_player_light.light_energy = PLAYER_LIGHT_ENERGY
+	_player_light.light_energy = PLAYER_LIGHT_ENERGY * _glow_mul
 	# No omni shadows: the GL-compat (web) backend doesn't render positional-light
 	# shadows anyway, so this is wasted setup. The sun casts the (world-fixed) wall
 	# shadows; a point light's own shadow would look wrong here regardless.
 	_player_light.shadow_enabled = false
 	_player_light.visible = false
 	add_child(_player_light)
-	for i in MAX_LIGHTS_3D:
+	for i in _max_lights:
 		var light := OmniLight3D.new()
 		light.shadow_enabled = false
 		light.visible = false
@@ -700,7 +706,7 @@ func _build_lights() -> void:
 	for i in MAX_BULLET_LIGHTS_3D:
 		var light := OmniLight3D.new()
 		light.light_color = BULLET_LIGHT_COLOR
-		light.light_energy = BULLET_LIGHT_ENERGY
+		light.light_energy = BULLET_LIGHT_ENERGY * _glow_mul
 		light.omni_range = BULLET_LIGHT_RANGE
 		light.visible = false
 		_bullet_lights.append(light)
@@ -726,7 +732,7 @@ func _update_lighting(delta: float, centre: Vector2) -> void:
 	for i in _lights.size():
 		var light := _lights[i]
 		if light.visible and light.get_meta("flickers", false):
-			light.light_energy = TORCH_ENERGY \
+			light.light_energy = _torch_energy \
 				* (1.0 + 0.12 * sin(_light_time * 9.0 + i * 1.7) + 0.06 * sin(_light_time * 23.0 + i))
 
 
@@ -776,7 +782,7 @@ func _place_lights(centre: Vector2) -> void:
 			light.light_color = kind["color"]
 			light.omni_range = float(kind["radius"]) * tile * LIGHT_REACH_MUL
 			light.set_meta("flickers", kind["flickers"])
-			light.light_energy = TORCH_ENERGY
+			light.light_energy = _torch_energy
 
 
 ## The nearest wand/staff/tome bullets in flight, one travelling omni each.

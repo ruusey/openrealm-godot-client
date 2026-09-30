@@ -44,6 +44,12 @@ var _time := 0.0
 ## Whether the ambient is currently dimmed for a dungeon, so it only re-sets the
 ## CanvasModulate colour when that changes rather than every frame.
 var _dungeon_dark := false
+## Web GL-compat can't afford the 2D shadow passes, so on web every light is
+## non-casting and no occluders are built (the ambient + additive pools stay).
+## Native has the headroom, so it keeps shadows AND runs the glows 50% brighter.
+var _web := OS.has_feature("web")
+var _tile_energy := TILE_LIGHT_ENERGY
+var _bullet_energy := BULLET_LIGHT_ENERGY
 
 
 func setup(state: RealmState, content: GameData) -> void:
@@ -51,31 +57,37 @@ func setup(state: RealmState, content: GameData) -> void:
 	_content = content
 	_ambient.color = AMBIENT
 	add_child(_ambient)
+	var glow_mul := 1.0 if _web else 1.5
+	_tile_energy = TILE_LIGHT_ENERGY * glow_mul
+	_bullet_energy = BULLET_LIGHT_ENERGY * glow_mul
 	var glow := _soft_texture()
-	_light(_player, glow, Color(1.0, 0.88, 0.7), PLAYER_ENERGY, _scale_for(3.5))
-	# The player's light is the one soft caster -- it moves, so its shadows are what
-	# the eye follows; the few tile casters use the cheap hard filter.
-	_player.shadow_filter = Light2D.SHADOW_FILTER_PCF5
-	_player.shadow_filter_smooth = 1.5
+	_light(_player, glow, Color(1.0, 0.88, 0.7), PLAYER_ENERGY * glow_mul, _scale_for(3.5))
+	# The player's light is the one soft caster (native only) -- it moves, so its
+	# shadows are what the eye follows; the few tile casters use the cheap hard filter.
+	if not _web:
+		_player.shadow_filter = Light2D.SHADOW_FILTER_PCF5
+		_player.shadow_filter_smooth = 1.5
 	for i in MAX_TILE_LIGHTS:
 		var light := PointLight2D.new()
-		_light(light, glow, Color.WHITE, TILE_LIGHT_ENERGY, 1.0)
+		_light(light, glow, Color.WHITE, _tile_energy, 1.0)
 		light.visible = false
 		_pool.append(light)
 	for i in MAX_BULLET_LIGHTS:
 		var light := PointLight2D.new()
-		_light(light, glow, Color.WHITE, BULLET_LIGHT_ENERGY, 1.0)
+		_light(light, glow, Color.WHITE, _bullet_energy, 1.0)
 		light.shadow_enabled = false
 		light.visible = false
 		_bullet_lights.append(light)
-	for i in MAX_OCCLUDERS:
-		var occluder := LightOccluder2D.new()
-		var polygon := OccluderPolygon2D.new()
-		polygon.closed = true
-		occluder.occluder = polygon
-		occluder.visible = false
-		_occluders.append(occluder)
-		add_child(occluder)
+	# Occluders only matter for shadow-casting lights, which web has none of.
+	if not _web:
+		for i in MAX_OCCLUDERS:
+			var occluder := LightOccluder2D.new()
+			var polygon := OccluderPolygon2D.new()
+			polygon.closed = true
+			occluder.occluder = polygon
+			occluder.visible = false
+			_occluders.append(occluder)
+			add_child(occluder)
 
 
 ## A shadow-casting point light, added as a child.
@@ -85,7 +97,7 @@ func _light(light: PointLight2D, glow: GradientTexture2D, colour: Color, energy:
 	light.color = colour
 	light.energy = energy
 	light.texture_scale = scale
-	light.shadow_enabled = true
+	light.shadow_enabled = not _web
 	light.shadow_filter = Light2D.SHADOW_FILTER_NONE
 	add_child(light)
 
@@ -118,7 +130,7 @@ func _process(delta: float) -> void:
 	for i in _pool.size():
 		var light := _pool[i]
 		if light.visible and light.get_meta("flickers", false):
-			light.energy = TILE_LIGHT_ENERGY \
+			light.energy = _tile_energy \
 				* (1.0 + 0.12 * sin(_time * 9.0 + i * 1.7) + 0.06 * sin(_time * 23.0 + i))
 	# Bullets move every frame, so this is not on the tile scan's cadence.
 	_place_bullet_lights()
@@ -168,7 +180,7 @@ func _rescan() -> void:
 				if kind != null:
 					var at := Vector2(x + 0.5, y + 0.5) * tile
 					found.append([at.distance_squared_to(centre), at, kind])
-			if _occludes(solid.get(cell, -1)):
+			if not _web and _occludes(solid.get(cell, -1)):
 				walls.append(cell)
 	found.sort_custom(_nearer)
 	for i in _pool.size():
@@ -180,9 +192,9 @@ func _rescan() -> void:
 			light.color = kind["color"]
 			light.texture_scale = _scale_for(kind["radius"])
 			light.set_meta("flickers", kind["flickers"])
-			light.energy = TILE_LIGHT_ENERGY
-			# found is distance-sorted, so the nearest few are the casters.
-			light.shadow_enabled = i < TILE_SHADOW_CASTERS
+			light.energy = _tile_energy
+			# found is distance-sorted, so the nearest few are the casters (native only).
+			light.shadow_enabled = not _web and i < TILE_SHADOW_CASTERS
 	var rects := _merge_wall_rects(walls)
 	for i in _occluders.size():
 		var occluder := _occluders[i]
