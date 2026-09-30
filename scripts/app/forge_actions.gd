@@ -56,7 +56,12 @@ func enchant() -> bool:
 		return false
 	var target := item_on("target")
 	var crystal := item_on("crystal")
-	var pixel := ForgePixel.pick(content.item_texture(int(target.get("itemId", -1))) if content else null, target)
+	var texture: Texture2D = content.item_texture(int(target.get("itemId", -1))) if content else null
+	# The pixel the player picked on the forge grid, if it's still a valid mount;
+	# otherwise fall back to the first free opaque pixel.
+	var pixel: Vector2i = state.forge.selected_pixel
+	if not ForgePixel.is_pickable(texture, target, pixel):
+		pixel = ForgePixel.pick(texture, target)
 	return _send("ForgeEnchantPacket", {
 		"targetItemSlot": state.forge.index_of("target"),
 		"crystalItemId": int(crystal.get("itemId", -1)),

@@ -14,12 +14,16 @@ const NONE := -1
 var is_open := false
 var version := 0
 var slots := {"target": NONE, "crystal": NONE, "essence": NONE}
+## The pixel the player picked for the next mount, or (-1, -1) for none (the
+## enchant then falls back to the first free pixel). Set by the forge's picker.
+var selected_pixel := Vector2i(-1, -1)
 
 
 func clear() -> void:
 	is_open = false
 	for zone in ZONES:
 		slots[zone] = NONE
+	selected_pixel = Vector2i(-1, -1)
 	version += 1
 
 
@@ -32,6 +36,7 @@ func apply_open(data: Dictionary, local_id: int) -> void:
 
 func close() -> void:
 	is_open = false
+	selected_pixel = Vector2i(-1, -1)
 	version += 1
 
 

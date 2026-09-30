@@ -54,7 +54,7 @@ func _init() -> void:
 func show_item(slot: int, item: Dictionary, content: GameData) -> void:
 	index = slot
 	var id := int(item.get("itemId", -1))
-	_icon.texture = content.item_texture(id) if content != null else null
+	_icon.texture = ItemArt.textured(content, item) if content != null else null
 	_name.text = str(item.get("name", content.item_name(id) if content != null else "Item %d" % id))
 	_name.add_theme_color_override("font_color", ItemTooltip.RARITY_COLOURS[ForgeRules.rarity(item)])
 	var stack := int(item.get("stackCount", 1))

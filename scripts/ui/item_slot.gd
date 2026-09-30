@@ -84,7 +84,9 @@ func show_item(new_item: Dictionary, texture: Texture2D) -> void:
 func show_from(item: Dictionary, content: GameData) -> void:
 	var texture: Texture2D = null
 	if content != null and Inventory.holds(item):
-		texture = content.item_texture(int(item.get("itemId", -1)))
+		# ItemArt paints on the item's forge enchantments + gem, so an enchanted
+		# weapon's icon reflects the pixels the player mounted.
+		texture = ItemArt.textured(content, item)
 	show_item(item, texture)
 
 

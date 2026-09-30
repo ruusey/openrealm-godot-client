@@ -29,6 +29,11 @@ var _cost: Label
 var _enchant: Button
 var _disenchant: Button
 var _tooltip: ItemTooltip
+var _grid: ForgePixelGrid
+var _pick_hint: Label
+## Identity of the item the grid is currently showing, so its selection survives
+## unrelated refreshes and only resets when the target (or its mounts) change.
+var _grid_key := ""
 var _flash := ""
 var _drawn := ""
 
@@ -68,6 +73,18 @@ func _ready() -> void:
 		slot.hovered.connect(_on_hover)
 		_zones[zone] = slot
 
+	# The pixel picker: the target item blown up so the player chooses where the
+	# crystal or gem mounts, permanently marking that pixel on the sprite.
+	_pick_hint = Label.new()
+	_pick_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_pick_hint.add_theme_color_override("font_color", Color(0.75, 0.78, 0.85))
+	column.add_child(_pick_hint)
+	var grid_centre := CenterContainer.new()
+	column.add_child(grid_centre)
+	_grid = ForgePixelGrid.new()
+	_grid.picked.connect(func(pixel: Vector2i) -> void: state.forge.selected_pixel = pixel)
+	grid_centre.add_child(_grid)
+
 	_status = InventoryLayout.heading(column, "")
 	_status.custom_minimum_size.x = STATUS_WIDTH
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -100,6 +117,7 @@ func refresh() -> void:
 	for zone in ForgeBench.ZONES:
 		items[zone] = state.forge.item_on(zone, state.local.inventory)
 		_zones[zone].show_from(items[zone], content)
+	_refresh_grid(items["target"])
 	var problem := ForgeRules.problem(items["target"], items["crystal"], items["essence"], content)
 	# A rejected drop is said once, ahead of whatever else is still wrong.
 	var wrong := _flash if _flash != "" else problem
@@ -113,6 +131,26 @@ func refresh() -> void:
 			ForgeRules.effect_preview(items["crystal"])]
 	_enchant.disabled = problem != ""
 	_disenchant.disabled = not ForgeRules.can_disenchant(items["target"])
+
+
+## Shows the picker for an enchantable target and reloads it only when the target
+## (or its set of mounts) actually changes, so a click-to-pick isn't wiped by an
+## unrelated inventory refresh. Hidden when there's nothing valid to enchant.
+func _refresh_grid(target: Dictionary) -> void:
+	var can_pick := Inventory.holds(target) and ForgeRules.is_equipment(target)
+	_pick_hint.visible = can_pick
+	_grid.visible = can_pick
+	if not can_pick:
+		_grid_key = ""
+		return
+	_pick_hint.text = "Click a pixel to set where it mounts"
+	var key := "%d:%s:%d" % [int(target.get("itemId", -1)), str(target.get("uid", "")),
+		ItemArt.marks(target).size()]
+	if key != _grid_key:
+		_grid_key = key
+		_grid.setup(content)
+		_grid.show_item(target)
+		state.forge.selected_pixel = Vector2i(-1, -1)
 
 
 func captures_mouse() -> bool:

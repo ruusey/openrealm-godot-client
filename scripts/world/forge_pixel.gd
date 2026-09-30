@@ -30,6 +30,21 @@ static func pick(texture: Texture2D, item: Dictionary) -> Vector2i:
 	return _first_free(taken, region.size.x, region.size.y)
 
 
+## Whether `at` is a valid mount: on the sprite, still opaque, not already
+## painted. Used to accept the player's picked pixel before it goes on the wire
+## (an unreadable sprite trusts the pick, as the server only checks re-use).
+static func is_pickable(texture: Texture2D, item: Dictionary, at: Vector2i) -> bool:
+	if at.x < 0 or at.y < 0 or at in painted(item):
+		return false
+	var image := _image_of(texture)
+	if image == null:
+		return true
+	var region := _region_of(texture, image)
+	if at.x >= region.size.x or at.y >= region.size.y:
+		return false
+	return image.get_pixel(region.position.x + at.x, region.position.y + at.y).a > 0.0
+
+
 ## The pixels already spoken for: every crystal's, and the gem's.
 static func painted(item: Dictionary) -> Array:
 	var out: Array = []
