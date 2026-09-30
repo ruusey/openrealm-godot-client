@@ -55,12 +55,14 @@ var _max_tile_lights := MAX_TILE_LIGHTS if OS.has_feature("web") else 64
 ## at all). Native: all of them, so a light's occlusion doesn't cut off with range
 ## -- a distant candle's glow is still blocked by the wall in front of it.
 var _shadow_casters := 0 if OS.has_feature("web") else 64
+## Native ambient runs 10% brighter (overworld and dungeon alike) than web.
+var _ambient_mul := 1.0 if OS.has_feature("web") else 1.1
 
 
 func setup(state: RealmState, content: GameData) -> void:
 	_state = state
 	_content = content
-	_ambient.color = AMBIENT
+	_ambient.color = _ambient_color(false)
 	add_child(_ambient)
 	var glow_mul := 1.0 if _web else 1.5
 	_tile_energy = TILE_LIGHT_ENERGY * glow_mul
@@ -126,7 +128,7 @@ func _process(delta: float) -> void:
 	var dark := _in_dungeon()
 	if dark != _dungeon_dark:
 		_dungeon_dark = dark
-		_ambient.color = AMBIENT.darkened(0.33) if dark else AMBIENT
+		_ambient.color = _ambient_color(dark)
 	_time += delta
 	_player.position = _state.local.render_centre()
 	if _frames % SCAN_EVERY == 0:
@@ -219,6 +221,13 @@ func _rescan() -> void:
 func _occludes(tile_id: int) -> bool:
 	return tile_id > 0 and not _emitters.has(tile_id) \
 		and (_content.tile_is_wall(tile_id) or _content.tile_has_collision(tile_id))
+
+
+## The CanvasModulate colour: the base ambient (a third darker in a dungeon),
+## scaled by the platform ambient multiplier, alpha kept at 1.
+func _ambient_color(dark: bool) -> Color:
+	var c := AMBIENT.darkened(0.33) if dark else AMBIENT
+	return Color(c.r * _ambient_mul, c.g * _ambient_mul, c.b * _ambient_mul, 1.0)
 
 
 ## In an assembled dungeon that isn't the personal vault -- where the ambient dims.
