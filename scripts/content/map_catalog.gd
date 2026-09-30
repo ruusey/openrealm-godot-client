@@ -22,6 +22,14 @@ func name(map_id: int) -> String:
 	return _library.maps.get(map_id, {}).get("mapName", "")
 
 
+## Data-driven on-screen tips for a static map: an array of
+## {x, y, width, height, header, text, once} rects (world px). Empty when a map
+## defines none. The client shows the tip while the player stands in the rect.
+func triggers(map_id: int) -> Array:
+	var list: Variant = _library.maps.get(map_id, {}).get("dialogueTriggers", [])
+	return list if list is Array else []
+
+
 func is_nexus(map_id: int) -> bool:
 	return name(map_id).begins_with("Nexus")
 

@@ -22,6 +22,7 @@ var prompt: InteractPrompt
 var minimap: MinimapPanel
 var player: PlayerHud
 var banner: RealmBanner
+var dialogue: DialoguePrompt
 var trade_request: TradeRequestPopup
 var trade: TradePanel
 var party_invite: PartyInvitePopup
@@ -86,6 +87,9 @@ func build(state: RealmState, game_data: GameData, client: OpenRealmClient,
 	banner = RealmBanner.new()
 	banner.setup(state, game_data)
 	add_child(banner)
+	dialogue = DialoguePrompt.new()
+	dialogue.setup(state, game_data)
+	add_child(dialogue)
 	var trade_actions := TradeActions.new(state, client)
 	trade_request = TradeRequestPopup.new()
 	trade_request.setup(state, trade_actions)
