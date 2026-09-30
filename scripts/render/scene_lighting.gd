@@ -10,7 +10,14 @@ extends Node2D
 ## The UI sits on its own CanvasLayers, so none of it is darkened. Governed by
 ## the "lighting" graphics setting (Options > Graphics, or F3), on by default.
 
-const AMBIENT := Color(0.62, 0.64, 0.72)
+## Overworld/hub ambient: a daylit scene reads on its own, so this stays high and
+## the tile lights are warm ACCENTS over it, not the only illumination. A dark base
+## with bright pools reads as a cave -- wrong for a town. Dungeons get the drama via
+## DUNGEON_DARKEN. Slight cool tint so the warm candles pop against it.
+const AMBIENT := Color(0.78, 0.79, 0.85)
+## How much a (non-vault) dungeon drops the ambient below the overworld -- this is
+## where real darkness and light-pool contrast belong, not the hub.
+const DUNGEON_DARKEN := 0.5
 ## Additive over the darkened world; a candle reads as a warm pool without
 ## blowing out the tiles around it.
 const TILE_LIGHT_ENERGY := 2.0
@@ -228,7 +235,7 @@ func _occludes(tile_id: int) -> bool:
 ## The CanvasModulate colour: the base ambient (a third darker in a dungeon),
 ## scaled by the platform ambient multiplier, alpha kept at 1.
 func _ambient_color(dark: bool) -> Color:
-	var c := AMBIENT.darkened(0.33) if dark else AMBIENT
+	var c := AMBIENT.darkened(DUNGEON_DARKEN) if dark else AMBIENT
 	return Color(c.r * _ambient_mul, c.g * _ambient_mul, c.b * _ambient_mul, 1.0)
 
 
