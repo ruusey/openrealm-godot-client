@@ -50,7 +50,7 @@ func _init(content: GameData = null,
 	local = LocalPlayer.new()
 	entities.viewer = func() -> Vector2: return local.centre() if local.is_present() else Vector2.INF
 	movement = MovementPredictor.new(local, tiles)
-	projectiles = ProjectileSystem.new(local, content, clock, entities)
+	projectiles = ProjectileSystem.new(local, content, clock, entities, tiles)
 	particles = ParticleField.new(null if content == null else content.projectiles_art)
 	texts = DamageText.new()
 	chat = ChatLog.new(clock)

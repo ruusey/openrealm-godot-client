@@ -33,15 +33,19 @@ var _shot_counter := 0
 ## simulation needs the roster. Optional: a system built without one simply
 ## leaves those bullets flying straight.
 var _entities: EntityRegistry
+## Terrain, for the wall/prop collision test. Optional: without it bullets don't
+## predict terrain hits and fall back to waiting on the server's Unload.
+var _tiles: TileMapState
 
 
 func _init(player: LocalPlayer, content: GameData,
 		clock: Callable = func() -> int: return Time.get_ticks_msec(),
-		entities: EntityRegistry = null) -> void:
+		entities: EntityRegistry = null, tiles: TileMapState = null) -> void:
 	_player = player
 	_content = content
 	_clock = clock
 	_entities = entities
+	_tiles = tiles
 
 
 func clear() -> void:
@@ -113,9 +117,25 @@ func advance(delta: float) -> void:
 		ProjectileMotion.step(bullet, bullet_scale, now)
 		if _entities != null and ProjectileKind.is_anchored(bullet):
 			ProjectileTracking.anchor(bullet, _entities, _player)
-		if ProjectileMotion.is_expired(bullet, now):
+		if ProjectileMotion.is_expired(bullet, now) or _hits_terrain(bullet):
 			bullets.erase(id)
 	_predict_hits(now)
+
+
+## Mirrors the server's proccessTerrainHit: a bullet that isn't PASS_THROUGH_TERRAIN
+## dies the instant its centre enters a collision-layer tile that has collision (a
+## wall or a solid prop like a tree). Removed locally so a shot stops at the wall
+## instead of sailing through it until the server's Unload arrives a round-trip later.
+func _hits_terrain(bullet: Dictionary) -> bool:
+	if _tiles == null or _content == null:
+		return false
+	if ProjectileKind.has_flag(bullet, ProjectileKind.PASS_THROUGH_TERRAIN):
+		return false
+	var size := float(bullet.get("size", 4))
+	var centre: Vector2 = bullet["pos"] + Vector2(size, size) * 0.5
+	var tile_id := _tiles.tile_at(GameConstants.COLLISION_LAYER,
+		floori(centre.x / GameConstants.TILE_SIZE), floori(centre.y / GameConstants.TILE_SIZE))
+	return tile_id > 0 and _content.tile_has_collision(tile_id)
 
 
 ## Client-side predicted bullet-vs-enemy hits for player shots, mirroring the
