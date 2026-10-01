@@ -13,6 +13,10 @@ var client: OpenRealmClient
 var state: RealmState
 var login_screen: LoginScreen
 var config: ClientConfig
+## Set by Main: the handshake prefers this live session token (from an interactive
+## sign-in or a desktop resume) over config.token, so the game server authenticates
+## by token and the password is never needed on a resumed launch.
+var data_service: DataService
 
 var credentials := {}
 
@@ -52,8 +56,11 @@ func can_autoconnect() -> bool:
 
 func _on_connected() -> void:
 	login_screen.set_status("Connected. Authenticating ...")
+	var token := config.token
+	if data_service != null and data_service.token != "":
+		token = data_service.token
 	client.login(credentials["email"], credentials["password"],
-		credentials["character_uuid"], config.token)
+		credentials["character_uuid"], token)
 
 
 func _on_connection_failed(reason: String) -> void:

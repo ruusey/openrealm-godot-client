@@ -15,6 +15,10 @@ const HOW_TO_BUTTON := int(TouchSize.ROW)
 var data_service: DataService
 var game_data: GameData
 var last_email := LastEmail.new()
+## Desktop auto-login: the session token of the last sign-in, reused on launch so
+## the password is not retyped. Path is left empty (a no-op) on web and in tests;
+## Main sets it only on desktop. See resume().
+var saved_session := SavedSession.new()
 
 var _backdrop: LoginBackdrop
 var _form: AccountForm
@@ -72,6 +76,7 @@ func _ready() -> void:
 	column.add_child(_form)
 	_account = SignedInRow.new(func() -> void:
 		data_service.sign_out()
+		saved_session.forget()
 		forget_characters("Signed out."))
 	column.add_child(_account)
 
@@ -127,6 +132,26 @@ func _on_login_pressed() -> void:
 		_terms.ask))
 
 
+## Desktop auto-login: list the account's characters with the saved session token,
+## no password. The data service and game server both accept the session token, so
+## on success the picker opens signed in; on an expired/invalid token the saved
+## session is dropped and the ordinary sign-in form is shown (prefilled email).
+func resume(email: String) -> void:
+	_form.prefill(email, "")
+	_form.set_busy(true)
+	set_status("Signing in as %s ..." % email)
+	var got: Dictionary = await AccountSignIn.characters(data_service)
+	if got["success"]:
+		last_email.save(email)
+		_listed(got)
+	else:
+		saved_session.forget()
+		data_service.sign_out()
+		_form.set_busy(false)
+		_form.visible = true
+		set_status("Saved sign-in expired -- please sign in.")
+
+
 ## Select Character on the death screen: the account again, the session
 ## still held, the fallen one now in the graveyard; sign in only if that fails.
 func return_after_death() -> void:
@@ -145,6 +170,9 @@ func _listed(got: Dictionary) -> void:
 	_form.set_busy(false)
 	if got["success"]:
 		last_email.save(_form.email_text())
+		# Desktop only (path is empty elsewhere): keep the token, not the password,
+		# so the next launch can resume() without a sign-in.
+		saved_session.save(_form.email_text(), data_service.account_guid, data_service.token)
 		_form.visible = false
 		_account.show_for(_form.email_text())
 		_stage.game_data = game_data

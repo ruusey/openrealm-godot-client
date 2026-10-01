@@ -96,9 +96,14 @@ func _ready() -> void:
 	screens.death.dismissed.connect(screens.login.return_after_death)
 	screens.death.quit.connect(screens.login.forget_characters.bind("Signed out."))
 	screens.login.last_email.path = LastEmail.DEFAULT_PATH if config.settings_path != "" else ""
+	# Desktop only: keep the session token for auto-login next launch. Empty (a
+	# no-op) on web -- a shared browser -- and in tests (no settings path).
+	screens.login.saved_session.path = SavedSession.DEFAULT_PATH \
+		if config.settings_path != "" and not OS.has_feature("web") else ""
 	screens.login.prefill(config.email if config.email != "" else screens.login.last_email.read(), config.password)
 
 	session = SessionController.new(client, state, screens.login, config)
+	session.data_service = _data_service   # the handshake prefers the live session token
 	session.entered_realm.connect(_on_entered_realm)
 	session.died.connect(screens.death.fell)
 	input = PlayerInput.new(state, client, _world, game_data)
@@ -213,6 +218,19 @@ func _load_content() -> void:
 
 	if session.can_autoconnect():
 		session.begin(config.email, config.password, config.character_uuid)
+	elif not screens.login.saved_session.read().is_empty():
+		await _resume_saved_session()
+
+
+## Desktop auto-login: reuse the kept session token to list the account's
+## characters without the password. Runs after content loads so the picker shows
+## class names, not ids; an expired token falls back to the sign-in form (resume).
+func _resume_saved_session() -> void:
+	var saved: Dictionary = screens.login.saved_session.read()
+	_data_service.token = saved["token"]
+	_data_service.account_guid = saved["account_guid"]
+	config.token = saved["token"]
+	await screens.login.resume(saved["email"])
 
 
 ## Snap rather than ease, so the first frame in a realm is already framed on
