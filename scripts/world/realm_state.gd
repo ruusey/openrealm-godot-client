@@ -38,6 +38,7 @@ var transition_difficulty := 0.0
 ## What the player has switched on and off; every view reads it from here.
 var settings := GameSettings.new()
 var progress := AccountProgress.new()   # masteries, quests, stars: kept across realms
+var guild := GuildState.new()           # account-wide guild: roster, dialog, invite
 
 var transition_pending: bool:
 	get: return transition.pending
@@ -118,6 +119,14 @@ func apply_packet(name: String, data: Dictionary) -> void:
 			progress.apply(name, data, local.id)
 		"PartyUpdatePacket":
 			party.apply_update(data)
+		"OpenCreateGuildDialogPacket":
+			guild.apply_create_dialog(data, local.id)
+		"GuildInfoPacket":
+			guild.apply_info(data, local.id)
+		"OpenGuildEditorPacket":
+			guild.apply_editor(data)
+		"GuildInvitePacket":
+			guild.apply_invite(data)
 
 
 func advance(delta: float, input: Vector2, latency_ms: float) -> Array:

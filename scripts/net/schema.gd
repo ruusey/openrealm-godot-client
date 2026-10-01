@@ -4,9 +4,8 @@
 #   python3 tools/gen_schema.py <java-src-root>
 #
 # Source tree : /Users/seand/development/openrealm/src
-# Generated   : 2026-09-23 19:59:49Z
-# Packets     : 47
-# Entities    : 20
+# Packets     : 54
+# Entities    : 21
 #
 # Field tuples are [name, wire_type, is_collection]; list order is wire order.
 # Primitive wire types are byte, bool, short, int, long, float and string;
@@ -67,6 +66,13 @@ const PACKET_NAMES := {
 	44: "OpenExchangeMarketPacket",
 	45: "ExchangeItemsPacket",
 	46: "QuestStatePacket",
+	47: "OpenCreateGuildDialogPacket",
+	48: "CreateGuildPacket",
+	49: "GuildInfoPacket",
+	50: "GuildActionPacket",
+	51: "OpenGuildEditorPacket",
+	52: "GuildInvitePacket",
+	53: "GuildInviteResponsePacket",
 	101: "TestPacket",
 }
 
@@ -79,11 +85,16 @@ const PACKET_IDS := {
 	"CompactMovePacket": 25,
 	"ConsumeShardStackPacket": 27,
 	"CreateEffectPacket": 21,
+	"CreateGuildPacket": 48,
 	"DeathAckPacket": 20,
 	"ExchangeItemsPacket": 45,
 	"ForgeDisenchantPacket": 31,
 	"ForgeEnchantPacket": 30,
 	"GlobalPlayerPositionPacket": 23,
+	"GuildActionPacket": 50,
+	"GuildInfoPacket": 49,
+	"GuildInvitePacket": 52,
+	"GuildInviteResponsePacket": 53,
 	"HeartbeatPacket": 5,
 	"HotbarSwapPacket": 39,
 	"InteractTilePacket": 28,
@@ -95,9 +106,11 @@ const PACKET_IDS := {
 	"LoginAckPacket": 22,
 	"MoveItemPacket": 12,
 	"ObjectMovePacket": 3,
+	"OpenCreateGuildDialogPacket": 47,
 	"OpenExchangeMarketPacket": 44,
 	"OpenFameStorePacket": 32,
 	"OpenForgePacket": 29,
+	"OpenGuildEditorPacket": 51,
 	"OpenItemStorePacket": 34,
 	"PartyUpdatePacket": 41,
 	"PlayerDeathPacket": 15,
@@ -163,6 +176,9 @@ const PACKETS := {
 		["tier", "byte", false],
 		["ownerId", "long", false],
 	],
+	"CreateGuildPacket": [
+		["guildName", "string", false],
+	],
 	"DeathAckPacket": [
 	],
 	"ExchangeItemsPacket": [
@@ -183,6 +199,29 @@ const PACKETS := {
 	],
 	"GlobalPlayerPositionPacket": [
 		["players", "NetPlayerPosition", true],
+	],
+	"GuildActionPacket": [
+		["action", "byte", false],
+		["targetName", "string", false],
+	],
+	"GuildInfoPacket": [
+		["playerId", "long", false],
+		["inGuild", "bool", false],
+		["guildId", "string", false],
+		["guildName", "string", false],
+		["yourRank", "byte", false],
+		["canEditHall", "bool", false],
+		["members", "NetGuildMember", true],
+		["openRoster", "bool", false],
+	],
+	"GuildInvitePacket": [
+		["guildId", "string", false],
+		["guildName", "string", false],
+		["inviterName", "string", false],
+	],
+	"GuildInviteResponsePacket": [
+		["guildId", "string", false],
+		["accept", "bool", false],
 	],
 	"HeartbeatPacket": [
 		["timestamp", "long", false],
@@ -237,6 +276,11 @@ const PACKETS := {
 	"ObjectMovePacket": [
 		["movements", "NetObjectMovement", true],
 	],
+	"OpenCreateGuildDialogPacket": [
+		["playerId", "long", false],
+		["accountFame", "long", false],
+		["inGuild", "bool", false],
+	],
 	"OpenExchangeMarketPacket": [
 		["playerId", "long", false],
 	],
@@ -246,6 +290,9 @@ const PACKETS := {
 	],
 	"OpenForgePacket": [
 		["playerId", "long", false],
+	],
+	"OpenGuildEditorPacket": [
+		["token", "string", false],
 	],
 	"OpenItemStorePacket": [
 		["storeKind", "byte", false],
@@ -499,6 +546,10 @@ const ENTITIES := {
 		["itemId", "int", false],
 		["slotIdx", "int", false],
 		["itemUuid", "string", false],
+	],
+	"NetGuildMember": [
+		["name", "string", false],
+		["rank", "byte", false],
 	],
 	"NetInventorySelection": [
 		["playerId", "long", false],
