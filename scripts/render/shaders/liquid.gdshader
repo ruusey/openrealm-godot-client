@@ -5,9 +5,19 @@ shader_type canvas_item;
 // a lava lake moves for free. Water vs lava is told apart from the base pixel
 // (lava reads warm, water cool) so one material covers both. No TEXTURE UV is
 // offset -- that would bleed across the atlas -- the motion is added to the colour.
+//
+// The pattern is driven by WORLD position (MODEL_MATRIX * VERTEX, before the camera
+// transform), not FRAGCOORD, so it stays locked to the terrain and does NOT scroll
+// with the camera.
 
 uniform float water_speed : hint_range(0.0, 6.0) = 1.5;
 uniform float lava_speed : hint_range(0.0, 6.0) = 1.0;
+
+varying vec2 world_pos;
+
+void vertex() {
+	world_pos = (MODEL_MATRIX * vec4(VERTEX, 0.0, 1.0)).xy;
+}
 
 void fragment() {
 	vec4 base = texture(TEXTURE, UV);
@@ -15,8 +25,8 @@ void fragment() {
 		discard;
 	}
 	float warm = clamp((base.r - base.b) * 3.0, 0.0, 1.0);   // lava ~1, water ~0
-	// Screen-space so the pattern is continuous across tile seams (no per-tile grid).
-	vec2 p = FRAGCOORD.xy * 0.04;
+	// World-space (camera-independent), matched to the old screen-space frequency.
+	vec2 p = world_pos * 0.08;
 
 	// Water: moving ripple bands plus a brighter scrolling caustic streak.
 	float ripple = sin(p.x * 1.3 + p.y * 0.7 + TIME * water_speed)
