@@ -14,9 +14,19 @@ extends Control
 ## same `to_screen` transform (the 2D camera's, or the 3D affine projector), so it
 ## works in both render modes with no extra code.
 
-const RADIUS := 4.0
-const FILL := Color(1.0, 0.85, 0.3, 0.85)
-const RING := Color(0.0, 0.0, 0.0, 0.6)
+## A raindrop ripple: concentric rings expanding and fading like a drop hitting
+## water, over a small bright centre -- ported from the legacy web client
+## (renderer.js), whose flat orange dot was hard to pick out. Sizes are world
+## units scaled by the camera zoom, so the ripple reads the same at any zoom.
+const BASE := 11.0
+const RINGS := 3
+const PERIOD := 900.0
+const RING_COLOUR := Color(0.722, 0.761, 0.8)    # 0xb8c2cc
+const CENTRE_COLOUR := Color(0.847, 0.878, 0.91) # 0xd8e0e8
+const CENTRE_RADIUS := 1.6
+
+## The world-to-screen scale of the last place(), so the ripple matches the zoom.
+var _zoom := 1.0
 
 
 func _init() -> void:
@@ -25,8 +35,18 @@ func _init() -> void:
 
 
 func _draw() -> void:
-	draw_circle(Vector2.ZERO, RADIUS + 1.0, RING)
-	draw_circle(Vector2.ZERO, RADIUS, FILL)
+	var time := float(Time.get_ticks_msec())
+	var base := BASE * _zoom
+	for i in RINGS:
+		# Staggered phases so the three rings chase each other outward.
+		var phase := fmod(time / PERIOD + float(i) / float(RINGS), 1.0)
+		var colour := RING_COLOUR
+		colour.a = (1.0 - phase) * 0.6
+		draw_arc(Vector2.ZERO, base * (0.35 + phase * 0.9), 0.0, TAU, 40, colour,
+			maxf(1.0, _zoom), true)
+	var centre := CENTRE_COLOUR
+	centre.a = 0.7
+	draw_circle(Vector2.ZERO, CENTRE_RADIUS * _zoom, centre)
 
 
 ## Places the marker at the melee reach in the aim direction, or hides it when the
@@ -50,6 +70,7 @@ func place(state: RealmState, content: GameData, to_screen: Transform2D, aim: Va
 		visible = false
 		return
 	position = (to_screen * (centre + direction.normalized() * reach)).round()
+	_zoom = maxf(0.1, absf(to_screen.get_scale().x))
 	visible = true
 	queue_redraw()
 
