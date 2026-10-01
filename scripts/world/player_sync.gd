@@ -24,8 +24,13 @@ static func local_class(state: RealmState) -> void:
 static func update(state: RealmState, data: Dictionary) -> void:
 	state.local.apply_update(data)
 	state.abilities.apply_update(data, state.local.id)
-	var entity := state.entities.find(GameConstants.ENTITY_PLAYER, int(data.get("playerId", 0)))
+	var id := int(data.get("playerId", 0))
+	var entity := state.entities.find(GameConstants.ENTITY_PLAYER, id)
 	if entity.is_empty():
+		# The server sends enemy HP as this same stripped update keyed by the enemy
+		# id, so a non-player id is an enemy -- apply its health here, otherwise the
+		# bar only moves on the ~2s full-snapshot reload.
+		_update_enemy(state, id, data)
 		return
 	var stats: Dictionary = data.get("stats", {})
 	entity["max_health"] = int(stats.get("hp", 0))
@@ -40,12 +45,34 @@ static func update(state: RealmState, data: Dictionary) -> void:
 	entity["stars"] = int(data.get("stars", 0))
 
 
+## An enemy's current HP (and max) ride the stripped update keyed by its id; only
+## max comes with the full stats, so keep a sensible denominator when it's absent.
+static func _update_enemy(state: RealmState, id: int, data: Dictionary) -> void:
+	var enemy := state.entities.find(GameConstants.ENTITY_ENEMY, id)
+	if enemy.is_empty():
+		return
+	var max_health := int(data.get("stats", {}).get("hp", 0))
+	if max_health > 0:
+		enemy["max_health"] = max_health
+	enemy["health"] = int(data.get("health", enemy.get("health", 0)))
+
+
 ## HP/MP and statuses apply to the local player and the roster entry alike.
 static func player_state(state: RealmState, data: Dictionary) -> void:
 	state.local.apply_player_state(data)
-	var entity := state.entities.find(GameConstants.ENTITY_PLAYER, int(data.get("playerId", 0)))
-	if not entity.is_empty():
-		entity["health"] = int(data.get("health", 0))
-		entity["mana"] = int(data.get("mana", 0))
+	var id := int(data.get("playerId", 0))
+	var entity := state.entities.find(GameConstants.ENTITY_PLAYER, id)
+	if entity.is_empty():
+		# Enemy HP/effect deltas arrive here too, keyed by the enemy id -- this is the
+		# frequent update that keeps an enemy's health bar live between reloads.
+		entity = state.entities.find(GameConstants.ENTITY_ENEMY, id)
+		if entity.is_empty():
+			return
+		entity["health"] = int(data.get("health", entity.get("health", 0)))
 		entity["effects"] = data.get("effectIds", [])
 		entity["effect_stacks"] = data.get("effectStacks", [])
+		return
+	entity["health"] = int(data.get("health", 0))
+	entity["mana"] = int(data.get("mana", 0))
+	entity["effects"] = data.get("effectIds", [])
+	entity["effect_stacks"] = data.get("effectStacks", [])
