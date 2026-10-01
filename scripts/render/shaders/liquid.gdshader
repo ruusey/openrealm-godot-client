@@ -28,13 +28,11 @@ void fragment() {
 	// World-space (camera-independent), matched to the old screen-space frequency.
 	vec2 p = world_pos * 0.08;
 
-	// Water: moving ripple bands plus a brighter scrolling caustic streak.
+	// Water: the darker moving ripple bands only. (A brighter scrolling caustic
+	// streak used to ride on top but read as distracting, so it's gone.)
 	float ripple = sin(p.x * 1.3 + p.y * 0.7 + TIME * water_speed)
 		+ sin(p.x * 0.6 - p.y * 1.1 - TIME * water_speed * 0.7);
-	float caustic = pow(max(sin(p.x - p.y * 0.5 + TIME * water_speed * 1.3), 0.0), 6.0);
-	vec3 water = base.rgb
-		+ 0.14 * ripple * vec3(0.3, 0.6, 1.0)
-		+ 0.35 * caustic * vec3(0.6, 0.9, 1.0);
+	vec3 water = base.rgb + 0.14 * ripple * vec3(0.3, 0.6, 1.0);
 
 	// Lava: strong glow pulse plus moving hot cracks pushing toward yellow.
 	float flow = sin(p.x * 0.8 + TIME * lava_speed) + sin(p.y * 1.2 - TIME * lava_speed * 0.8);
