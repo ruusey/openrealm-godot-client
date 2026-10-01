@@ -164,4 +164,4 @@ func captures_mouse() -> bool:
 		chat, player, prompt, loot, leaderboard, touch].any(func(panel) -> bool: return panel.captures_mouse())
 
 func captures_keyboard() -> bool:
-	return chat.is_typing() or options.capturing()
+	return chat.is_typing() or options.capturing() or guild_dialog.is_typing() or guild_roster.is_typing()

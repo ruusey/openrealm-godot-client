@@ -90,3 +90,8 @@ func _submit(_text: String = "") -> void:
 
 func captures_mouse() -> bool:
 	return visible and _root.get_global_rect().has_point(_root.get_global_mouse_position())
+
+
+## Modal: while the name dialog is open, keystrokes are text, not game input.
+func is_typing() -> bool:
+	return visible

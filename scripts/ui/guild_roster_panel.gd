@@ -119,3 +119,8 @@ func _do_invite() -> void:
 
 func captures_mouse() -> bool:
 	return visible and _root.get_global_rect().has_point(_root.get_global_mouse_position())
+
+
+## Typing an invite name must not leak through as movement / hotkeys.
+func is_typing() -> bool:
+	return visible and _invite_input != null and _invite_input.has_focus()
