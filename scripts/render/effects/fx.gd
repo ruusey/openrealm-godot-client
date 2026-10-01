@@ -89,9 +89,10 @@ static func for_type(kind: int) -> Callable:
 	return Callable()
 
 
-static func ring(canvas: CanvasItem, at: Vector2, radius: float, width_px: float, colour: Color) -> void:
+static func ring(canvas: CanvasItem, at: Vector2, radius: float, width_px: float, colour: Color,
+		segments := 48) -> void:
 	if radius > 0.0 and colour.a > 0.001:
-		canvas.draw_arc(at, radius, 0.0, TAU, 48, colour, width_px * S)
+		canvas.draw_arc(at, radius, 0.0, TAU, segments, colour, width_px * S)
 
 
 static func dot(canvas: CanvasItem, at: Vector2, radius_px: float, colour: Color) -> void:
