@@ -64,7 +64,13 @@ static func claim(bullets: Dictionary, wire: Dictionary, server_id: int, owner_i
 		if local_id >= 0:
 			continue
 		var prediction: Dictionary = bullets[local_id]
-		if prediction.get("server_id", 0) != 0:
+		var claimed := int(prediction.get("server_id", 0))
+		# Already adopted this exact server bullet -- the 2s full-snapshot reconcile
+		# re-sends it, so without this the server copy gets added alongside the
+		# prediction and the shot draws twice (the "duplicated projectile").
+		if claimed == server_id:
+			return true
+		if claimed != 0:
 			continue
 		if absf(angle_difference(prediction["angle"], incoming_angle)) > ANGLE_TOLERANCE:
 			continue
