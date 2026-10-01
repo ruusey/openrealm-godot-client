@@ -23,6 +23,7 @@ var minimap: MinimapPanel
 var player: PlayerHud
 var banner: RealmBanner
 var dialogue: DialoguePrompt
+var tutorial_exit: TutorialExitConfirm
 var trade_request: TradeRequestPopup
 var trade: TradePanel
 var party_invite: PartyInvitePopup
@@ -93,6 +94,8 @@ func build(state: RealmState, game_data: GameData, client: OpenRealmClient,
 	dialogue = DialoguePrompt.new()
 	dialogue.setup(state, game_data)
 	add_child(dialogue)
+	tutorial_exit = TutorialExitConfirm.new()
+	add_child(tutorial_exit)
 	var trade_actions := TradeActions.new(state, client)
 	trade_request = TradeRequestPopup.new()
 	trade_request.setup(state, trade_actions)
@@ -161,7 +164,8 @@ func build(state: RealmState, game_data: GameData, client: OpenRealmClient,
 func captures_mouse() -> bool:
 	return [inventory, abilities, skills, masteries, quests, store, fame, forge, minimap, market, trade,
 		trade_request, party, party_invite, guild_dialog, guild_roster, guild_invite, nearby, options,
-		chat, player, prompt, loot, leaderboard, touch].any(func(panel) -> bool: return panel.captures_mouse())
+		chat, player, prompt, loot, leaderboard, touch, tutorial_exit].any(func(panel) -> bool: return panel.captures_mouse())
 
 func captures_keyboard() -> bool:
-	return chat.is_typing() or options.capturing() or guild_dialog.is_typing() or guild_roster.is_typing()
+	return chat.is_typing() or options.capturing() or guild_dialog.is_typing() \
+		or guild_roster.is_typing() or quests.is_typing()

@@ -12,6 +12,8 @@ extends CanvasLayer
 ## <id>`, the same command a chat line would send.
 
 const HEIGHT_SHARE := 0.8
+const TAB_ACTIVE := 0
+const TAB_COMPLETED := 1
 
 var state: RealmState
 var content: GameData
@@ -22,6 +24,10 @@ var chip: Button
 var _dialog: PanelContainer
 var _stars: Label
 var _cards: VBoxContainer
+var _search: LineEdit
+var _tabs: TabBar
+var _tab := TAB_ACTIVE
+var _query := ""
 var _drawn := -1
 
 
@@ -77,6 +83,17 @@ func _ready() -> void:
 	_stars = HudWidgets.label("", 14, TagStyles.STAR_GOLD)
 	head.add_child(_stars)
 	InventoryLayout.button(head, "Close", close)
+	_search = LineEdit.new()
+	_search.placeholder_text = "Search quests..."
+	_search.clear_button_enabled = true
+	_search.custom_minimum_size = Vector2(QuestCard.WIDTH, 0)
+	_search.text_changed.connect(_on_search_changed)
+	column.add_child(_search)
+	_tabs = TabBar.new()
+	_tabs.add_tab("Active")
+	_tabs.add_tab("Completed")
+	_tabs.tab_changed.connect(_on_tab_changed)
+	column.add_child(_tabs)
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.custom_minimum_size = Vector2(QuestCard.WIDTH + 16, 0)
@@ -98,21 +115,49 @@ func _process(_delta: float) -> void:
 		refresh()
 
 
-## Every card to the server's last snapshot.
+## Every card to the server's last snapshot, filtered to the open tab and
+## matching the search box.
 func refresh() -> void:
 	_drawn = state.progress.version
 	_stars.text = "%d Stars" % state.progress.stars
 	for card in _cards.get_children():
 		_cards.remove_child(card)
 		card.queue_free()
-	var quests := state.progress.sorted_quests()
+	var quests := state.progress.sorted_quests().filter(_in_tab).filter(_matches_query)
 	if quests.is_empty():
-		_cards.add_child(HudWidgets.label("No quests available yet.", 13, QuestCard.MUTED))
+		var empty := "No completed quests yet." if _tab == TAB_COMPLETED else "No active quests."
+		if _query != "":
+			empty = "No quests match \"%s\"." % _query
+		_cards.add_child(HudWidgets.label(empty, 13, QuestCard.MUTED))
 	for quest in quests:
 		_cards.add_child(QuestCard.new(quest, content, act))
 	var scroll := _cards.get_parent() as ScrollContainer
 	scroll.custom_minimum_size.y = minf(_cards.get_combined_minimum_size().y,
 		get_viewport().get_visible_rect().size.y * HEIGHT_SHARE - 60.0)
+
+
+## Completed tab = COMPLETE; Active tab = everything still in play (active or
+## not-yet-accepted).
+func _in_tab(quest: Dictionary) -> bool:
+	var done := AccountProgress.status_of(quest) == AccountProgress.COMPLETE
+	return done if _tab == TAB_COMPLETED else not done
+
+
+func _matches_query(quest: Dictionary) -> bool:
+	if _query == "":
+		return true
+	var hay := "%s %s %s" % [quest.get("name", ""), quest.get("desc", ""), quest.get("cat", "")]
+	return _query in hay.to_lower()
+
+
+func _on_search_changed(text: String) -> void:
+	_query = text.strip_edges().to_lower()
+	_drawn = -1
+
+
+func _on_tab_changed(tab: int) -> void:
+	_tab = tab
+	_drawn = -1
 
 
 ## Accept or abandon, as the server's command.
@@ -137,6 +182,11 @@ func captures_mouse() -> bool:
 		return false
 	var at := chip.get_global_mouse_position()
 	return chip.get_global_rect().has_point(at) or (_dialog.visible and _dialog.get_global_rect().has_point(at))
+
+
+## While the search box holds the keyboard a letter is a letter, not a move.
+func is_typing() -> bool:
+	return _dialog.visible and _search != null and _search.has_focus()
 
 
 ## A key the chat line or the Controls tab consumed never arrives here.

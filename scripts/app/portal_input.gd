@@ -33,8 +33,12 @@ var content: GameData
 var _cooldown := 0.0
 ## Whether the chat line has the keyboard; a key then is a letter.
 var keyboard_captured: Callable = func() -> bool: return false
+## Asked before an exit that leaves the tutorial with quests still open. Given
+## a callback it answers with true (go) or false (stay); the default just goes.
+var confirm_exit: Callable = func(on_result: Callable) -> void: on_result.call(true)
 
 var _held := {}
+var _awaiting_confirm := false
 
 
 func _init(realm_state: RealmState, net_client: OpenRealmClient, game_data: GameData) -> void:
@@ -99,8 +103,20 @@ func to_vault() -> void:
 
 func _transition(portal_id: int, to_vault_flag: int, to_nexus_flag: int,
 		what: String, difficulty := 0.0) -> void:
-	if _cooldown > 0.0 or not client.is_in_game():
+	if _cooldown > 0.0 or not client.is_in_game() or _awaiting_confirm:
 		return
+	if _needs_tutorial_warning():
+		_awaiting_confirm = true
+		confirm_exit.call(func(exit_anyway: bool) -> void:
+			_awaiting_confirm = false
+			if exit_anyway:
+				_do_transition(portal_id, to_vault_flag, to_nexus_flag, what, difficulty))
+		return
+	_do_transition(portal_id, to_vault_flag, to_nexus_flag, what, difficulty)
+
+
+func _do_transition(portal_id: int, to_vault_flag: int, to_nexus_flag: int,
+		what: String, difficulty: float) -> void:
 	_cooldown = COOLDOWN
 	print("[realm] entering %s" % what)
 	client.send("UsePortalPacket", {
@@ -111,6 +127,18 @@ func _transition(portal_id: int, to_vault_flag: int, to_nexus_flag: int,
 	})
 	state.begin_transition(difficulty)
 	client.send("LoginAckPacket", {})
+
+
+## True while standing in the tutorial map with an onboarding (TUTORIAL-category)
+## quest still unfinished.
+func _needs_tutorial_warning() -> bool:
+	if state == null or content == null or not content.maps.is_tutorial(state.tiles.map_id):
+		return false
+	for quest in state.progress.quests:
+		if String(quest.get("cat", "")).to_upper() == "TUTORIAL" \
+				and AccountProgress.status_of(quest) != AccountProgress.COMPLETE:
+			return true
+	return false
 
 
 ## True on the frame the key goes down, not while it is held. Tracked here

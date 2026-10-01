@@ -128,6 +128,8 @@ func _ready() -> void:
 	screens.touch.enable(TouchControls.wanted(config.touch, touchscreen, OS.has_feature), not touchscreen)
 	input.touch_aim = screens.touch.aim_point
 	caster.aim_point = screens.touch.cast_point
+	# Leaving the tutorial with onboarding quests still open asks first.
+	portals.confirm_exit = screens.tutorial_exit.request
 	# The prompt over the bar is the phone's F and Space.
 	screens.prompt.portals = portals
 	screens.prompt.touch = screens.touch.enabled

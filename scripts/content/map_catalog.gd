@@ -36,3 +36,7 @@ func is_nexus(map_id: int) -> bool:
 
 func is_vault(map_id: int) -> bool:
 	return name(map_id).begins_with("Vault")
+
+
+func is_tutorial(map_id: int) -> bool:
+	return name(map_id).begins_with("Tutorial")
