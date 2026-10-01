@@ -36,6 +36,7 @@ const GRAPHICS := {
 	"wall_bands": ["Wall side-bands", true],
 	"lighting": ["Dynamic lighting", true],
 	"bloom": ["Light bloom", true],
+	"animated_liquids": ["Animated water & lava", true],
 	"show_transition_screen": ["Show the realm transition screen", true],
 }
 

@@ -38,6 +38,10 @@ var content: GameData
 ## objects, so in that mode only the base terrain (and its feather blending) is
 ## painted -- otherwise props/walls would appear twice: flat here and standing.
 var ground_only := false
+## When the animated LiquidRenderer is active it draws the base-layer water/lava
+## tiles itself (over this layer, under the props), so the ground omits them and
+## leaves those cells transparent. Toggling it rebuilds the chunks.
+var skip_liquids := false
 var chunks := GroundChunks.new()
 ## What the chunks in view put down, over their own cells: "tiles",
 ## "feathers", "shadows", "bands", "rings", "bottoms".
@@ -57,9 +61,9 @@ func refresh() -> void:
 	# of it is drawn again.
 	if tiles.cleared or _drawn_for.is_empty() or _drawn_for[0] != content:
 		chunks.drop_all()
-	elif _drawn_for[1] != WallBandPass.enabled:
+	elif _drawn_for[1] != WallBandPass.enabled or _drawn_for[2] != skip_liquids:
 		chunks.mark_all()
-	_drawn_for = [content, WallBandPass.enabled]
+	_drawn_for = [content, WallBandPass.enabled, skip_liquids]
 	tiles.cleared = false
 	if not tiles.changed_cells.is_empty():
 		chunks.mark(tiles.changed_cells)
@@ -100,6 +104,9 @@ func paint_cells(canvas: CanvasItem, own: Rect2i) -> Dictionary:
 					continue
 				var tile_id: int = cells[key]
 				if tile_id <= VOID_TILE:
+					continue
+				# The animated liquid layer owns these cells; leave them transparent.
+				if layer == BASE_LAYER and skip_liquids and content.tile_is_liquid(tile_id):
 					continue
 				var rect := Rect2(tile_x * TILE_SIZE, tile_y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
 				if layer == GameConstants.COLLISION_LAYER and BillboardOutlines.is_billboard(content, tile_id):

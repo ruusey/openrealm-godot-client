@@ -26,6 +26,10 @@ var ready := false
 ## shared by the 2D SceneLighting and the 3D view. See light_emitters().
 var _light_emitters := {}
 var _light_emitters_built := false
+## tile id -> true for water/lava tiles, matched by name; the animated LiquidRenderer
+## draws only these. Built once, like _light_emitters.
+var _liquid_tiles := {}
+var _liquid_built := false
 ## tile id -> AtlasTexture, so the per-frame wall/tile passes skip rebuilding a
 ## string atlas key per cell. Populated once content is ready.
 var _tex_by_id := {}
@@ -111,6 +115,21 @@ func tile_has_collision(tile_id: int) -> bool:
 
 func tile_slows(tile_id: int) -> bool:
 	return int(tile_data(tile_id).get("slows", 0)) != 0
+
+
+## Water or lava, matched by tile name -- what the animated liquid layer draws.
+## Cached once the content has loaded (an empty library is never cached, so a
+## lookup during the slow remote load doesn't freeze the set empty).
+func tile_is_liquid(tile_id: int) -> bool:
+	if not _liquid_built:
+		if library.tiles.is_empty():
+			return false
+		_liquid_built = true
+		for id in library.tiles:
+			var lower := tile_name(id).to_lower()
+			if "water" in lower or "lava" in lower:
+				_liquid_tiles[id] = true
+	return _liquid_tiles.has(tile_id)
 
 
 func tile_is_wall(tile_id: int) -> bool:

@@ -20,6 +20,9 @@ var state: RealmState
 var game_data: GameData
 
 var tiles := TileRenderer.new()
+## Animated water/lava, drawn under the ground (which skips those cells); off when
+## the "animated_liquids" setting is off, and then the ground draws them static.
+var liquid := LiquidRenderer.new()
 var entities := EntityRenderer.new()
 var wall_tops := WallOcclusionRenderer.new()
 var particles := ParticleRenderer.new()
@@ -46,9 +49,12 @@ func _ready() -> void:
 	# Controls beside it, which do not zoom, stayed crisp. The desktop honours
 	# the default; the world must not depend on which build honours what.
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	for layer in [tiles, entities, wall_tops, particles, bullets, effects, debug]:
+	# Liquid sits under the ground: the ground leaves its cells transparent, so the
+	# animated water/lava shows through and props/walls on it still draw over it.
+	for layer in [liquid, tiles, entities, wall_tops, particles, bullets, effects, debug]:
 		layer.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		add_child(layer)
+	# Liquid is chunk-cached and animates on the GPU, so it is not redrawn per frame.
 	_redraw_layers = [entities, wall_tops, particles, bullets, effects, debug]
 	_wire()
 
@@ -79,6 +85,13 @@ var draw_stats: Dictionary:
 
 ## Everything that moves, every frame; the ground only where it changed.
 func _process(_delta: float) -> void:
+	# The liquid layer refreshes BEFORE the ground, while tiles.changed_cells is
+	# still populated (the ground clears it). Off => the ground draws liquids static.
+	var animate_liquids := state != null and state.settings.is_on("animated_liquids")
+	liquid.visible = animate_liquids
+	tiles.skip_liquids = animate_liquids
+	if animate_liquids:
+		liquid.refresh()
 	tiles.refresh()
 	for layer in _redraw_layers:
 		layer.queue_redraw()
@@ -87,6 +100,8 @@ func _process(_delta: float) -> void:
 func _wire() -> void:
 	tiles.state = state
 	tiles.content = game_data
+	liquid.state = state
+	liquid.content = game_data
 	entities.state = state
 	entities.content = game_data
 	wall_tops.state = state
