@@ -14,11 +14,12 @@ extends CanvasLayer
 ## The engine's boot splash is set to this same colour, with a picture of
 ## this screen, so the boot flows into the load with no visible seam.
 const BACKGROUND := Color(0.02, 0.02, 0.04)
+## The game's logo (the executable icon), shown in place of a plain "Loading..." title.
+const LOGO := preload("res://icon.png")
 
 var game_data: GameData
 
 var _dim: ColorRect
-var _title: Label
 var _progress: Label
 
 
@@ -38,7 +39,13 @@ func _ready() -> void:
 	column.set_anchors_preset(Control.PRESET_FULL_RECT)
 	column.alignment = BoxContainer.ALIGNMENT_CENTER
 	_dim.add_child(column)
-	_title = _line(column, "Loading OpenRealm", 24)
+	var logo := TextureRect.new()
+	logo.texture = LOGO
+	logo.custom_minimum_size = Vector2(0, 112)
+	logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	logo.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	column.add_child(logo)
 	_progress = _line(column, "", 14)
 	_progress.modulate = Color(0.7, 0.7, 0.75)
 	_refresh()

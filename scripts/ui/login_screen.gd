@@ -11,6 +11,8 @@ extends CanvasLayer
 signal character_chosen(email: String, password: String, character_uuid: String)
 
 const HOW_TO_BUTTON := int(TouchSize.ROW)
+## The game's logo (the executable icon), shown in place of a plain "OpenRealm" title.
+const LOGO := preload("res://icon.png")
 
 var data_service: DataService
 var game_data: GameData
@@ -62,10 +64,12 @@ func _ready() -> void:
 	var spacer := Control.new()
 	spacer.custom_minimum_size = Vector2(HOW_TO_BUTTON, 0)
 	header.add_child(spacer)
-	var title := Label.new()
-	title.text = "OpenRealm"
-	title.add_theme_font_size_override("font_size", 24)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var title := TextureRect.new()
+	title.texture = LOGO
+	title.custom_minimum_size = Vector2(0, 52)
+	title.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	title.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	title.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title)
 	_how_to_button = HowToPanel.badge(header, HOW_TO_BUTTON, func() -> void: _how_to.open())
