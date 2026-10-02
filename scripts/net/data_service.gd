@@ -64,6 +64,16 @@ func fetch_characters() -> Dictionary:
 	return _finish_characters(true, payload.get("characters", []))
 
 
+## Re-reads the account DTO into `account` (no signals), so an in-game readout can
+## refresh its vault count without disturbing the character-list listeners.
+func refresh_account() -> void:
+	if token == "" or account_guid == "":
+		return
+	var response := await send(HTTPClient.METHOD_GET, "/data/account/%s" % account_guid, "", true)
+	if response["ok"] and response["body"] is Dictionary:
+		account = response["body"]
+
+
 ## How many vault chests the account holds, from the last fetched DTO.
 func chest_count() -> int:
 	var vault: Variant = account.get("playerVault")

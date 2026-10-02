@@ -21,6 +21,7 @@ var market: ExchangeMarketPanel
 var prompt: InteractPrompt
 var minimap: MinimapPanel
 var player: PlayerHud
+var vault: VaultPanel
 var banner: RealmBanner
 var dialogue: DialoguePrompt
 var tutorial_exit: TutorialExitConfirm
@@ -88,6 +89,9 @@ func build(state: RealmState, game_data: GameData, client: OpenRealmClient,
 	player.setup(state, game_data)
 	player.below = minimap.bottom
 	add_child(player)
+	vault = VaultPanel.new()
+	vault.setup(state, game_data, data_service)
+	add_child(vault)
 	banner = RealmBanner.new()
 	banner.setup(state, game_data)
 	add_child(banner)
@@ -164,7 +168,7 @@ func build(state: RealmState, game_data: GameData, client: OpenRealmClient,
 func captures_mouse() -> bool:
 	return [inventory, abilities, skills, masteries, quests, store, fame, forge, minimap, market, trade,
 		trade_request, party, party_invite, guild_dialog, guild_roster, guild_invite, nearby, options,
-		chat, player, prompt, loot, leaderboard, touch, tutorial_exit].any(func(panel) -> bool: return panel.captures_mouse())
+		chat, player, prompt, loot, leaderboard, touch, tutorial_exit, vault].any(func(panel) -> bool: return panel.captures_mouse())
 
 func captures_keyboard() -> bool:
 	return chat.is_typing() or options.capturing() or guild_dialog.is_typing() \
