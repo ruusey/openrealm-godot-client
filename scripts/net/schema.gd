@@ -225,6 +225,7 @@ const PACKETS := {
 	],
 	"HeartbeatPacket": [
 		["timestamp", "long", false],
+		["rttMs", "int", false],
 	],
 	"HotbarSwapPacket": [
 		["slot", "byte", false],

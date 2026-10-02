@@ -169,7 +169,9 @@ func _apply(event: Dictionary) -> void:
 func _send_heartbeat(delta: float) -> void:
 	if state != State.IN_GAME or not _heartbeat.tick(delta):
 		return
-	send("HeartbeatPacket", {"timestamp": int(clock.call())})
+	# rttMs lets the server lag-compensate our shots against the enemy positions we
+	# actually saw; 0 until the first echo measures a round trip.
+	send("HeartbeatPacket", {"timestamp": int(clock.call()), "rttMs": int(stats.round_trip_ms())})
 
 
 func _close(reason: String) -> void:
