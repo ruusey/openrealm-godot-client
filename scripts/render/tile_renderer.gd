@@ -130,6 +130,15 @@ func paint_cells(canvas: CanvasItem, own: Rect2i) -> Dictionary:
 func _draw_tile(canvas: CanvasItem, content: GameData, tile_id: int, rect: Rect2) -> void:
 	var texture := content.tile_texture(tile_id)
 	if texture != null:
+		# Oversized decorations (large trees/bushes) draw at their `size`, centred on the
+		# cell so the canopy spills over the neighbouring cells you can walk under while the
+		# solid trunk stays the centre cell. Ordinary tiles (size == cell) fall through.
+		var render_size := content.tile_render_size(tile_id)
+		if render_size > rect.size.x:
+			var inset := (render_size - rect.size.x) * 0.5
+			canvas.draw_texture_rect(texture,
+				Rect2(rect.position - Vector2(inset, inset), Vector2(render_size, render_size)), false)
+			return
 		# Wall art is 8x16 -- top face above, front face below -- so it draws
 		# cell-wide and aspect-scaled tall, anchored at the cell top, spilling
 		# one cell south over the floor. Layers ascend and rows run north to

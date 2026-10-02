@@ -93,6 +93,16 @@ func tile_render_height(tile_id: int) -> float:
 	return TILE_RENDER_SIZE * (float(height) / float(size))
 
 
+## The square px a tile's sprite is drawn at (tiles.json `size`). Oversized decorations
+## (large trees/bushes) render bigger than the 32px cell and spill over the neighbours you
+## can walk under; the solid trunk stays the centre cell. Defaults to the cell, so ordinary
+## tiles are unchanged.
+func tile_render_size(tile_id: int) -> float:
+	var definition: Dictionary = library.tiles.get(tile_id, {})
+	var drawn := int(definition.get("size", TILE_RENDER_SIZE))
+	return float(drawn) if drawn > 0 else float(TILE_RENDER_SIZE)
+
+
 ## The square top face of a tall wall, or null for anything else. Redrawn
 ## above the entities so a character behind the wall is covered by it while
 ## one standing in front of its south-spilling face is not.
