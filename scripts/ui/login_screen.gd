@@ -16,6 +16,8 @@ const LOGO := preload("res://icon.png")
 
 var data_service: DataService
 var game_data: GameData
+## Set by Main after build so the server picker can retarget the connection.
+var client_config: ClientConfig
 var last_email := LastEmail.new()
 ## Desktop auto-login: the session token of the last sign-in, reused on launch so
 ## the password is not retyped. Path is left empty (a no-op) on web and in tests;
@@ -23,6 +25,7 @@ var last_email := LastEmail.new()
 var saved_session := SavedSession.new()
 
 var _backdrop: LoginBackdrop
+var _server_select: ServerSelect
 var _form: AccountForm
 var _account: SignedInRow
 var _panel: PanelContainer
@@ -74,6 +77,11 @@ func _ready() -> void:
 	header.add_child(title)
 	_how_to_button = HowToPanel.badge(header, HOW_TO_BUTTON, func() -> void: _how_to.open())
 
+	# Server picker above the sign-in fields; applies the choice to the config
+	# the connection reads. Hides itself when /servers is empty/unreachable.
+	_server_select = ServerSelect.new(data_service, _apply_server)
+	column.add_child(_server_select)
+
 	_form = AccountForm.new(data_service)
 	_form.submitted.connect(_on_login_pressed)
 	_form.status_changed.connect(set_status)
@@ -119,6 +127,20 @@ func forget_characters(status: String) -> void:
 	_account.visible = false
 	visible = true
 	set_status(status)
+
+
+## Point the connection at the picked server. On TLS web that means swapping the
+## nginx wss route; on native it's the node's own host:port. Mirrors ServerAddress.
+func _apply_server(server: Dictionary) -> void:
+	if client_config == null:
+		return
+	client_config.websocket = true
+	if client_config.secure:
+		client_config.socket_path = str(server.get("route", client_config.socket_path))
+	else:
+		client_config.host = str(server.get("host", client_config.host))
+		client_config.port = int(server.get("webSocketPort", client_config.port))
+		client_config.socket_path = ""
 
 
 func set_status(text: String, is_error := false) -> void:

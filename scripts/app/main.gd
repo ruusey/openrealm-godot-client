@@ -93,6 +93,7 @@ func _ready() -> void:
 	screens.build(state, game_data, client, _data_service, inventory_actions, caster, shop,
 		forge_actions, _world, chat_actions)
 	add_child(screens)
+	screens.login.client_config = config   # lets the server picker retarget the connection
 	screens.death.dismissed.connect(screens.login.return_after_death)
 	screens.death.quit.connect(screens.login.forget_characters.bind("Signed out."))
 	screens.login.last_email.path = LastEmail.DEFAULT_PATH if config.settings_path != "" else ""
