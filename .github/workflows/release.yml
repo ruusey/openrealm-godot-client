@@ -125,23 +125,38 @@ jobs:
           ls -la build/web build/windows build/linux
 
       # Godot can't embed the Windows .exe icon on a Linux runner (needs rcedit),
-      # so brand it here: rcedit under wine stamps icon.ico onto OpenRealm.exe.
-      # Non-fatal -- a wine/rcedit hiccup ships the default icon rather than
-      # failing the whole release (the web /play build matters most).
+      # so brand it here with rcedit under wine. Non-fatal -- a wine hiccup ships
+      # the default icon rather than failing the whole release (web matters most) --
+      # but we verify the embed and warn loudly if it didn't take.
       - name: Brand Windows .exe icon
         continue-on-error: true
         run: |
           set -uo pipefail
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends wine64 || sudo apt-get install -y --no-install-recommends wine
+          # wine (both archs), imagemagick to rebuild the .ico, icoutils to verify.
+          sudo dpkg --add-architecture i386
+          sudo apt-get install -y --no-install-recommends wine wine64 imagemagick icoutils
+          # Rebuild a clean BMP-based multi-size .ico from the source PNG. rcedit
+          # (and Explorer) can choke on PNG-compressed .ico frames, which is the
+          # most likely reason the committed icon.ico didn't take.
+          ICO=/tmp/openrealm.ico
+          convert icon.png -background none -define icon:auto-resize=256,128,64,48,32,16 "$ICO"
           RCEDIT=/tmp/rcedit-x64.exe
           curl -sSL --retry 5 --retry-all-errors -o "$RCEDIT" \
             https://github.com/electron/rcedit/releases/download/v2.0.0/rcedit-x64.exe
           export WINEDEBUG=-all WINEPREFIX=/tmp/wineprefix
-          if wine64 "$RCEDIT" build/windows/OpenRealm.exe --set-icon icon.ico; then
-            echo "branded OpenRealm.exe with icon.ico"
+          # First wine run initialises the prefix; do it explicitly so --set-icon
+          # doesn't race prefix creation (a common silent-failure cause).
+          wineboot --init || true
+          sleep 8
+          wine64 "$RCEDIT" build/windows/OpenRealm.exe --set-icon "$ICO" \
+            || wine "$RCEDIT" build/windows/OpenRealm.exe --set-icon "$ICO" \
+            || echo "::warning::rcedit invocation failed"
+          # Verify: the branded .exe must now carry a group-icon resource.
+          if wrestool -l build/windows/OpenRealm.exe | grep -qi 'group_icon'; then
+            echo "branded OpenRealm.exe (group_icon present)"
           else
-            echo "::warning::rcedit icon embed failed; shipping default .exe icon"
+            echo "::warning::.exe icon not embedded; shipping default icon"
           fi
 
       - name: Package release zips

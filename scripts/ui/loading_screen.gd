@@ -14,9 +14,6 @@ extends CanvasLayer
 ## The engine's boot splash is set to this same colour, with a picture of
 ## this screen, so the boot flows into the load with no visible seam.
 const BACKGROUND := Color(0.02, 0.02, 0.04)
-## The game's logo (the executable icon), shown in place of a plain "Loading..." title.
-## Runtime load, not preload: a stale/unimported icon must not fail script compile.
-const LOGO_PATH := "res://icon.png"
 
 var game_data: GameData
 
@@ -41,7 +38,7 @@ func _ready() -> void:
 	column.alignment = BoxContainer.ALIGNMENT_CENTER
 	_dim.add_child(column)
 	var logo := TextureRect.new()
-	var logo_texture := load(LOGO_PATH) as Texture2D
+	var logo_texture := HudWidgets.logo_texture()
 	if logo_texture != null:
 		logo.texture = logo_texture
 	logo.custom_minimum_size = Vector2(0, 112)

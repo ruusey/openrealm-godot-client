@@ -17,6 +17,28 @@ const STAR_GOLD := Color("ffd34d")
 ## Cached star textures, keyed by size and colour.
 static var _star_icons := {}
 
+## Cached game logo. Built from the raw PNG bytes (res://logo.bin), NOT the
+## imported res://icon.png: the texture import's .ctex isn't loadable in the
+## web/GL-compat export, so every runtime load of icon.png returned null and the
+## logo showed nowhere. Reading the raw bytes into an ImageTexture sidesteps the
+## importer, so the same file works on web and desktop.
+static var _logo: ImageTexture
+
+
+## The game logo as a texture, or null if the raw asset is missing. Callers must
+## null-check (a missing logo is cosmetic and must never hard-fail).
+static func logo_texture() -> ImageTexture:
+	if _logo != null:
+		return _logo
+	var bytes := FileAccess.get_file_as_bytes("res://logo.bin")
+	if bytes.is_empty():
+		return null
+	var image := Image.new()
+	if image.load_png_from_buffer(bytes) != OK:
+		return null
+	_logo = ImageTexture.create_from_image(image)
+	return _logo
+
 
 ## A gold five-pointed star drawn into a texture, used instead of the U+2605
 ## glyph for the quest-star display: the fallback font renders that glyph as a

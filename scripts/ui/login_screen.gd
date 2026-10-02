@@ -11,10 +11,6 @@ extends CanvasLayer
 signal character_chosen(email: String, password: String, character_uuid: String)
 
 const HOW_TO_BUTTON := int(TouchSize.ROW)
-## The game's logo (the executable icon), shown in place of a plain "OpenRealm" title.
-## Loaded at runtime, not preloaded: a bad/unimported icon must not fail the whole
-## script compile (that took the client down when the icon import went stale).
-const LOGO_PATH := "res://icon.png"
 
 var data_service: DataService
 var game_data: GameData
@@ -70,9 +66,9 @@ func _ready() -> void:
 	spacer.custom_minimum_size = Vector2(HOW_TO_BUTTON, 0)
 	header.add_child(spacer)
 	var title := TextureRect.new()
-	var logo_texture := load(LOGO_PATH) as Texture2D
-	if logo_texture != null:
-		title.texture = logo_texture
+	var logo := HudWidgets.logo_texture()
+	if logo != null:
+		title.texture = logo
 	title.custom_minimum_size = Vector2(0, 52)
 	title.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	title.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
