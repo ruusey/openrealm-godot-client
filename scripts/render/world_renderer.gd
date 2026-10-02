@@ -54,6 +54,15 @@ func _ready() -> void:
 	for layer in [liquid, tiles, entities, wall_tops, particles, bullets, effects, debug]:
 		layer.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		add_child(layer)
+	# Projectiles are bright overlays, not part of the lit scene. Unshaded, each bullet
+	# is ONE draw no matter how many of the dozens of scene lights overlap it -- a screen
+	# full of enemy shots is otherwise bullets x lights shading passes, which tanks the
+	# frame rate even though the bullets emit no light of their own. Also renders them
+	# full-bright so shots stay readable in a dark dungeon (the web client keeps its
+	# bullet layer outside the graded world for the same reason).
+	var unlit := CanvasItemMaterial.new()
+	unlit.light_mode = CanvasItemMaterial.LIGHT_MODE_UNSHADED
+	bullets.material = unlit
 	# Liquid is chunk-cached and animates on the GPU, so it is not redrawn per frame.
 	_redraw_layers = [entities, wall_tops, particles, bullets, effects, debug]
 	_wire()

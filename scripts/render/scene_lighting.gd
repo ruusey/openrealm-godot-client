@@ -163,6 +163,12 @@ func _process(delta: float) -> void:
 ## The nearest light-emitting bullets in flight, one travelling light each,
 ## coloured and sized from the projectile group's data.light.
 func _place_bullet_lights() -> void:
+	# Opt-out sub-toggle of Dynamic lighting: skip the travelling bullet glows (and
+	# their per-frame scan) when the player turns projectile lighting off.
+	if not _state.settings.is_on("projectile_lighting"):
+		for light in _bullet_lights:
+			light.visible = false
+		return
 	var found := []
 	var centre := _state.local.render_centre()
 	for id in _state.projectiles.bullets:
