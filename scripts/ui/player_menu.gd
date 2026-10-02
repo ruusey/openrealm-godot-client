@@ -3,31 +3,42 @@ extends PanelContainer
 
 ## What you can do to a player you clicked: the web client's context
 ## menu, in Godot's own controls -- the name as a header in its role
-## colour, then Trade, Teleport and Invite to Party. Opens where it was
-## asked to and closes on any choice or on a press anywhere else.
+## colour, then Trade, Teleport, Invite to Party and, when your guild rank
+## allows it, Invite to Guild. Opens where it was asked to and closes on any
+## choice or on a press anywhere else.
 
 const INVITE_COLOUR := Color("fff0a0")
+const GUILD_COLOUR := Color("a0d8ff")
 
 var player_name := ""
 
 var _header: Label
-var _actions: Dictionary   # "trade" / "teleport" / "invite" -> Callable
+var _actions: Dictionary   # "trade" / "teleport" / "invite" / "guild" -> Callable
+## Shown only when the local player's rank can invite to their guild; the
+## server re-checks, so this is UX, not the authority.
+var _guild_button: Button
+var _can_guild_invite: Callable
 
 
-func _init(on_trade: Callable, on_teleport: Callable, on_invite: Callable) -> void:
-	_actions = {"trade": on_trade, "teleport": on_teleport, "invite": on_invite}
+func _init(on_trade: Callable, on_teleport: Callable, on_invite: Callable,
+		on_guild_invite: Callable, can_guild_invite: Callable) -> void:
+	_actions = {"trade": on_trade, "teleport": on_teleport, "invite": on_invite,
+		"guild": on_guild_invite}
+	_can_guild_invite = can_guild_invite
 	visible = false
 	var column := InventoryLayout.column(self)
 	_header = InventoryLayout.heading(column, "")
 	_option(column, "trade", "Trade", Color.WHITE)
 	_option(column, "teleport", "Teleport", Color.WHITE)
 	_option(column, "invite", "Invite to Party", INVITE_COLOUR)
+	_guild_button = _option(column, "guild", "Invite to Guild", GUILD_COLOUR)
 
 
 func open_for(name: String, colour: Color, at: Vector2) -> void:
 	player_name = name
 	_header.text = name
 	_header.add_theme_color_override("font_color", colour)
+	_guild_button.visible = _can_guild_invite.is_valid() and _can_guild_invite.call()
 	position = at
 	visible = true
 
@@ -46,7 +57,8 @@ func choose(action: String) -> bool:
 	return _actions[action].call(name)
 
 
-func _option(into: Container, action: String, text: String, colour: Color) -> void:
+func _option(into: Container, action: String, text: String, colour: Color) -> Button:
 	var button := InventoryLayout.button(into, text, func() -> void: choose(action))
 	button.add_theme_color_override("font_color", colour)
 	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	return button

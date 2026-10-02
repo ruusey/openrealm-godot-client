@@ -140,7 +140,7 @@ func capture(scenario: String, output: String, content: GameData) -> bool:
 	options.setup(state.settings, null)
 	stage.add_child(options)
 	var nearby := NearbyPanel.new()
-	nearby.setup(state, content, TradeActions.new(state, null), PartyActions.new(state, null), null, party)
+	nearby.setup(state, content, TradeActions.new(state, null), PartyActions.new(state, null), null, null, party)
 	nearby.shown = scenario == "nearby"
 	stage.add_child(nearby)
 	# Named after the map, so it would be up in every scenario that has a

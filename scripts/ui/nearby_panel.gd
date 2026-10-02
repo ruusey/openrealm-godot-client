@@ -7,7 +7,7 @@ extends CanvasLayer
 ## A row per player -- the class's idle frame and the name in its chat
 ## role's colour, bold for an admin -- with the web's tooltip on hover
 ## (NearbyPlayers.tooltip) and, on a click, the PlayerMenu beside it:
-## trade, teleport, invite to party, each the command the chat could send.
+## trade, teleport, invite to party, and invite to guild when your rank allows.
 ## Rows are rebuilt when who is listed changes, which the web checks every
 ## half second; the list itself is the roster, so nothing polls the
 ## server. Sits under the party panel and moves down when that one shows.
@@ -23,6 +23,7 @@ var content: GameData
 var trade: TradeActions
 var party: PartyActions
 var chat: ChatActions
+var guild: GuildActions
 ## The panel above, whose height decides where this one starts.
 var above: PartyPanel
 ## Off for a scripted render that is about something else.
@@ -37,12 +38,14 @@ var fold: PanelFold
 
 
 func setup(realm_state: RealmState, game_data: GameData, trade_actions: TradeActions,
-		party_actions: PartyActions, chat_actions: ChatActions, party_panel: PartyPanel = null) -> void:
+		party_actions: PartyActions, chat_actions: ChatActions, guild_actions: GuildActions = null,
+		party_panel: PartyPanel = null) -> void:
 	state = realm_state
 	content = game_data
 	trade = trade_actions
 	party = party_actions
 	chat = chat_actions
+	guild = guild_actions
 	above = party_panel
 
 
@@ -67,7 +70,9 @@ func _ready() -> void:
 	menu = PlayerMenu.new(
 		func(name: String) -> bool: return trade != null and trade.request(name),
 		func(name: String) -> bool: return chat != null and chat.say("/tp %s" % name),
-		func(name: String) -> bool: return party != null and party.invite(name))
+		func(name: String) -> bool: return party != null and party.invite(name),
+		func(name: String) -> bool: return guild != null and guild.invite(name),
+		func() -> bool: return state != null and state.guild.can_invite())
 	add_child(menu)
 
 

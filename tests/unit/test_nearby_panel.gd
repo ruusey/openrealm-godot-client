@@ -23,7 +23,8 @@ func before_each():
 	party_panel.setup(state, content, party_actions)
 	add_child_autofree(party_panel)
 	panel = NearbyPanel.new()
-	panel.setup(state, content, TradeActions.new(state, client), party_actions, ChatActions.new(state, client), party_panel)
+	panel.setup(state, content, TradeActions.new(state, client), party_actions,
+		ChatActions.new(state, client), GuildActions.new(state, client, null), party_panel)
 	add_child_autofree(panel)
 
 
@@ -127,6 +128,23 @@ func test_the_menu_opens_on_a_click_and_each_choice_is_the_chats_command():
 	assert_false(panel.menu.choose("invite"), "nothing open")
 	panel.open_menu(state.entities.players[20])
 	assert_false(panel.menu.choose("pvp"), "not a choice here")
+
+
+func test_guild_invite_shows_only_when_your_rank_allows_and_sends_a_guild_action():
+	_in_game()
+	_others(["Mingau"])
+	panel.open_menu(state.entities.players[20])
+	assert_false(panel.menu._guild_button.visible, "not in a guild, no guild invite")
+	panel.menu.close()
+	state.guild.in_guild = true
+	state.guild.your_rank = GuildState.RANK_OWNER
+	panel.open_menu(state.entities.players[20])
+	assert_true(panel.menu._guild_button.visible, "an owner can invite to the guild")
+	assert_true(panel.menu.choose("guild"))
+	var sent := transport.sent_packets().filter(func(p: Dictionary) -> bool: return p["name"] == "GuildActionPacket")
+	assert_eq(sent.size(), 1)
+	assert_eq(int(sent[0]["data"]["action"]), int(GuildActions.Action.INVITE))
+	assert_eq(sent[0]["data"]["targetName"], "Mingau")
 
 
 func test_the_menu_closes_when_its_player_leaves_or_the_panel_hides():

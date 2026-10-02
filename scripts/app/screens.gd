@@ -128,7 +128,7 @@ func build(state: RealmState, game_data: GameData, client: OpenRealmClient,
 	options.setup(state.settings, client)
 	add_child(options)
 	nearby = NearbyPanel.new()
-	nearby.setup(state, game_data, trade_actions, party_actions, chat_actions, party)
+	nearby.setup(state, game_data, trade_actions, party_actions, chat_actions, guild_actions, party)
 	add_child(nearby)
 	inventory.below = nearby.bottom
 	touch = TouchControls.new()
