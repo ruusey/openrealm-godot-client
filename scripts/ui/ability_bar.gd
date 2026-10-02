@@ -13,6 +13,9 @@ const KEYS := ["", "1", "2", "3"]
 const NAME_COLOUR := Color(1.0, 0.85, 0.42)
 const MUTED := Color(0.6, 0.6, 0.65)
 const BODY := Color(0.85, 0.85, 0.88)
+const DAMAGE_COLOUR := Color(0.9, 0.66, 0.4)
+const PIERCE_COLOUR := Color(0.4, 0.66, 1.0)
+const EFFECT_COLOUR := Color(0.56, 0.82, 0.56)
 
 var state: RealmState
 var content: GameData
@@ -114,13 +117,155 @@ func describe(index: int) -> Array:
 	if definition.is_empty():
 		return []
 	var invested: int = state.abilities.invested[slot]
-	var facts := PackedStringArray(["MP %d" % int(definition.get("mpCost", 0)),
-		"Cooldown %.1fs" % (content.abilities.cooldown_ms(id, invested) / 1000.0)])
+	var lines: Array = [[str(definition.get("name", "")), NAME_COLOUR]]
+	var subtitle := "Active - Key %s" % KEYS[index]
+	var tags := _tags_text(definition)
+	if tags != "":
+		subtitle += " - " + tags
+	lines.append([subtitle, MUTED])
+	var description := str(definition.get("description", ""))
+	if description != "":
+		lines.append([description, BODY])
+	lines.append_array(_damage_lines(definition, invested))
+	lines.append([_facts_text(definition, id, invested), MUTED])
+	for effect in definition.get("effects", []):
+		var effect_text := _effect_text(effect)
+		if effect_text != "":
+			lines.append([effect_text, EFFECT_COLOUR])
+	for scaling in definition.get("scalings", []):
+		if str(scaling.get("target", "")).to_upper() == "DAMAGE":
+			continue
+		lines.append([_scaling_text(scaling, invested), MUTED])
+	lines.append(["Level %d/%d" % [invested, content.abilities.cap(id)], MUTED])
+	return lines
+
+
+## Damage total plus the per-stat breakdown that builds it, like the web client:
+## "Damage 162" then "= 90 base +48 (STR) +24 (SPx3)". Empty for a non-damage ability.
+func _damage_lines(definition: Dictionary, invested: int) -> Array:
+	var base := int(definition.get("baseDamage", 0))
+	var total := float(base)
+	var parts := PackedStringArray()
+	if base > 0:
+		parts.append("%d base" % base)
+	for scaling in definition.get("scalings", []):
+		if str(scaling.get("target", "")).to_upper() != "DAMAGE":
+			continue
+		var contribution := _scaling_contribution(scaling, invested)
+		if contribution > 0:
+			total += contribution
+			parts.append("+%d (%s)" % [int(contribution), _stat_label(scaling, invested)])
+	if total <= 0:
+		return []
+	var pierces := _has_tag(definition, "armor_pierce")
+	var header := ("Armor-pierce damage %d" if pierces else "Damage %d") % int(total)
+	var out: Array = [[header, PIERCE_COLOUR if pierces else DAMAGE_COLOUR]]
+	if not parts.is_empty():
+		out.append(["= " + " ".join(parts), MUTED])
+	return out
+
+
+## MP, cooldown, cast time and reach on one line, all point-adjusted.
+func _facts_text(definition: Dictionary, id: int, invested: int) -> String:
+	var facts := PackedStringArray()
+	var mp := int(definition.get("mpCost", 0))
+	if mp > 0:
+		facts.append("MP %d" % mp)
+	facts.append("Cooldown %.1fs" % (content.abilities.cooldown_ms(id, invested) / 1000.0))
+	var cast := content.abilities.cast_ms(id, invested)
+	facts.append("Instant" if cast <= 0 else "Cast %.1fs" % (cast / 1000.0))
 	var reach := int(definition.get("maxCastRange", -1))
-	facts.append("Self" if reach == 0 else "Range %d" % reach)
-	return [[str(definition.get("name", "")), NAME_COLOUR], [" - ".join(facts), MUTED],
-		[str(definition.get("description", "")), BODY],
-		["Level %d/%d" % [invested, content.abilities.cap(id)], MUTED]]
+	facts.append("Self" if reach == 0 else ("Range %d" % reach if reach > 0 else "Ranged"))
+	return " - ".join(facts)
+
+
+## One effect in words: a status and its duration, a heal, a shield, and so on.
+func _effect_text(effect: Dictionary) -> String:
+	var kind := str(effect.get("type", "")).to_upper()
+	var target := _target_text(str(effect.get("target", "")))
+	match kind:
+		"STATUS_APPLY":
+			var duration := float(effect.get("baseDurationMs", 0)) / 1000.0
+			var status := _prettify(str(effect.get("statusId", "")))
+			return "Apply %s%s%s" % [status, (" %.1fs" % duration) if duration > 0 else "", target]
+		"HEAL":
+			return "Heal %d HP%s" % [int(effect.get("baseMagnitude", 0)), target]
+		"SHIELD":
+			return "Shield %d HP%s" % [int(effect.get("baseMagnitude", 0)), target]
+		"CLEANSE":
+			var count := int(effect.get("baseMagnitude", 0))
+			return "Cleanse " + ("all effects" if count <= 0 else "%d effects" % count)
+		"TELEPORT":
+			return "Teleport to target"
+		"REFLECT_PROJECTILE":
+			return "Reflect projectiles x%s" % _number(effect.get("damageMul", 1))
+		"EMPOWER_NEXT_BASIC":
+			return "Empower next basic +%d%%" % int(effect.get("baseMagnitude", 0))
+		"SPAWN_POTIONS":
+			return "Drop %d potions" % int(effect.get("baseMagnitude", 0))
+		_:
+			return ""
+
+
+## A non-damage scaling: "DEX x1.5 -> Radius (+3)".
+func _scaling_text(scaling: Dictionary, invested: int) -> String:
+	var target := _prettify(str(scaling.get("target", "")))
+	var contribution := _scaling_contribution(scaling, invested)
+	var current := " (+%d)" % int(contribution) if contribution > 0 else ""
+	return "%s x%s -> %s%s" % [_stat_label(scaling, invested), _number(scaling.get("coeff", 0)), target, current]
+
+
+## How much a scaling adds right now: the stat (or invested points) times the
+## coefficient. Linear only -- the server's other curves aren't previewed.
+func _scaling_contribution(scaling: Dictionary, invested: int) -> float:
+	return _stat_value(str(scaling.get("stat", "")), invested) * float(scaling.get("coeff", 0))
+
+
+func _stat_value(stat: String, invested: int) -> float:
+	if _is_skill_point_stat(stat):
+		return float(invested)
+	return float(state.local.stats.get(stat.to_lower(), 0))
+
+
+func _stat_label(scaling: Dictionary, invested: int) -> String:
+	var stat := str(scaling.get("stat", ""))
+	return "SPx%d" % invested if _is_skill_point_stat(stat) else stat.to_upper()
+
+
+func _is_skill_point_stat(stat: String) -> bool:
+	var upper := stat.to_upper()
+	return upper == "SKILL_POINTS" or upper == "SKILLPOINTS" or upper == "SP" or upper == "POINTS"
+
+
+func _has_tag(definition: Dictionary, tag: String) -> bool:
+	for entry in definition.get("tags", []):
+		if str(entry) == tag:
+			return true
+	return false
+
+
+func _tags_text(definition: Dictionary) -> String:
+	var tags := PackedStringArray()
+	for entry in definition.get("tags", []):
+		tags.append(str(entry))
+	return ", ".join(tags)
+
+
+func _target_text(target: String) -> String:
+	return "" if target == "" else " to " + _prettify(target).to_lower()
+
+
+## A JSON enum to words: "ENEMIES_HIT" -> "Enemies hit".
+func _prettify(raw: String) -> String:
+	if raw == "":
+		return ""
+	var words := raw.to_lower().replace("_", " ")
+	return words.substr(0, 1).to_upper() + words.substr(1)
+
+
+func _number(value) -> String:
+	var number := float(value)
+	return str(int(number)) if is_equal_approx(number, round(number)) else "%.1f" % number
 
 
 func _on_pressed(index: int) -> void:

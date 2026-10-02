@@ -20,6 +20,7 @@ var shown := false
 var _root: PanelContainer
 var _stats: Label
 var _points: Label
+var _icons: Array = []
 var _names: Array = []
 var _levels: Array = []
 var _buttons: Array = []
@@ -57,7 +58,14 @@ func _ready() -> void:
 	_points = _line(column, "", 12, Color.WHITE)
 	for slot in AbilityCatalog.SLOTS:
 		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
 		column.add_child(row)
+		var icon := TextureRect.new()
+		icon.custom_minimum_size = Vector2(20, 20)
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		row.add_child(icon)
+		_icons.append(icon)
 		_names.append(_line(row, "", 12, Color.WHITE))
 		_names[slot].size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		_levels.append(_line(row, "", 12, MUTED))
@@ -96,6 +104,7 @@ func refresh() -> void:
 		var bound := not definition.is_empty()
 		var level: int = state.abilities.invested[slot]
 		var cap := content.abilities.cap(id)
+		_icons[slot].texture = content.abilities.icon(id) if bound else null
 		_names[slot].text = str(definition.get("name", "")) if bound else "(empty)"
 		_levels[slot].text = "%d/%d" % [level, cap] if bound else ""
 		_buttons[slot].disabled = not (bound and points > 0 and level < cap)
