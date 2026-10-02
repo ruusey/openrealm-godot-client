@@ -117,9 +117,23 @@ func advance(delta: float) -> void:
 		ProjectileMotion.step(bullet, bullet_scale, now)
 		if _entities != null and ProjectileKind.is_anchored(bullet):
 			ProjectileTracking.anchor(bullet, _entities, _player)
-		if ProjectileMotion.is_expired(bullet, now) or _hits_terrain(bullet):
+		if _should_drop_locally(id, bullet, now):
 			bullets.erase(id)
 	_predict_hits(now)
+
+
+## Whether to drop a bullet from the local table on our own, WITHOUT a server Unload.
+## Our OWN shots (local predictions, or player-flagged copies) are predicted for snappy
+## feedback: they expire at max range and stop at walls locally. ENEMY shots are
+## server-authoritative -- only the server's Unload removes them, so the client can never
+## hide a bullet that's still alive on the server and about to hit us (that was the
+## "die to an invisible projectile" bug: client-side terrain-guess / early range-expiry
+## dropped an enemy bullet the server kept flying into the player). A hard 10s lifetime
+## cap stays as a backstop for the rare case an Unload is never delivered.
+func _should_drop_locally(id: int, bullet: Dictionary, now: int) -> bool:
+	if id < 0 or ProjectileKind.is_player_shot(bullet):
+		return ProjectileMotion.is_expired(bullet, now) or _hits_terrain(bullet)
+	return (now - int(bullet.get("created_ms", now))) > ProjectileMotion.MAX_LIFETIME_MS
 
 
 ## Mirrors the server's proccessTerrainHit: a bullet that isn't PASS_THROUGH_TERRAIN
