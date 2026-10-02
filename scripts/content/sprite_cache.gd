@@ -116,6 +116,38 @@ func top_face(sprite_key: String, row: int, col: int, size: int, cell_height: in
 	return slice
 
 
+## The top `fraction` of a cell, for a large decoration's canopy redrawn over the
+## entities. Row stride stays the full cell size (`general` can't express a non-square
+## region at a square stride), the region is the top slice. Null for an empty def.
+func canopy_for(definition: Dictionary, fraction: float, default_size := DEFAULT_SPRITE_SIZE) -> AtlasTexture:
+	if definition.is_empty() or fraction <= 0.0:
+		return null
+	var size := int(definition.get("spriteSize", default_size))
+	if size <= 0:
+		size = default_size
+	var sprite_key := str(definition.get("spriteKey", ""))
+	if sprite_key == "":
+		return null
+	var slice_h := int(round(size * clampf(fraction, 0.01, 1.0)))
+	if slice_h <= 0:
+		return null
+	var row := int(definition.get("row", 0))
+	var col := int(definition.get("col", 0))
+	var key := "canopy:%s:%d:%d:%d:%d" % [sprite_key, row, col, size, slice_h]
+	if _atlases.has(key):
+		return _atlases[key]
+	var sheet := texture(sprite_key)
+	if sheet == null:
+		_atlases[key] = null
+		return null
+	var slice := AtlasTexture.new()
+	slice.atlas = sheet
+	slice.region = Rect2(col * size, row * size, size, slice_h)
+	slice.filter_clip = true
+	_atlases[key] = slice
+	return slice
+
+
 ## `top_face` for the same definition shape `atlas_for` takes.
 func top_face_for(definition: Dictionary, default_size := DEFAULT_SPRITE_SIZE) -> AtlasTexture:
 	if definition.is_empty():

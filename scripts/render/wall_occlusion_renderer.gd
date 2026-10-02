@@ -45,17 +45,18 @@ func _draw() -> void:
 			var tile_id: int = walls.get(Vector2i(tile_x, tile_y), 0)
 			if tile_id <= 0:
 				continue
-			# Large decorations (render bigger than the cell): redraw the canopy over entities.
-			var render_size := content.tile_render_size(tile_id)
-			if render_size > float(size):
-				var canopy := content.tile_texture(tile_id)
+			# Large decorations (render bigger than the cell): redraw the canopy over entities,
+			# from the sprite's top down to the trunk cell's south edge. A character standing
+			# south of that edge (in front of the trunk) overlaps only the un-redrawn bottom
+			# and so draws over it; one behind/under the canopy is covered.
+			var cell_rect := Rect2(tile_x * size, tile_y * size, size, size)
+			var draw_rect := content.tile_render_rect(tile_id, cell_rect)
+			if draw_rect != cell_rect:
+				var cover_h := float(tile_y * size + size) - draw_rect.position.y
+				var canopy := content.tile_canopy(tile_id, cover_h / draw_rect.size.y)
 				if canopy != null:
-					var inset := (render_size - float(size)) * 0.5
-					var origin := Vector2(tile_x * size - inset, tile_y * size - inset)
-					var cover_h := float(tile_y * size + size) - origin.y
-					draw_texture_rect_region(canopy,
-						Rect2(origin, Vector2(render_size, cover_h)),
-						Rect2(Vector2.ZERO, canopy.get_size() * Vector2(1.0, cover_h / render_size)))
+					draw_texture_rect(canopy,
+						Rect2(draw_rect.position, Vector2(draw_rect.size.x, cover_h)), false)
 					drawn += 1
 				continue
 			var face := content.tile_top_face(tile_id)

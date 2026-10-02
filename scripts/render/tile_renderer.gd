@@ -110,7 +110,8 @@ func paint_cells(canvas: CanvasItem, own: Rect2i) -> Dictionary:
 					continue
 				var rect := Rect2(tile_x * TILE_SIZE, tile_y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
 				if layer == GameConstants.COLLISION_LAYER and BillboardOutlines.is_billboard(content, tile_id):
-					billboards.ring(canvas, content.tile_texture(tile_id), rect, own)
+					billboards.ring(canvas, content.tile_texture(tile_id),
+						content.tile_render_rect(tile_id, rect), own)
 				_draw_tile(canvas, content, tile_id, rect)
 				if GroundChunk.counts(own, tile_x, tile_y):
 					drawn += 1
@@ -133,11 +134,9 @@ func _draw_tile(canvas: CanvasItem, content: GameData, tile_id: int, rect: Rect2
 		# Oversized decorations (large trees/bushes) draw at their `size`, centred on the
 		# cell so the canopy spills over the neighbouring cells you can walk under while the
 		# solid trunk stays the centre cell. Ordinary tiles (size == cell) fall through.
-		var render_size := content.tile_render_size(tile_id)
-		if render_size > rect.size.x:
-			var inset := (render_size - rect.size.x) * 0.5
-			canvas.draw_texture_rect(texture,
-				Rect2(rect.position - Vector2(inset, inset), Vector2(render_size, render_size)), false)
+		var draw_rect := content.tile_render_rect(tile_id, rect)
+		if draw_rect != rect:
+			canvas.draw_texture_rect(texture, draw_rect, false)
 			return
 		# Wall art is 8x16 -- top face above, front face below -- so it draws
 		# cell-wide and aspect-scaled tall, anchored at the cell top, spilling

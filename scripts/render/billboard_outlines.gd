@@ -59,7 +59,7 @@ func paint_bottoms(canvas: CanvasItem, tiles: TileMapState, content: GameData,
 			var texture := content.tile_texture(tile_id)
 			if texture == null:
 				continue
-			var rect := Rect2(tile_x * TILE_SIZE, tile_y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
+			var rect := content.tile_render_rect(tile_id, Rect2(tile_x * TILE_SIZE, tile_y * TILE_SIZE, TILE_SIZE, TILE_SIZE))
 			canvas.draw_texture_rect(texture, Rect2(rect.position + below, rect.size), false, SpriteOutline.TINT)
 			canvas.draw_texture_rect(texture, rect, false)
 			if GroundChunk.counts(own, tile_x, tile_y):

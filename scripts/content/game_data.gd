@@ -103,6 +103,24 @@ func tile_render_size(tile_id: int) -> float:
 	return float(drawn) if drawn > 0 else float(TILE_RENDER_SIZE)
 
 
+## The rect a tile's sprite is drawn into: its 32px cell, or a larger square centred on
+## the cell for oversized decorations (large trees). One source of truth so every pass
+## that draws the prop (billboard ring, body, bottom outline) agrees -- mismatched sizes
+## were double-rendering a 32 behind the 64.
+func tile_render_rect(tile_id: int, cell_rect: Rect2) -> Rect2:
+	var drawn := tile_render_size(tile_id)
+	if drawn <= cell_rect.size.x:
+		return cell_rect
+	var inset := (drawn - cell_rect.size.x) * 0.5
+	return Rect2(cell_rect.position - Vector2(inset, inset), Vector2(drawn, drawn))
+
+
+## The top `fraction` of a large decoration's sprite -- its canopy -- redrawn over the
+## entities so a character behind/under it is covered. Null for ordinary tiles.
+func tile_canopy(tile_id: int, fraction: float) -> AtlasTexture:
+	return sprites.canopy_for(library.tiles.get(tile_id, {}), fraction, DEFAULT_TILE_SPRITE_SIZE)
+
+
 ## The square top face of a tall wall, or null for anything else. Redrawn
 ## above the entities so a character behind the wall is covered by it while
 ## one standing in front of its south-spilling face is not.
