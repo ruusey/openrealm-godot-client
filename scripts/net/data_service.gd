@@ -23,6 +23,9 @@ signal character_created(success: bool, result: Variant)
 var base_url := "http://127.0.0.1"
 var account_guid := ""
 var token := ""
+## The last account DTO fetched (fetch_characters / create_chest), so the vault
+## chest count is on hand without a second request.
+var account := {}
 ## Defaults to a real HTTPRequest on first use; tests assign a scripted backend.
 var backend: HttpBackend = null
 
@@ -57,7 +60,30 @@ func fetch_characters() -> Dictionary:
 	var payload = response["body"]
 	if not payload is Dictionary:
 		return _finish_characters(false, [])
+	account = payload
 	return _finish_characters(true, payload.get("characters", []))
+
+
+## How many vault chests the account holds, from the last fetched DTO.
+func chest_count() -> int:
+	var vault: Variant = account.get("playerVault")
+	return vault.size() if vault is Array else 0
+
+
+## Adds a vault chest (POST /chest/new). The service enforces the cap (1 for a
+## guest, 10 otherwise) and returns the updated account, so the readout refreshes
+## from it. Returns {success, result}; result is the service's reason on failure
+## (e.g. "Vault chest limit reached (1 max)").
+func create_chest() -> Dictionary:
+	if token == "" or account_guid == "":
+		return {"success": false, "result": "not signed in"}
+	var response := await send(HTTPClient.METHOD_POST,
+		"/data/account/%s/chest/new" % account_guid, "", true)
+	if not response["ok"]:
+		return {"success": false, "result": response["error"]}
+	if response["body"] is Dictionary:
+		account = response["body"]
+	return {"success": true, "result": response["body"]}
 
 
 ## Adds a character of `class_id` to the account, as both references do:

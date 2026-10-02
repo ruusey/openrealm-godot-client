@@ -31,6 +31,11 @@ var stats_card: CharacterStatsCard
 
 var _characters: VBoxContainer
 var _columns: BoxContainer
+var _vault_label: Label
+var _add_chest_button: Button
+## One add at a time -- rapid clicks each read a stale count, all pass the cap and
+## fire concurrent creates, inflating the display past the cap (the web client's bug).
+var _adding_chest := false
 
 
 func _init(service: DataService = null, content: GameData = null) -> void:
@@ -87,8 +92,45 @@ func _ready() -> void:
 		status_changed.emit("Could not create the character: %s" % reason, true))
 	_columns.add_child(creator)
 
+	# Account-wide vault chest control (shown whenever signed in, even with no
+	# characters): a count readout and an add button, capped server-side.
+	var vault_row := HBoxContainer.new()
+	vault_row.add_theme_constant_override("separation", 12)
+	add_child(vault_row)
+	_vault_label = Label.new()
+	_vault_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vault_row.add_child(_vault_label)
+	_add_chest_button = Button.new()
+	_add_chest_button.text = "Add Chest"
+	_add_chest_button.pressed.connect(_on_add_chest)
+	vault_row.add_child(_add_chest_button)
+
 	get_viewport().size_changed.connect(_fit)
 	_fit.call_deferred()
+
+
+func _refresh_vault() -> void:
+	if _vault_label == null:
+		return
+	_vault_label.text = "Vault Chests: %d" % data_service.chest_count()
+	_add_chest_button.disabled = _adding_chest
+
+
+## Adds a chest through the data service; the server enforces the cap and the new
+## chest appears on the next vault entry. Re-reads the count from the reply.
+func _on_add_chest() -> void:
+	if _adding_chest or data_service == null:
+		return
+	_adding_chest = true
+	_refresh_vault()
+	var result := await data_service.create_chest()
+	_adding_chest = false
+	_refresh_vault()
+	if result["success"]:
+		status_changed.emit("Vault chest added (now %d). Enter your vault to use it."
+			% data_service.chest_count(), false)
+	else:
+		status_changed.emit(str(result["result"]), true)
 
 
 ## Side by side where there is room, stacked on a phone so the class grid
@@ -100,6 +142,7 @@ func _fit() -> void:
 
 func show_account(characters: Array) -> void:
 	visible = true
+	_refresh_vault()
 	_fit()
 	picker.game_data = game_data
 	picker.show_characters(characters)
