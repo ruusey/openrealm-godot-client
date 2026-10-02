@@ -1,7 +1,8 @@
 class_name WallOcclusionRenderer
 extends Node2D
 
-## Redraws each tall wall's top face over the entities, for 2.5D depth.
+## Redraws each tall wall's top face -- and each large decoration's canopy -- over
+## the entities, for 2.5D depth.
 ##
 ## Wall art is 8x16: the upper square is the top face, the lower one the front
 ## face that spills a cell south. The tile pass draws the whole sprite below
@@ -10,13 +11,18 @@ extends Node2D
 ## a character standing in front, overlapping only the front face, still draws
 ## over the wall, because the front face exists only in the pass underneath.
 ##
+## Oversized decorations (large trees, tiles whose `size` exceeds the cell) use the
+## same trick: their trunk is the centre cell, so redrawing the sprite from its top
+## down to that cell's south edge covers a character behind/under the canopy, while
+## one in front (south of the trunk) overlaps only the un-redrawn bottom and draws over.
+##
 ## Its own layer for the same reason the others are: both reference clients
 ## give this pass a container of its own, above the entities and below the
 ## projectiles.
 
 var state: RealmState
 var content: GameData
-## Top faces stamped last frame.
+## Top faces / canopies stamped last frame.
 var drawn := 0
 
 
@@ -38,6 +44,19 @@ func _draw() -> void:
 		for tile_y in range(first.y, last.y + 1):
 			var tile_id: int = walls.get(Vector2i(tile_x, tile_y), 0)
 			if tile_id <= 0:
+				continue
+			# Large decorations (render bigger than the cell): redraw the canopy over entities.
+			var render_size := content.tile_render_size(tile_id)
+			if render_size > float(size):
+				var canopy := content.tile_texture(tile_id)
+				if canopy != null:
+					var inset := (render_size - float(size)) * 0.5
+					var origin := Vector2(tile_x * size - inset, tile_y * size - inset)
+					var cover_h := float(tile_y * size + size) - origin.y
+					draw_texture_rect_region(canopy,
+						Rect2(origin, Vector2(render_size, cover_h)),
+						Rect2(Vector2.ZERO, canopy.get_size() * Vector2(1.0, cover_h / render_size)))
+					drawn += 1
 				continue
 			var face := content.tile_top_face(tile_id)
 			if face == null:
