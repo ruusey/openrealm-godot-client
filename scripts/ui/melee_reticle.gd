@@ -1,8 +1,8 @@
 class_name MeleeReticle
 extends Control
 
-## A small marker hovering in the aim direction at the equipped melee weapon's
-## maximum reach.
+## A small marker that follows the cursor in the aim direction, clamped to the
+## equipped melee weapon's maximum reach.
 ##
 ## A melee swing is an invisible server-side cone (apex at the player centre,
 ## length = the weapon's projectile range x the archetype's rangeMul, matching
@@ -69,7 +69,10 @@ func place(state: RealmState, content: GameData, to_screen: Transform2D, aim: Va
 	if direction.length_squared() < 0.0001:
 		visible = false
 		return
-	position = (to_screen * (centre + direction.normalized() * reach)).round()
+	# Follow the cursor, clamped to the weapon's reach: the marker sits under the aim
+	# point when it's within range and pins to max reach only once the cursor is past it.
+	var distance := minf(direction.length(), reach)
+	position = (to_screen * (centre + direction.normalized() * distance)).round()
 	_zoom = maxf(0.1, absf(to_screen.get_scale().x))
 	visible = true
 	queue_redraw()
