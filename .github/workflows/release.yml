@@ -124,6 +124,26 @@ jobs:
           chmod +x build/linux/OpenRealm.x86_64
           ls -la build/web build/windows build/linux
 
+      # Godot can't embed the Windows .exe icon on a Linux runner (needs rcedit),
+      # so brand it here: rcedit under wine stamps icon.ico onto OpenRealm.exe.
+      # Non-fatal -- a wine/rcedit hiccup ships the default icon rather than
+      # failing the whole release (the web /play build matters most).
+      - name: Brand Windows .exe icon
+        continue-on-error: true
+        run: |
+          set -uo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends wine64 || sudo apt-get install -y --no-install-recommends wine
+          RCEDIT=/tmp/rcedit-x64.exe
+          curl -sSL --retry 5 --retry-all-errors -o "$RCEDIT" \
+            https://github.com/electron/rcedit/releases/download/v2.0.0/rcedit-x64.exe
+          export WINEDEBUG=-all WINEPREFIX=/tmp/wineprefix
+          if wine64 "$RCEDIT" build/windows/OpenRealm.exe --set-icon icon.ico; then
+            echo "branded OpenRealm.exe with icon.ico"
+          else
+            echo "::warning::rcedit icon embed failed; shipping default .exe icon"
+          fi
+
       - name: Package release zips
         run: |
           set -euo pipefail
