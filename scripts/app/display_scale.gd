@@ -26,9 +26,11 @@ extends Node
 const BASE := Vector2i(1280, 720)
 ## The camera's zoom at a world scale of one: two canvas pixels a world unit.
 const WORLD_ZOOM := 2.0
-## The automatic UI scale and world zoom in a browser and the phone app.
-const WEB_UI := 2.0
-const WEB_WORLD := 1.25
+## The automatic UI scale and world zoom in a browser and the phone app: both 1x,
+## the least zoomed-in -- the owner's pick (a 2x UI over a 1.25x world felt far too
+## close). The player can still scale either up from the options.
+const WEB_UI := 1.0
+const WEB_WORLD := 1.0
 
 ## The window to follow. Set by a test; otherwise the one this node is in,
 ## when it is a real one.

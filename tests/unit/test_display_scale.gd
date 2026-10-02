@@ -158,14 +158,14 @@ func test_the_settings_drive_both_scales():
 	display.free()
 
 
-func test_every_page_and_the_phone_app_draw_the_ui_at_2x_and_the_world_at_1_25x():
+func test_every_page_and_the_phone_app_draw_the_ui_and_the_world_at_1x():
 	# A laptop's browser, a 1080p monitor's, a 4K one's and a phone's.
 	for size in [Vector2i(2400, 1500), Vector2i(1920, 1080), Vector2i(3840, 2160), Vector2i(2340, 1080)]:
-		assert_eq(DisplayScale.factor_for(size, 0.0, true), 2.0, "UI 2x at %s" % size)
-		assert_eq(DisplayScale.auto_world(size, true), 1.25, "world 1.25x at %s" % size)
-	assert_almost_eq(DisplayScale.camera_zoom(Vector2i(1920, 1080), 0.0, 0.0, true), 1.25, 0.0001,
-		"the camera: 2 x 1.25 over the UI's 2")
-	assert_almost_eq(DisplayScale.camera_zoom(Vector2i(1920, 1080), 3.0, 0.0, true), 2.0 * 1.25 / 3.0, 0.0001,
+		assert_eq(DisplayScale.factor_for(size, 0.0, true), 1.0, "UI 1x at %s" % size)
+		assert_eq(DisplayScale.auto_world(size, true), 1.0, "world 1x at %s" % size)
+	assert_almost_eq(DisplayScale.camera_zoom(Vector2i(1920, 1080), 0.0, 0.0, true), 2.0, 0.0001,
+		"the camera: 2 x 1 over the UI's 1")
+	assert_almost_eq(DisplayScale.camera_zoom(Vector2i(1920, 1080), 3.0, 0.0, true), 2.0 * 1.0 / 3.0, 0.0001,
 		"a bigger UI, the same world")
 
 
@@ -183,8 +183,8 @@ func test_a_players_choice_beats_the_web_defaults():
 	display.web = true
 	display.window = window
 	display.camera = camera
-	assert_eq(window.content_scale_factor, 2.0)
-	assert_almost_eq(_world_on_screen(window, camera), 2.5, 0.0001, "1.25x auto")
+	assert_eq(window.content_scale_factor, 1.0)
+	assert_almost_eq(_world_on_screen(window, camera), 2.0, 0.0001, "1x auto")
 	display.chosen = 1.5
 	display.world_chosen = 2.0
 	assert_eq(window.content_scale_factor, 1.5)
