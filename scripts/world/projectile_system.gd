@@ -130,10 +130,19 @@ func advance(delta: float) -> void:
 ## "die to an invisible projectile" bug: client-side terrain-guess / early range-expiry
 ## dropped an enemy bullet the server kept flying into the player). A hard 10s lifetime
 ## cap stays as a backstop for the rare case an Unload is never delivered.
-func _should_drop_locally(id: int, bullet: Dictionary, now: int) -> bool:
-	if id < 0 or ProjectileKind.is_player_shot(bullet):
+func _should_drop_locally(_id: int, bullet: Dictionary, now: int) -> bool:
+	if _is_own_shot(bullet):
 		return ProjectileMotion.is_expired(bullet, now) or _hits_terrain(bullet)
 	return (now - int(bullet.get("created_ms", now))) > ProjectileMotion.MAX_LIFETIME_MS
+
+
+## A bullet WE are responsible for: our own local prediction, or one the server attributes
+## to us. NEVER keyed on the id's sign -- server bullet ids are random longs that are often
+## negative, so an enemy bullet routinely has a negative id and must not be taken for ours.
+func _is_own_shot(bullet: Dictionary) -> bool:
+	return bool(bullet.get("predicted", false)) \
+		or int(bullet.get("src_entity_id", 0)) == _player.id \
+		or ProjectileKind.is_player_shot(bullet)
 
 
 ## Mirrors the server's proccessTerrainHit: a bullet that isn't PASS_THROUGH_TERRAIN
@@ -169,8 +178,12 @@ func _predict_hits(now: int) -> void:
 			continue
 		if ProjectileKind.is_homing(bullet):
 			continue
-		# Our own predictions (negative ids) and any player-flagged bullet.
-		if id >= 0 and not ProjectileKind.is_player_shot(bullet):
+		# Only OUR shots get client-side hit prediction; enemy bullets are server-driven.
+		# Keyed on ownership, NOT the id's sign: server bullet ids are random longs and are
+		# frequently negative, so an enemy bullet with a negative id must not be mistaken for
+		# one of ours and consumed the instant it overlaps any enemy (that was the invisible
+		# enemy-shot bug, worst in dense rooms like the castle).
+		if not _is_own_shot(bullet):
 			continue
 		var size := float(bullet.get("size", 4))
 		var radius := size * HIT_RADIUS_FACTOR
