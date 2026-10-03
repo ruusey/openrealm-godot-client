@@ -19,8 +19,10 @@ extends RefCounted
 var _window: JavaScriptObject
 var _connect_cb: JavaScriptObject
 var _sign_cb: JavaScriptObject
+var _buy_cb: JavaScriptObject
 var _on_connect := Callable()
 var _on_sign := Callable()
+var _on_buy := Callable()
 
 
 func _init() -> void:
@@ -29,9 +31,11 @@ func _init() -> void:
 	_window = JavaScriptBridge.get_interface("window")
 	_connect_cb = JavaScriptBridge.create_callback(_connect_result)
 	_sign_cb = JavaScriptBridge.create_callback(_sign_result)
+	_buy_cb = JavaScriptBridge.create_callback(_buy_result)
 	if _window != null:
 		_window.godotPhantomConnected = _connect_cb
 		_window.godotPhantomSigned = _sign_cb
+		_window.godotPhantomBought = _buy_cb
 
 
 ## True only when running on web AND the Phantom extension is present.
@@ -94,6 +98,57 @@ func sign_message(message: String, on_done: Callable) -> void:
 		  }
 		})();
 	""", true)
+
+
+## Builds a SOL transfer of `lamports` from the connected wallet to `recipient`
+## and has Phantom sign + send it on the given RPC. `on_done` gets
+## {"ok": true, "txid": String, "from": String} or {"ok": false, "error": String}.
+## Loads @solana/web3.js from a CDN on first use. The TXID is only a receipt;
+## the server must still verify the transfer on-chain before crediting anything.
+func buy_fame(lamports: int, recipient: String, rpc_url: String, on_done: Callable) -> void:
+	_on_buy = on_done
+	if not OS.has_feature("web") or _window == null:
+		_answer(on_done, {"ok": false, "error": "not a web build"})
+		return
+	_window.godotPhantomRecipient = recipient
+	_window.godotPhantomRpc = rpc_url
+	_window.godotPhantomLamports = lamports
+	JavaScriptBridge.eval("""
+		(async () => {
+		  try {
+			if (!window.solanaWeb3) {
+			  await new Promise((resolve, reject) => {
+				const s = document.createElement('script');
+				s.src = 'https://unpkg.com/@solana/web3.js@1/lib/index.iife.min.js';
+				s.onload = resolve;
+				s.onerror = () => reject(new Error('failed to load web3.js'));
+				document.head.appendChild(s);
+			  });
+			}
+			const web3 = window.solanaWeb3;
+			const p = (window.phantom && window.phantom.solana) || window.solana;
+			if (!p) throw new Error('Phantom not found');
+			if (!p.publicKey) { await p.connect(); }
+			const from = p.publicKey;
+			const to = new web3.PublicKey(window.godotPhantomRecipient);
+			const conn = new web3.Connection(window.godotPhantomRpc, 'confirmed');
+			const tx = new web3.Transaction().add(web3.SystemProgram.transfer({
+			  fromPubkey: from, toPubkey: to, lamports: window.godotPhantomLamports
+			}));
+			tx.feePayer = from;
+			tx.recentBlockhash = (await conn.getLatestBlockhash()).blockhash;
+			const res = await p.signAndSendTransaction(tx);
+			const sig = (res && res.signature) ? res.signature : String(res);
+			window.godotPhantomBought(JSON.stringify({ok: true, txid: sig, from: from.toString()}));
+		  } catch (e) {
+			window.godotPhantomBought(JSON.stringify({ok: false, error: String((e && e.message) || e)}));
+		  }
+		})();
+	""", true)
+
+
+func _buy_result(args: Array) -> void:
+	_answer(_on_buy, _parse(args))
 
 
 func _connect_result(args: Array) -> void:

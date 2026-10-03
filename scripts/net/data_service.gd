@@ -126,6 +126,23 @@ func register(email: String, password: String, account_name: String, guest: bool
 	return {"success": true, "result": response["body"]}
 
 
+## Submits a Solana payment receipt (txid) for a fame purchase. The service
+## verifies the transfer on-chain (recipient, amount, finalized, not-replayed)
+## and credits accountFame, returning the updated account. Returns
+## {success, result}; result is the service's reason on failure.
+func purchase_fame(txid: String, fame: int) -> Dictionary:
+	if token == "" or account_guid == "":
+		return {"success": false, "result": "not signed in"}
+	var body := JSON.stringify({"txid": txid, "fame": fame})
+	var response := await send(HTTPClient.METHOD_POST,
+		"/data/account/%s/fame/purchase" % account_guid, body, true)
+	if not response["ok"]:
+		return {"success": false, "result": response["error"]}
+	if response["body"] is Dictionary:
+		account = response["body"]
+	return {"success": true, "result": response["body"]}
+
+
 ## Drops the session, as the web client's clearSession does: what a
 ## refused Terms of Use leaves behind, so nothing signed in lingers.
 func sign_out() -> void:

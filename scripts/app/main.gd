@@ -152,6 +152,12 @@ func _ready() -> void:
 	# POC: Phantom wallet connect/sign demo, opt-in via ?phantom=1 on the web build.
 	if OS.has_feature("web") and _url_wants_phantom():
 		add_child(PhantomPocOverlay.new())
+	# Buy fame with SOL via Phantom (web only). The data service verifies the
+	# payment on-chain and credits fame.
+	if OS.has_feature("web"):
+		var fame_panel := FamePurchasePanel.new()
+		fame_panel.data_service = _data_service
+		add_child(fame_panel)
 	_load_content()
 
 
