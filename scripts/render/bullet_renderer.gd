@@ -45,24 +45,11 @@ func paint(canvas: CanvasItem, state: RealmState, content: GameData,
 	var drawn := 0
 	outlined = 0
 	afterimaged = 0
-	var diag_own_dict := 0
-	var diag_own_drawn := 0
-	var diag_own_swing := 0
-	var diag_own_hidden := 0
-	var diag_own_offview := 0
 	for id in state.projectiles.bullets:
 		var bullet: Dictionary = state.projectiles.bullets[id]
-		var diag_mine: bool = int(bullet.get("src_entity_id", 0)) == state.local.id
-		if diag_mine:
-			diag_own_dict += 1
 		# The swing animation stands in for a melee arc; both references
 		# deliberately draw no sprite for it.
 		if ProjectileKind.has_flag(bullet, ProjectileKind.MELEE_SWING) or _hidden(state, bullet):
-			if diag_mine:
-				if ProjectileKind.has_flag(bullet, ProjectileKind.MELEE_SWING):
-					diag_own_swing += 1
-				else:
-					diag_own_hidden += 1
 			continue
 
 		var position: Vector2 = bullet["pos"]
@@ -71,12 +58,8 @@ func paint(canvas: CanvasItem, state: RealmState, content: GameData,
 			and ProjectileKind.has_flag(bullet, ProjectileKind.LINE_SEGMENT)
 		# A wall anchored off-screen can still have its body on-screen.
 		if not (view.grow(length) if is_wall else view).has_point(position):
-			if diag_mine:
-				diag_own_offview += 1
 			continue
 		drawn += 1
-		if diag_mine:
-			diag_own_drawn += 1
 
 		var size: float = maxf(float(bullet.get("size", 8)), 4.0)
 		var texture := content.projectile_texture(int(bullet.get("group_id", -1)))
@@ -110,9 +93,6 @@ func paint(canvas: CanvasItem, state: RealmState, content: GameData,
 				BulletAfterimage.stamp(canvas, texture, centre, size, angle, rotation, afterimage)
 				afterimaged += 1
 			_draw_one(canvas, texture, centre, size, rotation, _take_outline())
-	if diag_own_dict >= 6:
-		print("[CLIENT-DIAG-RENDER] own_in_dict=%d drawn=%d swing=%d hidden=%d offview=%d" \
-			% [diag_own_dict, diag_own_drawn, diag_own_swing, diag_own_hidden, diag_own_offview])
 	return drawn
 
 

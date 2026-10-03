@@ -66,23 +66,13 @@ func apply_load(data: Dictionary) -> void:
 	# EMA the round-trip before it drives catch-up, so a lag spike doesn't jerk a
 	# freshly loaded bullet forward.
 	_catchup_latency = _catchup_latency * 0.8 + latency_ms * 0.2
-	var diag_own := 0
-	var diag_dupe := 0
-	var diag_claimed := 0
 	for wire in data.get("bullets", []):
 		var id := int(wire.get("id", 0))
-		var is_mine := int(wire.get("srcEntityId", 0)) == _player.id
-		if is_mine:
-			diag_own += 1
 		if bullets.has(id):
-			if is_mine:
-				diag_dupe += 1
 			continue
 		if ShotPredictor.claim(bullets, wire, id, _player.id):
 			# Already on screen as a prediction; adopting the server copy too
 			# would draw the same bullet twice.
-			if is_mine:
-				diag_claimed += 1
 			continue
 		var bullet := Projectile.from_wire(wire, now)
 		if _entities != null and ProjectileKind.is_anchored(bullet):
@@ -90,9 +80,6 @@ func apply_load(data: Dictionary) -> void:
 		ProjectileMotion.catch_up(bullet, _catchup_latency * 0.5)
 		bullets[id] = bullet
 		_note_shooter(wire)
-	if diag_own >= 6:
-		print("[CLIENT-DIAG] load own=%d dupe=%d claimed=%d dict=%d latency=%d" \
-			% [diag_own, diag_dupe, diag_claimed, bullets.size(), int(latency_ms)])
 
 
 ## A bullet carries the id of whoever fired it, which is the only way a
