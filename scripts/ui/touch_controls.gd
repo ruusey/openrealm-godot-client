@@ -34,6 +34,7 @@ var _move := TouchButtons.stick(STICK_SIZE, TIP_SIZE)
 var _cluster := TouchCluster.new()
 var _menu := TouchMenu.new()
 var _open_chat := Callable()   # the Chat button's; wired by `link`
+var _escape := Callable()      # the Nexus button's; wired by `set_escape`
 var _aim := TouchAim.new()
 
 
@@ -64,6 +65,7 @@ func _ready() -> void:
 	_cluster.bag.connect(func() -> void: inventory.toggle())
 	_cluster.menu.connect(_menu.toggle)
 	_cluster.chat.connect(func() -> void: if _open_chat.is_valid(): _open_chat.call())
+	_cluster.nexus.connect(func() -> void: if _escape.is_valid(): _escape.call())
 	add_child(_cluster)
 	add_child(_menu)
 	# Deferred: DisplayScale answers the same resize, and the canvas's own
@@ -135,6 +137,11 @@ func captures_mouse() -> bool:
 func link(panels: Array, open_chat: Callable) -> void:
 	_menu.set_items(panels)
 	_open_chat = open_chat
+
+
+## What the Nexus (escape to safety) button runs -- PortalInput.to_nexus.
+func set_escape(escape: Callable) -> void:
+	_escape = escape
 
 
 ## Where a basic shot goes: see the header.

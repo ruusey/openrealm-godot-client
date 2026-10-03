@@ -28,6 +28,7 @@ signal drink(hp: bool)
 signal bag
 signal menu
 signal chat
+signal nexus
 
 ## True while the thumb is on Attack.
 var attacking := false
@@ -68,6 +69,8 @@ func _init() -> void:
 	_panels.add_child(TouchButtons.flat("Bag", BUTTON_SIZE, func() -> void: bag.emit()))
 	_panels.add_child(TouchButtons.flat("Menu", BUTTON_SIZE, func() -> void: menu.emit()))
 	_panels.add_child(TouchButtons.flat("Chat", BUTTON_SIZE, func() -> void: chat.emit()))
+	# Escape to safety: no portal to stand on on a phone, so it rides the top row.
+	_panels.add_child(TouchButtons.flat("Nexus", BUTTON_SIZE, func() -> void: nexus.emit()))
 	add_child(_panels)
 
 
