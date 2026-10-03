@@ -47,6 +47,27 @@ static func is_available() -> bool:
 		+ "|| !!(window.solana && window.solana.isPhantom)", true))
 
 
+## A phone browser, where Phantom is an app rather than an injected extension.
+static func is_mobile_web() -> bool:
+	return OS.has_feature("web_android") or OS.has_feature("web_ios")
+
+
+## Mobile browsers don't inject Phantom. Deep-link into the Phantom app's in-app
+## browser loading this same page, where window.solana IS injected and the normal
+## connect/pay flow then works. The query is dropped from the target so the ?ref
+## separator can't be mis-parsed.
+static func open_in_phantom() -> void:
+	if not OS.has_feature("web"):
+		return
+	JavaScriptBridge.eval("""
+		(function () {
+			var target = window.location.origin + window.location.pathname;
+			var ref = window.location.origin;
+			window.location.href = 'https://phantom.app/ul/browse/' + target + '?ref=' + ref;
+		})();
+	""", true)
+
+
 ## Prompts Phantom to connect. `on_done` receives {"ok": bool, "address": String}
 ## or {"ok": false, "error": String}.
 func connect_wallet(on_done: Callable) -> void:

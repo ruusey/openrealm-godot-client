@@ -22,6 +22,7 @@ var _amount: SpinBox
 var _quote: Label
 var _status: Label
 var _buy_btn: Button
+var _open_app_btn: Button
 var _pending := false
 
 
@@ -81,6 +82,14 @@ func _build_modal() -> void:
 	_buy_btn.pressed.connect(_on_buy)
 	box.add_child(_buy_btn)
 
+	# Shown instead of Pay on a phone browser, where Phantom is an app: deep-links
+	# into Phantom's in-app browser where the wallet is injected.
+	_open_app_btn = Button.new()
+	_open_app_btn.text = "Open in Phantom app"
+	_open_app_btn.visible = false
+	_open_app_btn.pressed.connect(PhantomWallet.open_in_phantom)
+	box.add_child(_open_app_btn)
+
 	_status = Label.new()
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_status.custom_minimum_size = Vector2(340, 48)
@@ -97,10 +106,15 @@ func _build_modal() -> void:
 ## Opens the purchase dialog. Wired to the top-row "Add Fame" button by Main.
 func open() -> void:
 	_modal.visible = true
-	if not PhantomWallet.is_available():
-		_status.text = "Phantom not detected. Install the extension and reload."
-	else:
+	var available := PhantomWallet.is_available()
+	_buy_btn.visible = available
+	_open_app_btn.visible = not available and PhantomWallet.is_mobile_web()
+	if available:
 		_status.text = ""
+	elif PhantomWallet.is_mobile_web():
+		_status.text = "On mobile, open this page in the Phantom app to pay."
+	else:
+		_status.text = "Phantom not detected. Install the extension and reload."
 	_update_quote()
 
 
