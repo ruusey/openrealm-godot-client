@@ -29,6 +29,7 @@ signal bag
 signal menu
 signal chat
 signal nexus
+signal add_fame
 
 ## True while the thumb is on Attack.
 var attacking := false
@@ -71,6 +72,10 @@ func _init() -> void:
 	_panels.add_child(TouchButtons.flat("Chat", BUTTON_SIZE, func() -> void: chat.emit()))
 	# Escape to safety: no portal to stand on on a phone, so it rides the top row.
 	_panels.add_child(TouchButtons.flat("Nexus", BUTTON_SIZE, func() -> void: nexus.emit()))
+	# Buy fame with SOL via Phantom -- last in the row, web build only (Phantom is
+	# a browser extension).
+	if OS.has_feature("web"):
+		_panels.add_child(TouchButtons.flat("Add Fame", BUTTON_SIZE, func() -> void: add_fame.emit()))
 	add_child(_panels)
 
 

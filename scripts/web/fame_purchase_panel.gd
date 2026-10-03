@@ -27,11 +27,6 @@ var _pending := false
 
 func _ready() -> void:
 	layer = 55
-	var open_btn := Button.new()
-	open_btn.text = "Add Fame"
-	open_btn.position = Vector2(12, 12)
-	open_btn.pressed.connect(_open)
-	add_child(open_btn)
 	_build_modal()
 
 
@@ -99,7 +94,8 @@ func _build_modal() -> void:
 	_update_quote()
 
 
-func _open() -> void:
+## Opens the purchase dialog. Wired to the top-row "Add Fame" button by Main.
+func open() -> void:
 	_modal.visible = true
 	if not PhantomWallet.is_available():
 		_status.text = "Phantom not detected. Install the extension and reload."
