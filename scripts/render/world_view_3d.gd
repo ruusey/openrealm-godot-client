@@ -102,6 +102,11 @@ const AMBIENT_LIT_ENERGY := 0.9
 ## Inside a (non-vault) dungeon, ambient and sun drop to this fraction -- markedly
 ## darker than the daylit overworld, so a dungeon's torch pools carry real contrast.
 const DUNGEON_DIM := 0.42
+## The overworld/hub is lit too, but the full sun washed out candle/torch pools (you
+## couldn't see them in the nexus), so it's pulled down ~60% -- an evening town rather
+## than flat noon -- while staying a touch above DUNGEON_DIM so it still reads brighter
+## than a dungeon.
+const OVERWORLD_DIM := 0.4
 ## A daytime sun: strong enough to shade the billboards and throw crisp wall shadows.
 const SUN_LIT_ENERGY := 0.6
 ## Wand/staff/tome bullets carry a travelling arcane glow. Kept small so a volley
@@ -754,10 +759,11 @@ func _update_lighting(delta: float, centre: Vector2) -> void:
 				* (1.0 + 0.12 * sin(_light_time * 9.0 + i * 1.7) + 0.06 * sin(_light_time * 23.0 + i))
 
 
-## Dark ambient and a low sun when lit; the old full-bright albedo when off. In a
-## dungeon both drop by DUNGEON_DIM so it reads a third darker.
+## Dark ambient and a low sun when lit; the old full-bright albedo when off. Both
+## drop to OVERWORLD_DIM in the hub/overworld and further to DUNGEON_DIM inside a
+## dungeon, so torch and candle pools carry contrast in either.
 func _apply_lighting(on: bool, dark: bool) -> void:
-	var dim := DUNGEON_DIM if dark else 1.0
+	var dim := DUNGEON_DIM if dark else OVERWORLD_DIM
 	_env.ambient_light_color = AMBIENT_LIT if on else Color.WHITE
 	_env.ambient_light_energy = (AMBIENT_LIT_ENERGY * dim) if on else 1.0
 	_sun.light_energy = (SUN_LIT_ENERGY * dim) if on else 0.0
