@@ -37,8 +37,13 @@ func paint(canvas: CanvasItem, tiles: TileMapState, content: GameData,
 			var tile_id: int = props.get(key, 0)
 			if not _casts(content, tile_id) or _is_liquid(content, ground.get(key, 0)):
 				continue
-			if GroundShadow.under_object(canvas,
-					Vector2(tile_x * TILE_SIZE, tile_y * TILE_SIZE), TILE_SIZE) \
+			# The shadow matches the sprite's drawn footprint: a cell-sized prop gets a
+			# cell-sized shadow; a large decoration (rendered bigger than the cell, centred
+			# on it) gets one scaled up and dropped to its base, not a cell-sized oval
+			# floating partway up the trunk.
+			var draw_rect := content.tile_render_rect(tile_id,
+				Rect2(tile_x * TILE_SIZE, tile_y * TILE_SIZE, TILE_SIZE, TILE_SIZE))
+			if GroundShadow.under_object(canvas, draw_rect.position, draw_rect.size.x) \
 					and GroundChunk.counts(own, tile_x, tile_y):
 				drawn += 1
 	return drawn
