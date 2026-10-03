@@ -121,6 +121,16 @@ static func polar(at: Vector2, angle: float, distance: float) -> Vector2:
 	return at + Vector2(cos(angle), sin(angle)) * distance
 
 
+## The heading a strike came in on: from where the caster stood (`origin`,
+## stamped on the effect when it lands) to where it struck (`pos`). +X when
+## the two coincide -- a self-cast, or an owner we never saw -- so a radial
+## effect still has a stable axis to lean on.
+static func facing(fx: Dictionary) -> Vector2:
+	var from: Vector2 = fx.get("origin", fx["pos"])
+	var span: Vector2 = fx["pos"] - from
+	return span.normalized() if span.length() > 4.0 else Vector2.RIGHT
+
+
 ## The web client rolls Math.random() every frame for its jitter, so a
 ## bolt shivers. Seeded from the effect and a coarse tick of its age, so
 ## it shivers here too but a scripted render draws the same shape twice.

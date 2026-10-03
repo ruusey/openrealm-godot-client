@@ -101,7 +101,7 @@ func apply_packet(name: String, data: Dictionary) -> void:
 		"AbilityCastStartPacket":
 			abilities.apply_cast_start(data, entities, local.id)
 		"CreateEffectPacket":
-			abilities.apply_effect(data)
+			abilities.apply_effect(data, entities, local)
 		"OpenItemStorePacket":
 			store.apply_open(data, local.id)
 		"ItemStoreUpdatePacket":

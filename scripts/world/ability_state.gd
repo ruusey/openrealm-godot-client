@@ -80,14 +80,34 @@ func apply_cast_start(data: Dictionary, entities: EntityRegistry, local_id: int)
 		caster["attack"].begin(target - centre)
 
 
-func apply_effect(data: Dictionary) -> void:
+## The AoE melee visuals land at the strike point and carry no direction on
+## the wire, so the caster's centre is stamped here, once, as `origin` --
+## that is the axis a thrust or a sweep leans on. Snapshotted at landing
+## rather than read each frame so the strike holds its heading as the
+## caster moves on.
+func apply_effect(data: Dictionary, entities: EntityRegistry = null, local: LocalPlayer = null) -> void:
 	var kind := int(data.get("effectType", 0))
 	if kind in PERSISTENT_TYPES:
 		effects = effects.filter(func(fx: Dictionary) -> bool: return fx["type"] != kind)
-	effects.append({"type": kind, "pos": Vector2(data.get("posX", 0.0), data.get("posY", 0.0)),
+	var owner := int(data.get("ownerId", 0))
+	var fx := {"type": kind, "pos": Vector2(data.get("posX", 0.0), data.get("posY", 0.0)),
 		"radius": float(data.get("radius", 0.0)), "duration_ms": int(data.get("duration", 0)),
 		"target": Vector2(data.get("targetPosX", 0.0), data.get("targetPosY", 0.0)),
-		"tier": int(data.get("tier", 0)), "owner": int(data.get("ownerId", 0)), "started": now()})
+		"tier": int(data.get("tier", 0)), "owner": owner, "started": now()}
+	var origin := _caster_centre(owner, entities, local)
+	if origin != Vector2.INF:
+		fx["origin"] = origin
+	effects.append(fx)
+
+
+## Where the caster stands right now, or INF when we cannot place them.
+func _caster_centre(owner: int, entities: EntityRegistry, local: LocalPlayer) -> Vector2:
+	if local != null and owner == local.id:
+		return local.render_centre()
+	if entities != null and entities.players.has(owner):
+		var caster: Dictionary = entities.players[owner]
+		return entities.render_position(caster) + Vector2.ONE * float(caster.get("size", 0)) * 0.5
+	return Vector2.INF
 
 
 ## Drops what has run its course.

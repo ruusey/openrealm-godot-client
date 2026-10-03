@@ -1,39 +1,65 @@
 class_name FxRapierStab
 extends RefCounted
 
-## RAPIER_STAB (53): the Heavy Debuffer's sidearm, a quick silver thrust.
-## Short-lived: four steel-and-white dashes flick out along the axes, a
-## white sparkle at each tip, and a white-and-silver core flash that
-## shrinks away. The web centres it on the effect's position; it has no
-## direction, so neither does this.
+## RAPIER_STAB (53): the Duelist's Sidearm, a fast forward lunge read as a
+## thrust. A thin steel blade drives from the caster out through the strike
+## point across the first 40%, then withdraws as a silver pierce bursts
+## where it landed: a white core, a forward fan of sparks, a thin puncture
+## ring and a couple of armour shards knocked loose (ARMOR_BROKEN). Aimed
+## along the caster-to-strike axis Fx.facing gives it.
 
-const SILVER := Color("e0e6ee")
-const STEEL := Color("8a98a8")
-
-
-static func arm_reach(radius: float, progress: float) -> float:
-	return radius * (0.4 + 0.7 * progress)
+const SILVER := Color("e6ecf4")
+const STEEL := Color("7f8ea0")
+const SHARD := Color("aab4c2")
 
 
-## The core's two discs in web pixels: (white, silver).
-static func core_px(progress: float) -> Vector2:
-	var pulse := 1.0 - progress
-	return Vector2(6.0 + 3.0 * pulse, 10.0 + 4.0 * pulse)
+## The blade's tail and tip offsets along the axis: it drives out through
+## the first 40%, then the tip eases back toward the caster.
+static func blade_span(reach: float, progress: float) -> Vector2:
+	var drive := minf(1.0, progress / 0.4)
+	var withdraw := maxf(0.0, (progress - 0.4) / 0.6)
+	var tip := reach * (0.35 + 0.95 * drive) - reach * 0.75 * withdraw
+	var tail := tip - reach * (0.8 - 0.35 * withdraw)
+	return Vector2(tail, tip)
+
+
+## The pierce's strength: nothing until the blade arrives, a peak at 40%,
+## gone by the end.
+static func pierce(progress: float) -> float:
+	if progress < 0.3:
+		return 0.0
+	return maxf(0.0, 1.0 - (progress - 0.3) / 0.7)
 
 
 static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, _colour: Color, _elapsed_ms: int) -> void:
 	var at: Vector2 = fx["pos"]
+	var dir := Fx.facing(fx)
 	var alpha := 1.0 - progress
-	var reach := arm_reach(fx["radius"], progress)
-	for stroke in [[4.0, Color(STEEL, alpha * 0.85)], [2.0, Color(Color.WHITE, alpha)]]:
-		for i in 4:
-			var angle := i * TAU / 4.0
-			Fx.line(canvas, Fx.polar(at, angle, reach * 0.35), Fx.polar(at, angle, reach), stroke[0], stroke[1])
-	for i in 4:
-		Fx.dot(canvas, Fx.polar(at, i * TAU / 4.0, reach), 3.0 + 2.0 * (1.0 - progress),
-			Color(Color.WHITE, alpha * (1.0 - progress * 0.6)))
-	# The web's order: the white core first, the wider silver over it.
-	var core := core_px(progress)
-	var pulse := 1.0 - progress
-	Fx.dot(canvas, at, core.x, Color(Color.WHITE, alpha * pulse))
-	Fx.dot(canvas, at, core.y, Color(SILVER, alpha * pulse * 0.7))
+	var reach: float = maxf(fx["radius"], 24.0)
+	var span := blade_span(reach, progress)
+	var tail := at + dir * span.x
+	var tip := at + dir * span.y
+	Fx.line(canvas, tail, tip, 5.0, Color(STEEL, alpha * 0.9))
+	Fx.line(canvas, tail, tip, 2.0, Color(Color.WHITE, alpha))
+	Fx.dot(canvas, tip, 2.5, Color(Color.WHITE, alpha))
+	var hit := pierce(progress)
+	if hit > 0.0:
+		Fx.dot(canvas, at, 5.0 + 9.0 * hit, Color(Color.WHITE, hit))
+		Fx.dot(canvas, at, 10.0 + 6.0 * hit, Color(SILVER, hit * 0.6))
+		Fx.ring(canvas, at, reach * (0.25 + 0.85 * (1.0 - hit)), 2.0, Color(SILVER, hit * 0.7))
+		for i in 5:
+			var spark := dir.rotated((i - 2) * 0.3)
+			var length := reach * (0.45 + 0.55 * (1.0 - hit))
+			Fx.line(canvas, at + spark * reach * 0.1, at + spark * length, 1.5, Color(Color.WHITE, hit * 0.9))
+	_shards(canvas, at, dir, reach, progress, alpha)
+
+
+## Three armour chips knocked off the strike and thrown forward, swelling
+## apart and settling as it fades. A fixed scatter, the same every frame.
+static func _shards(canvas: CanvasItem, at: Vector2, dir: Vector2, reach: float, progress: float,
+		alpha: float) -> void:
+	var fall := progress * reach * 0.6
+	for i in 3:
+		var spread := (i - 1) * 0.5
+		var pos := at + dir.rotated(spread) * (reach * 0.2 + fall) + Vector2(0.0, fall * 0.4)
+		Fx.dot(canvas, pos, 2.2, Color(SHARD, alpha * 0.8))
