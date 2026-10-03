@@ -10,8 +10,8 @@ extends CanvasLayer
 ## credits anything itself; the txid is just a receipt the server checks.
 
 const RECIPIENT := "J9ZGigjmaKYcriwvjZGYqeaB9arofYMHtRorZfu3FQJj"
-const LAMPORTS_PER_FAME := 100000  # 0.0001 SOL per fame (1 SOL = 1e9 lamports)
-const SOL_PER_FAME := 0.0001
+const LAMPORTS_PER_FAME := 10000  # 0.00001 SOL per fame (1 SOL = 1e9 lamports)
+const SOL_PER_FAME := 0.00001
 
 ## Set by Main after construction; used to fetch the blockhash + submit the txid.
 var data_service
@@ -128,7 +128,7 @@ func _on_amount_changed(_value: float) -> void:
 
 func _update_quote() -> void:
 	var fame := int(_amount.value)
-	_quote.text = "%d fame  =  %s SOL" % [fame, String.num(fame * SOL_PER_FAME, 4)]
+	_quote.text = "%d fame  =  %s SOL" % [fame, String.num(fame * SOL_PER_FAME, 5)]
 
 
 func _on_buy() -> void:
