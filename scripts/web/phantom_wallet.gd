@@ -54,15 +54,16 @@ static func is_mobile_web() -> bool:
 
 ## Mobile browsers don't inject Phantom. Deep-link into the Phantom app's in-app
 ## browser loading this same page, where window.solana IS injected and the normal
-## connect/pay flow then works. The query is dropped from the target so the ?ref
-## separator can't be mis-parsed.
+## connect/pay flow then works. Phantom's browse link needs the target + ref
+## URL-ENCODED -- a raw URL leaves it unable to parse the page and it just opens
+## the wallet's home screen.
 static func open_in_phantom() -> void:
 	if not OS.has_feature("web"):
 		return
 	JavaScriptBridge.eval("""
 		(function () {
-			var target = window.location.origin + window.location.pathname;
-			var ref = window.location.origin;
+			var target = encodeURIComponent(window.location.origin + window.location.pathname);
+			var ref = encodeURIComponent(window.location.origin);
 			window.location.href = 'https://phantom.app/ul/browse/' + target + '?ref=' + ref;
 		})();
 	""", true)

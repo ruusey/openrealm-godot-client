@@ -31,6 +31,9 @@ const WORLD_ZOOM := 2.0
 ## close). The player can still scale either up from the options.
 const WEB_UI := 1.0
 const WEB_WORLD := 1.0
+## Default UI scale on a phone, where 1x is too small for a thumb. Desktop stays
+## 1x; an explicit Options pick still overrides this.
+const MOBILE_UI := 1.5
 
 ## The window to follow. Set by a test; otherwise the one this node is in,
 ## when it is a real one.
@@ -39,6 +42,9 @@ var window: Window
 var device_scale := 1.0
 ## A page in any browser, or the phone app: WEB_UI and WEB_WORLD apply.
 var web := OS.has_feature("web") or OS.has_feature("android")
+## A phone (browser or app), where the UI defaults to MOBILE_UI rather than 1x.
+var mobile := OS.has_feature("web_android") or OS.has_feature("web_ios") \
+	or OS.has_feature("android") or OS.has_feature("ios")
 ## The player's own scale from the options, or 0 for automatic.
 var chosen := 0.0:
 	set(value):
@@ -135,9 +141,17 @@ func _exit_tree() -> void:
 		window.size_changed.disconnect(_on_resized)
 
 
+## The player's chosen UI scale, or the phone default when they haven't picked one.
+func _effective_ui() -> float:
+	if chosen > 0.0:
+		return chosen
+	return MOBILE_UI if mobile else 0.0
+
+
 func _on_resized() -> void:
 	if window == null:
 		return
-	apply(window, chosen, web)
+	var ui := _effective_ui()
+	apply(window, ui, web)
 	if camera != null:
-		camera.zoom = Vector2.ONE * camera_zoom(window.size, chosen, world_chosen, web)
+		camera.zoom = Vector2.ONE * camera_zoom(window.size, ui, world_chosen, web)
