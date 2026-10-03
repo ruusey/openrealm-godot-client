@@ -60,6 +60,11 @@ const GROUND_VIEWPORT_PX := 2048
 const GROUND_MOVE_STEP := float(TILE) * 4.0
 ## The world span used to fit the overlay's affine projector to the 3D camera.
 const OVERLAY_PROBE := 120.0
+## Exponential rate (1/s) the camera eases toward the player. The follow point is
+## the 64Hz-interpolated player position, whose per-frame step is uneven at an
+## unlocked native frame rate; snapping the camera straight to it showed that as
+## jitter. A fast ease (~35ms half-life) filters the wobble with barely any lag.
+const CAM_FOLLOW_RATE := 20.0
 
 ## Dynamic lighting (the "lighting" setting, shared data.light emitters with the
 ## 2D SceneLighting). Off restores the old full-bright look; on darkens the scene
@@ -67,6 +72,11 @@ const OVERLAY_PROBE := 120.0
 ## How many nearest emitters get an omni and how far out they're gathered are set
 ## per-platform in _max_lights / _light_range below (native lights the whole view).
 const LIGHT_SCAN_EVERY := 10
+## Squared-distance deadband (px^2) favouring a tile that is already lit when the
+## nearest-N pool is re-ranked: it keeps its omni until a dark tile beats it by
+## more than this, so emitters at the Nth-nearest boundary stop flickering on and
+## off as the player moves. ~3 tiles.
+const LIGHT_HYSTERESIS_SQ := (3.0 * float(TILE)) * (3.0 * float(TILE))
 ## How far out emitter tiles are gathered (px), wider than the entity load range
 ## so lava pools past the visible edge still throw light before you reach them.
 const LIGHT_RANGE := ENTITY_RANGE * 1.6
@@ -161,6 +171,11 @@ var _ground_px := 1024 if OS.has_feature("web") else GROUND_VIEWPORT_PX
 var _torch_energy := TORCH_ENERGY * (1.0 if OS.has_feature("web") else 1.5)
 ## Effect target: native renders the cast animations at 2048, web at 1024.
 var _fx_px := 1024 if OS.has_feature("web") else 2048
+## The smoothed point the camera orbits. INF until the first frame, when it snaps
+## to the player; thereafter it eases toward them (see CAM_FOLLOW_RATE).
+var _cam_follow := Vector2(INF, INF)
+## Cells lit by the last light scan, for the hysteresis in _place_lights.
+var _lit_cells := {}
 
 
 func setup(realm_state: RealmState, game_data: GameData) -> void:
@@ -246,7 +261,7 @@ func _process(delta: float) -> void:
 		input.world_mouse = get_ground_point
 	var centre := state.local.render_centre()
 	_rebuild_map_if_changed()
-	_follow_camera(centre)
+	_follow_camera(centre, delta)
 	_backdrop.position = Vector3(centre.x, -2.0, centre.y)
 	var used := _place_entities(centre)
 	for i in range(used, _entities.size()):
@@ -287,8 +302,16 @@ func _unhandled_input(event: InputEvent) -> void:
 		_pitch = clampf(_pitch - PITCH_STEP, PITCH_MIN, PITCH_MAX)
 
 
-func _follow_camera(centre: Vector2) -> void:
-	var target := Vector3(centre.x, 0.0, centre.y)
+func _follow_camera(centre: Vector2, delta: float) -> void:
+	# Ease the orbit point toward the player rather than snapping: the interpolated
+	# follow point advances in uneven per-frame steps at an unlocked frame rate, which
+	# a hard snap renders as camera jitter. Frame-rate independent; snaps on the first
+	# frame (and on any zero/negative delta) so there's no slide-in from the origin.
+	if _cam_follow.x == INF or delta <= 0.0:
+		_cam_follow = centre
+	else:
+		_cam_follow = _cam_follow.lerp(centre, 1.0 - exp(-CAM_FOLLOW_RATE * delta))
+	var target := Vector3(_cam_follow.x, 0.0, _cam_follow.y)
 	var pitch := deg_to_rad(_pitch)
 	var horizontal := CAM_DIST * cos(pitch)
 	var offset := Vector3(sin(_yaw) * horizontal, CAM_DIST * sin(pitch), cos(_yaw) * horizontal)
@@ -345,7 +368,7 @@ func _rebuild_map_if_changed() -> void:
 				wall_set[cell] = true
 			elif layer == COLLISION_LAYER:
 				# Every collision-layer tile stands up as a 2.5D billboard.
-				_add_prop(cell, content.tile_texture(tile_id))
+				_add_prop(cell, tile_id, content.tile_texture(tile_id))
 			# Floor tiles are drawn by the projected ground (_build_projected_ground).
 
 	# Each texture's walls become one face-culled chunk mesh: a run of touching
@@ -359,14 +382,17 @@ func _rebuild_map_if_changed() -> void:
 	_map_built = true
 
 
-func _add_prop(cell: Vector2i, texture: Texture2D) -> void:
+func _add_prop(cell: Vector2i, tile_id: int, texture: Texture2D) -> void:
 	if texture == null or texture.get_width() <= 0:
 		return
-	var height := TILE * float(texture.get_height()) / float(texture.get_width())
+	# Honour the tile's render size (tiles.json `size`) so a large decoration stands as
+	# big in 3D as it draws in 2D, instead of every prop being clamped to one 32px cell.
+	var render := content.tile_render_size(tile_id)
+	var height := render * float(texture.get_height()) / float(texture.get_width())
 	var sprite := _new_billboard()
 	_map_root.add_child(sprite)
 	_configure(sprite, texture, Vector2(cell.x * TILE + TILE * 0.5, cell.y * TILE + TILE * 0.5),
-		height, TILE, TILE, false, Color.WHITE)
+		height, render, render, false, Color.WHITE)
 
 
 func _wall_material_for(texture: Texture2D) -> StandardMaterial3D:
@@ -749,6 +775,8 @@ func _in_dungeon() -> bool:
 
 ## The glowing tiles near the player, nearest first, one omni each.
 func _place_lights(centre: Vector2) -> void:
+	var previously_lit := _lit_cells
+	_lit_cells = {}
 	var emitters := content.light_emitters()
 	var tile := float(TILE)
 	var reach := ceili(_light_range / tile)
@@ -761,7 +789,10 @@ func _place_lights(centre: Vector2) -> void:
 				var kind: Variant = emitters.get(state.tiles.layers[layer].get(cell, -1))
 				if kind != null:
 					var at := Vector2(gx + 0.5, gy + 0.5) * tile
-					found.append([at.distance_squared_to(centre), at, kind])
+					var d := at.distance_squared_to(centre)
+					if previously_lit.has(cell):
+						d -= LIGHT_HYSTERESIS_SQ
+					found.append([d, at, kind, cell])
 	found.sort_custom(func(a, b): return a[0] < b[0])
 	for i in _lights.size():
 		var light := _lights[i]
@@ -769,6 +800,7 @@ func _place_lights(centre: Vector2) -> void:
 		if light.visible:
 			var kind: Dictionary = found[i][2]
 			var at: Vector2 = found[i][1]
+			_lit_cells[found[i][3]] = true
 			light.position = Vector3(at.x, LIGHT_HEIGHT, at.y)
 			light.light_color = kind["color"]
 			light.omni_range = float(kind["radius"]) * tile * LIGHT_REACH_MUL

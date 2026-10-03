@@ -17,6 +17,14 @@ const HIT_RADIUS_FACTOR := 0.4
 ## A non-pierce bullet freezes at impact and lingers this long before the local
 ## fallback removes it, in case the server's Unload is slow.
 const CONSUME_LINGER_MS := 50
+## A LINE_SEGMENT wall is a persistent, server-authoritative hazard removed by the
+## server's Unload, not by travel. The normal 10s enemy-bullet backstop is clocked
+## from receipt (not the server's spawn tick) and short enough to erase a wall the
+## server still keeps in our ledger and damages us with -- an invisible wall it never
+## re-sends. Walls get a far longer backstop so only the Unload normally removes them,
+## while a genuinely lost Unload is still swept up eventually. The server hard-caps a
+## wall's life at 10s, so this never fires during a live one.
+const WALL_FALLBACK_LIFETIME_MS := 30_000
 
 var bullets := {}
 ## Round-trip time, used to fast-forward freshly received bullets.
@@ -133,7 +141,12 @@ func advance(delta: float) -> void:
 func _should_drop_locally(_id: int, bullet: Dictionary, now: int) -> bool:
 	if _is_own_shot(bullet):
 		return ProjectileMotion.is_expired(bullet, now) or _hits_terrain(bullet)
-	return (now - int(bullet.get("created_ms", now))) > ProjectileMotion.MAX_LIFETIME_MS
+	# Persistent walls are removed by the server's Unload, not the short local backstop
+	# (see WALL_FALLBACK_LIFETIME_MS) -- dropping one early left the server damaging us
+	# through a wall it had stopped drawing on our screen and would never re-send.
+	var cap := WALL_FALLBACK_LIFETIME_MS if ProjectileKind.has_flag(bullet, ProjectileKind.LINE_SEGMENT) \
+		else ProjectileMotion.MAX_LIFETIME_MS
+	return (now - int(bullet.get("created_ms", now))) > cap
 
 
 ## A bullet WE are responsible for: our own local prediction, or one the server attributes
