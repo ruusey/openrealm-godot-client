@@ -11,6 +11,13 @@ const DEFAULT_ORBIT_RADIUS := 64.0
 ## Simulation state for a bullet the server told us about.
 static func from_wire(wire: Dictionary, now_ms: int) -> Dictionary:
 	var pos: Dictionary = wire.get("pos", {})
+	# Wire flags arrive as floats; ProjectileKind.has_flag uses a type-strict `in`
+	# (24.0 is not 24), so without this convert a server bullet ignores every flag.
+	# That silently dropped PASS_THROUGH_TERRAIN/ENEMIES on un-predicted own shots
+	# (melee burst volleys), so their bolts got culled on terrain and went missing.
+	var flags: Array = []
+	for flag in wire.get("flags", []):
+		flags.append(int(flag))
 	var bullet := {
 		"id": int(wire.get("id", 0)),
 		# NetBullet.projectileId carries the projectile *group* id, which is
@@ -23,7 +30,7 @@ static func from_wire(wire: Dictionary, now_ms: int) -> Dictionary:
 		"range": float(wire.get("range", 0.0)),
 		"traveled": 0.0,
 		"damage": int(wire.get("damage", 0)),
-		"flags": wire.get("flags", []),
+		"flags": flags,
 		"invert": bool(wire.get("invert", false)),
 		"time_step": float(wire.get("timeStep", 0)),
 		"amplitude": float(wire.get("amplitude", 0)),
