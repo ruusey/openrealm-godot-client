@@ -74,9 +74,14 @@ static func claim(bullets: Dictionary, wire: Dictionary, server_id: int, owner_i
 	var best_diff := ANGLE_TOLERANCE
 	var found := false
 	for local_id in bullets:
-		if local_id >= 0:
-			continue
 		var prediction: Dictionary = bullets[local_id]
+		# ONLY an actual local prediction can be claimed. The id sign is NOT a valid
+		# test: server bullet ids are random longs and are frequently NEGATIVE, so the
+		# old `local_id >= 0` skip treated a previous same-group shot's live bullets as
+		# predictions -- a new volley then "claimed" them and its own bolts never drew
+		# (the missing-projectile bug, worst on rapid fire of a many-bullet weapon).
+		if not bool(prediction.get("predicted", false)):
+			continue
 		if int(prediction.get("group_id", -1)) != incoming_group:
 			continue
 		var claimed := int(prediction.get("server_id", 0))
