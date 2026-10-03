@@ -60,6 +60,15 @@ static func claim(bullets: Dictionary, wire: Dictionary, server_id: int, owner_i
 	if int(wire.get("srcEntityId", 0)) != owner_id:
 		return false
 	var incoming_angle := float(wire.get("angle", 0.0))
+	# Claim the NEAREST-angle unclaimed prediction, not the first one within
+	# tolerance. A volley fires many predictions at once and rapid shots overlap
+	# in the table; first-match let a bullet grab a different shot's prediction at
+	# a similar angle, orphaning the real match -- so bolts went missing and angles
+	# looked random the faster you fired. Nearest-match pairs each server bullet
+	# with its own prediction so the whole fan reconciles 1:1.
+	var best_id := 0
+	var best_diff := ANGLE_TOLERANCE
+	var found := false
 	for local_id in bullets:
 		if local_id >= 0:
 			continue
@@ -72,8 +81,12 @@ static func claim(bullets: Dictionary, wire: Dictionary, server_id: int, owner_i
 			return true
 		if claimed != 0:
 			continue
-		if absf(angle_difference(prediction["angle"], incoming_angle)) > ANGLE_TOLERANCE:
-			continue
-		prediction["server_id"] = server_id
+		var diff := absf(angle_difference(prediction["angle"], incoming_angle))
+		if diff <= best_diff:
+			best_diff = diff
+			best_id = local_id
+			found = true
+	if found:
+		bullets[best_id]["server_id"] = server_id
 		return true
 	return false
