@@ -12,6 +12,11 @@ extends CanvasLayer
 const RECIPIENT := "J9ZGigjmaKYcriwvjZGYqeaB9arofYMHtRorZfu3FQJj"
 const LAMPORTS_PER_FAME := 10000  # 0.00001 SOL per fame (1 SOL = 1e9 lamports)
 const SOL_PER_FAME := 0.00001
+# REALM ($REALM) is a Token-2022 SPL token priced 1:1 with SOL for fame. 6 decimals.
+const REALM_MINT := "GZnAMJ7DSCa3k4FoNNMCrA4ZZdDDE9DZAEvcef5Ypump"
+const REALM_DECIMALS := 6
+const REALM_BASE_UNITS_PER_FAME := 10  # 0.00001 REALM
+const REALM_PER_FAME := 0.00001
 
 ## Set by Main after construction; used to fetch the blockhash + submit the txid.
 var data_service
@@ -19,6 +24,8 @@ var data_service
 var _wallet := PhantomWallet.new()
 var _modal: Control
 var _amount: SpinBox
+var _currency_opt: OptionButton
+var _currency := "SOL"
 var _quote: Label
 var _status: Label
 var _buy_btn: Button
@@ -58,7 +65,7 @@ func _build_modal() -> void:
 	dialog.add_child(box)
 
 	var title := Label.new()
-	title.text = "Buy Fame with SOL"
+	title.text = "Buy Fame with Crypto"
 	box.add_child(title)
 
 	var row := HBoxContainer.new()
@@ -73,6 +80,17 @@ func _build_modal() -> void:
 	_amount.value = 100
 	_amount.value_changed.connect(_on_amount_changed)
 	row.add_child(_amount)
+
+	var pay_row := HBoxContainer.new()
+	box.add_child(pay_row)
+	var pay_lbl := Label.new()
+	pay_lbl.text = "Pay with:"
+	pay_row.add_child(pay_lbl)
+	_currency_opt = OptionButton.new()
+	_currency_opt.add_item("SOL")
+	_currency_opt.add_item("REALM")
+	_currency_opt.item_selected.connect(_on_currency_selected)
+	pay_row.add_child(_currency_opt)
 
 	_quote = Label.new()
 	box.add_child(_quote)
@@ -126,9 +144,15 @@ func _on_amount_changed(_value: float) -> void:
 	_update_quote()
 
 
+func _on_currency_selected(index: int) -> void:
+	_currency = "REALM" if index == 1 else "SOL"
+	_update_quote()
+
+
 func _update_quote() -> void:
 	var fame := int(_amount.value)
-	_quote.text = "%d fame  =  %s SOL" % [fame, String.num(fame * SOL_PER_FAME, 5)]
+	var per := REALM_PER_FAME if _currency == "REALM" else SOL_PER_FAME
+	_quote.text = "%d fame  =  %s %s" % [fame, String.num(fame * per, 5), _currency]
 
 
 func _on_buy() -> void:
@@ -148,7 +172,11 @@ func _on_buy() -> void:
 		_finish("Could not get a blockhash (are you signed in?).")
 		return
 	_status.text = "Approve the transaction in Phantom..."
-	_wallet.buy_fame(fame * LAMPORTS_PER_FAME, RECIPIENT, blockhash, _on_paid.bind(fame))
+	if _currency == "REALM":
+		_wallet.buy_fame_token(fame * REALM_BASE_UNITS_PER_FAME, REALM_MINT, RECIPIENT,
+			REALM_DECIMALS, blockhash, _on_paid.bind(fame))
+	else:
+		_wallet.buy_fame(fame * LAMPORTS_PER_FAME, RECIPIENT, blockhash, _on_paid.bind(fame))
 
 
 func _on_paid(res: Dictionary, fame: int) -> void:
@@ -161,7 +189,7 @@ func _on_paid(res: Dictionary, fame: int) -> void:
 
 
 func _verify(txid: String, fame: int) -> void:
-	var result: Dictionary = await data_service.purchase_fame(txid, fame)
+	var result: Dictionary = await data_service.purchase_fame(txid, fame, _currency)
 	if result.get("success", false):
 		_finish("Success! +%d fame credited." % fame)
 	else:

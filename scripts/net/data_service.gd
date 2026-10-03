@@ -130,10 +130,10 @@ func register(email: String, password: String, account_name: String, guest: bool
 ## verifies the transfer on-chain (recipient, amount, finalized, not-replayed)
 ## and credits accountFame, returning the updated account. Returns
 ## {success, result}; result is the service's reason on failure.
-func purchase_fame(txid: String, fame: int) -> Dictionary:
+func purchase_fame(txid: String, fame: int, currency := "SOL") -> Dictionary:
 	if token == "" or account_guid == "":
 		return {"success": false, "result": "not signed in"}
-	var body := JSON.stringify({"txid": txid, "fame": fame})
+	var body := JSON.stringify({"txid": txid, "fame": fame, "currency": currency})
 	var response := await send(HTTPClient.METHOD_POST,
 		"/data/account/%s/fame/purchase" % account_guid, body, true)
 	if not response["ok"]:

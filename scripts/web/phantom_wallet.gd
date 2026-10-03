@@ -172,6 +172,93 @@ func buy_fame(lamports: int, recipient: String, blockhash: String, on_done: Call
 	""", true)
 
 
+## Transfers `amount` base units of the Token-2022 SPL token `mint` to `recipient`,
+## creating the recipient's associated token account if needed, using a
+## server-provided `blockhash`. Phantom signs + sends. Built from web3.js
+## primitives only (no spl-token lib) to keep the browser dependency to one.
+## Same result shape as buy_fame.
+func buy_fame_token(amount: int, mint: String, recipient: String, decimals: int,
+		blockhash: String, on_done: Callable) -> void:
+	_on_buy = on_done
+	if not OS.has_feature("web") or _window == null:
+		_answer(on_done, {"ok": false, "error": "not a web build"})
+		return
+	if blockhash == "":
+		_answer(on_done, {"ok": false, "error": "no blockhash from server"})
+		return
+	_window.godotPhantomRecipient = recipient
+	_window.godotPhantomMint = mint
+	_window.godotPhantomAmount = amount
+	_window.godotPhantomDecimals = decimals
+	_window.godotPhantomBlockhash = blockhash
+	JavaScriptBridge.eval("""
+		(async () => {
+		  try {
+			if (!window.solanaWeb3) {
+			  await new Promise((resolve, reject) => {
+				const s = document.createElement('script');
+				s.src = 'https://unpkg.com/@solana/web3.js@1/lib/index.iife.min.js';
+				s.onload = resolve;
+				s.onerror = () => reject(new Error('failed to load web3.js'));
+				document.head.appendChild(s);
+			  });
+			}
+			const web3 = window.solanaWeb3;
+			const p = (window.phantom && window.phantom.solana) || window.solana;
+			if (!p) throw new Error('Phantom not found');
+			if (!p.publicKey) { await p.connect(); }
+			const TOKEN = new web3.PublicKey('TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb');
+			const ATA_PROG = new web3.PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL');
+			const SYS = new web3.PublicKey('11111111111111111111111111111111');
+			const from = p.publicKey;
+			const to = new web3.PublicKey(window.godotPhantomRecipient);
+			const mint = new web3.PublicKey(window.godotPhantomMint);
+			const ata = (owner) => web3.PublicKey.findProgramAddressSync(
+			  [owner.toBuffer(), TOKEN.toBuffer(), mint.toBuffer()], ATA_PROG)[0];
+			const fromAta = ata(from);
+			const toAta = ata(to);
+			// Create the recipient's token account if missing (idempotent, sender pays rent).
+			const createIx = new web3.TransactionInstruction({
+			  programId: ATA_PROG,
+			  keys: [
+				{pubkey: from, isSigner: true, isWritable: true},
+				{pubkey: toAta, isSigner: false, isWritable: true},
+				{pubkey: to, isSigner: false, isWritable: false},
+				{pubkey: mint, isSigner: false, isWritable: false},
+				{pubkey: SYS, isSigner: false, isWritable: false},
+				{pubkey: TOKEN, isSigner: false, isWritable: false}
+			  ],
+			  data: new Uint8Array([1])
+			});
+			// TransferChecked: [12][amount u64 LE][decimals u8].
+			const data = new Uint8Array(10);
+			data[0] = 12;
+			let amt = BigInt(window.godotPhantomAmount);
+			for (let i = 0; i < 8; i++) { data[1 + i] = Number(amt & 255n); amt = amt >> 8n; }
+			data[9] = Number(window.godotPhantomDecimals);
+			const transferIx = new web3.TransactionInstruction({
+			  programId: TOKEN,
+			  keys: [
+				{pubkey: fromAta, isSigner: false, isWritable: true},
+				{pubkey: mint, isSigner: false, isWritable: false},
+				{pubkey: toAta, isSigner: false, isWritable: true},
+				{pubkey: from, isSigner: true, isWritable: false}
+			  ],
+			  data: data
+			});
+			const tx = new web3.Transaction().add(createIx).add(transferIx);
+			tx.feePayer = from;
+			tx.recentBlockhash = window.godotPhantomBlockhash;
+			const res = await p.signAndSendTransaction(tx);
+			const sig = (res && res.signature) ? res.signature : String(res);
+			window.godotPhantomBought(JSON.stringify({ok: true, txid: sig, from: from.toString()}));
+		  } catch (e) {
+			window.godotPhantomBought(JSON.stringify({ok: false, error: String((e && e.message) || e)}));
+		  }
+		})();
+	""", true)
+
+
 func _buy_result(args: Array) -> void:
 	_answer(_on_buy, _parse(args))
 
