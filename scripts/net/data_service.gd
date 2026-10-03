@@ -143,6 +143,17 @@ func purchase_fame(txid: String, fame: int) -> Dictionary:
 	return {"success": true, "result": response["body"]}
 
 
+## Latest Solana blockhash, proxied by the service so the browser never calls a
+## public RPC directly (api.mainnet-beta 403s dapp traffic). Returns "" on failure.
+func solana_blockhash() -> String:
+	if token == "" or account_guid == "":
+		return ""
+	var response := await send(HTTPClient.METHOD_GET, "/data/solana/blockhash", "", true)
+	if response["ok"] and response["body"] is Dictionary:
+		return str(response["body"].get("blockhash", ""))
+	return ""
+
+
 ## Drops the session, as the web client's clearSession does: what a
 ## refused Terms of Use leaves behind, so nothing signed in lingers.
 func sign_out() -> void:

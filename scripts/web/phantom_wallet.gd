@@ -101,17 +101,21 @@ func sign_message(message: String, on_done: Callable) -> void:
 
 
 ## Builds a SOL transfer of `lamports` from the connected wallet to `recipient`
-## and has Phantom sign + send it on the given RPC. `on_done` gets
+## using a server-provided `blockhash` (so the browser never calls a public RPC,
+## which 403s dapp traffic) and has Phantom sign + send it. `on_done` gets
 ## {"ok": true, "txid": String, "from": String} or {"ok": false, "error": String}.
 ## Loads @solana/web3.js from a CDN on first use. The TXID is only a receipt;
 ## the server must still verify the transfer on-chain before crediting anything.
-func buy_fame(lamports: int, recipient: String, rpc_url: String, on_done: Callable) -> void:
+func buy_fame(lamports: int, recipient: String, blockhash: String, on_done: Callable) -> void:
 	_on_buy = on_done
 	if not OS.has_feature("web") or _window == null:
 		_answer(on_done, {"ok": false, "error": "not a web build"})
 		return
+	if blockhash == "":
+		_answer(on_done, {"ok": false, "error": "no blockhash from server"})
+		return
 	_window.godotPhantomRecipient = recipient
-	_window.godotPhantomRpc = rpc_url
+	_window.godotPhantomBlockhash = blockhash
 	_window.godotPhantomLamports = lamports
 	JavaScriptBridge.eval("""
 		(async () => {
@@ -131,12 +135,11 @@ func buy_fame(lamports: int, recipient: String, rpc_url: String, on_done: Callab
 			if (!p.publicKey) { await p.connect(); }
 			const from = p.publicKey;
 			const to = new web3.PublicKey(window.godotPhantomRecipient);
-			const conn = new web3.Connection(window.godotPhantomRpc, 'confirmed');
 			const tx = new web3.Transaction().add(web3.SystemProgram.transfer({
 			  fromPubkey: from, toPubkey: to, lamports: window.godotPhantomLamports
 			}));
 			tx.feePayer = from;
-			tx.recentBlockhash = (await conn.getLatestBlockhash()).blockhash;
+			tx.recentBlockhash = window.godotPhantomBlockhash;
 			const res = await p.signAndSendTransaction(tx);
 			const sig = (res && res.signature) ? res.signature : String(res);
 			window.godotPhantomBought(JSON.stringify({ok: true, txid: sig, from: from.toString()}));

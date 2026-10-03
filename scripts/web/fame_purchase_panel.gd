@@ -4,20 +4,20 @@ extends CanvasLayer
 ## "Add Fame" — buy in-game fame with SOL via Phantom (web build only).
 ##
 ## Flow: pick an amount, see the SOL quote, pay with Phantom (a SystemProgram
-## transfer to the recipient), then hand the resulting txid to the data service,
+## transfer to the recipient, using a blockhash the data service proxies so the
+## browser never calls a public RPC), then hand the txid to the data service,
 ## which verifies the transfer on-chain and credits the fame. The client never
 ## credits anything itself; the txid is just a receipt the server checks.
 
 const RECIPIENT := "J9ZGigjmaKYcriwvjZGYqeaB9arofYMHtRorZfu3FQJj"
 const LAMPORTS_PER_FAME := 100000  # 0.0001 SOL per fame (1 SOL = 1e9 lamports)
 const SOL_PER_FAME := 0.0001
-const RPC_URL := "https://api.mainnet-beta.solana.com"
 
-## Set by Main after construction; used to submit the txid for verification.
+## Set by Main after construction; used to fetch the blockhash + submit the txid.
 var data_service
 
 var _wallet := PhantomWallet.new()
-var _dialog: PanelContainer
+var _modal: Control
 var _amount: SpinBox
 var _quote: Label
 var _status: Label
@@ -32,18 +32,34 @@ func _ready() -> void:
 	open_btn.position = Vector2(12, 12)
 	open_btn.pressed.connect(_open)
 	add_child(open_btn)
-	_build_dialog()
+	_build_modal()
 
 
-func _build_dialog() -> void:
-	_dialog = PanelContainer.new()
-	_dialog.visible = false
-	_dialog.position = Vector2(12, 48)
-	add_child(_dialog)
+func _build_modal() -> void:
+	# A full-screen dim backdrop with the dialog centred on top, so the panel is
+	# never buried under the HUD / inventory.
+	_modal = Control.new()
+	_modal.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_modal.mouse_filter = Control.MOUSE_FILTER_STOP
+	_modal.visible = false
+	add_child(_modal)
+
+	var backdrop := ColorRect.new()
+	backdrop.color = Color(0, 0, 0, 0.6)
+	backdrop.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_modal.add_child(backdrop)
+
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_modal.add_child(center)
+
+	var dialog := PanelContainer.new()
+	dialog.custom_minimum_size = Vector2(360, 0)
+	center.add_child(dialog)
 
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 8)
-	_dialog.add_child(box)
+	box.add_theme_constant_override("separation", 10)
+	dialog.add_child(box)
 
 	var title := Label.new()
 	title.text = "Buy Fame with SOL"
@@ -84,7 +100,7 @@ func _build_dialog() -> void:
 
 
 func _open() -> void:
-	_dialog.visible = true
+	_modal.visible = true
 	if not PhantomWallet.is_available():
 		_status.text = "Phantom not detected. Install the extension and reload."
 	else:
@@ -93,7 +109,7 @@ func _open() -> void:
 
 
 func _close() -> void:
-	_dialog.visible = false
+	_modal.visible = false
 
 
 func _on_amount_changed(_value: float) -> void:
@@ -111,10 +127,18 @@ func _on_buy() -> void:
 	var fame := int(_amount.value)
 	if fame < 1:
 		return
+	if data_service == null:
+		_finish("No data service available.")
+		return
 	_pending = true
 	_buy_btn.disabled = true
+	_status.text = "Preparing transaction..."
+	var blockhash: String = await data_service.solana_blockhash()
+	if blockhash == "":
+		_finish("Could not get a blockhash (are you signed in?).")
+		return
 	_status.text = "Approve the transaction in Phantom..."
-	_wallet.buy_fame(fame * LAMPORTS_PER_FAME, RECIPIENT, RPC_URL, _on_paid.bind(fame))
+	_wallet.buy_fame(fame * LAMPORTS_PER_FAME, RECIPIENT, blockhash, _on_paid.bind(fame))
 
 
 func _on_paid(res: Dictionary, fame: int) -> void:
@@ -127,9 +151,6 @@ func _on_paid(res: Dictionary, fame: int) -> void:
 
 
 func _verify(txid: String, fame: int) -> void:
-	if data_service == null:
-		_finish("Paid, but no data service to credit fame. TX: " + txid)
-		return
 	var result: Dictionary = await data_service.purchase_fame(txid, fame)
 	if result.get("success", false):
 		_finish("Success! +%d fame credited." % fame)
