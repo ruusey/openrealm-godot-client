@@ -257,7 +257,13 @@ func _process(delta: float) -> void:
 	inventory_input.tick(delta)
 	ability_input.tick(delta)
 	if client.is_in_game():
-		PixelSnap.camera(_camera, state.local.render_centre(), state.local.render_position())
+		# While slowed the player creeps sub-pixel per tick, where the pixel grid's
+		# whole-pixel camera steps round unevenly and read as jitter; scroll the ground
+		# smoothly then (sprites stay snapped/crisp). Normal speed keeps the crisp grid.
+		if state.local.effects.has(LocalPlayer.SLOWED):
+			PixelSnap.smooth(_camera, state.local.render_centre())
+		else:
+			PixelSnap.camera(_camera, state.local.render_centre(), state.local.render_position())
 		trace.observe(delta, state)
 
 

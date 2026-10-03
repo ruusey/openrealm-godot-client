@@ -39,6 +39,15 @@ static func world(canvas: CanvasItem, position: Vector2) -> Vector2:
 ## origin is the one that leaves the body where it would stand with the
 ## camera exactly on it, rounded once. The web client rounds its world
 ## layer's pivot for the same reason.
+## Camera straight on `centre`, off the whole-pixel grid. At slow (sub-1px/tick)
+## speeds the grid's whole-pixel steps round unevenly (1,1,2,1,1,2 px) and read as
+## jitter; letting the ground scroll by the exact sub-pixel amount is smooth. Sprites
+## are still snapped by `world`, so they stay crisp -- only the ground glides.
+static func smooth(camera: Camera2D, centre: Vector2) -> void:
+	camera.position = centre
+	camera.force_update_scroll()
+
+
 static func camera(camera: Camera2D, centre: Vector2, anchor := centre) -> void:
 	camera.position = centre
 	camera.force_update_scroll()
