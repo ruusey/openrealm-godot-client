@@ -108,8 +108,8 @@ func test_the_claws_blossom_and_slash_reach_past_the_radius():
 	assert_almost_eq(FxBeastClaws.slash_angle(1, 1000), 3.0944, 0.001, "a third of a turn, plus a radian a second")
 	assert_almost_eq(FxDeathBlossom.reach(40.0), 44.0, 0.001)
 	assert_almost_eq(FxDeathBlossom.slash_angle(2, 1.0), 3.1416, 0.001, "a quarter turn, plus a quarter by the end")
-	assert_almost_eq(FxRecklessSlash.reach(40.0), 42.0, 0.001)
-	assert_eq(FxRecklessSlash.FACING, 0.0, "sweeps right, as both references draw it")
+	assert_almost_eq(FxRecklessSlash.reach(40.0), 44.0, 0.001)
+	assert_almost_eq(FxRecklessSlash.sweep_t(0.25), 0.5, 0.001, "cleaves across the first half")
 
 
 func test_the_star_grows_and_spins():

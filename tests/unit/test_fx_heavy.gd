@@ -70,13 +70,11 @@ func test_the_rapier_flicks_out_and_its_core_shrinks():
 	assert_eq(FxRapierStab.core_px(1.0), Vector2(6.0, 10.0))
 
 
-func test_the_low_swing_sweeps_the_lower_half():
-	assert_almost_eq(FxLowSwing.reach(40.0), 42.0, 0.001)
-	var arc := FxLowSwing.arc(Vector2.ZERO, 10.0)
-	assert_eq(arc.size(), 11, "ten segments")
-	assert_almost_eq(arc[0].x, 8.910, 0.001, "starts at 27 degrees, lower right")
-	assert_almost_eq(arc[5].y, 10.0, 0.001, "passes straight under the centre")
-	assert_almost_eq(arc[10].x, -8.910, 0.001, "ends at 153 degrees, lower left")
+func test_the_low_swing_sweeps_across_the_first_half():
+	assert_almost_eq(FxLowSwing.sweep_t(0.0), 0.0, 0.001)
+	assert_almost_eq(FxLowSwing.sweep_t(0.275), 0.5, 0.001, "half-swept a quarter of the way in (across the first 55%)")
+	assert_almost_eq(FxLowSwing.sweep_t(0.55), 1.0, 0.001, "fully swept by 55%")
+	assert_almost_eq(FxLowSwing.sweep_t(0.9), 1.0, 0.001, "clamped after the cut has passed")
 
 
 func test_the_disarm_rings_cascade_and_hide_in_their_gap():
