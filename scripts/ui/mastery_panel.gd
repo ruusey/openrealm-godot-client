@@ -111,6 +111,9 @@ func _cell(into: Container, skill_name: String) -> Array:
 	into.add_child(cell)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 3)
+	# Fall the hover through to the cell, which carries the describe() tooltip -- a STOP
+	# container here filled the cell and swallowed it, so hovering a skill showed nothing.
+	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	cell.add_child(column)
 	column.add_child(HudWidgets.label(skill_name, 13, Color.WHITE))
 	var level := HudWidgets.label("", 12, SkillsPanel.MUTED)
