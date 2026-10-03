@@ -149,6 +149,9 @@ func _ready() -> void:
 	var updater := UpdateChecker.new()
 	add_child(updater)
 	updater.check()
+	# POC: Phantom wallet connect/sign demo, opt-in via ?phantom=1 on the web build.
+	if OS.has_feature("web") and _url_wants_phantom():
+		add_child(PhantomPocOverlay.new())
 	_load_content()
 
 
@@ -174,6 +177,11 @@ func _hide_web_input_caret() -> void:
 func _url_wants_3d() -> bool:
 	var search: Variant = JavaScriptBridge.eval("location.search")
 	return search is String and "3d=1" in search
+
+
+func _url_wants_phantom() -> bool:
+	var search: Variant = JavaScriptBridge.eval("location.search")
+	return search is String and "phantom=1" in search
 
 
 ## Swaps the 2D world for the 3D one: hide and stop the flat renderer so it is
