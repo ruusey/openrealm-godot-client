@@ -60,12 +60,16 @@ static func claim(bullets: Dictionary, wire: Dictionary, server_id: int, owner_i
 	if int(wire.get("srcEntityId", 0)) != owner_id:
 		return false
 	var incoming_angle := float(wire.get("angle", 0.0))
-	# Claim the NEAREST-angle unclaimed prediction, not the first one within
-	# tolerance. A volley fires many predictions at once and rapid shots overlap
-	# in the table; first-match let a bullet grab a different shot's prediction at
-	# a similar angle, orphaning the real match -- so bolts went missing and angles
-	# looked random the faster you fired. Nearest-match pairs each server bullet
-	# with its own prediction so the whole fan reconciles 1:1.
+	# A server bullet may only claim a prediction from the SAME projectile group.
+	# Without this, any own shot (a melee burst bolt, another weapon's fan) would
+	# adopt a nearby-angle prediction left by an ABILITY or a different weapon,
+	# so the real bolt never drew -- the shot lost ~half its projectiles whenever
+	# predictions from something else were on screen. The wire carries the group
+	# id as projectileId; predictions store it as group_id.
+	var incoming_group := int(wire.get("projectileId", 0))
+	# Within the matching group, claim the NEAREST-angle unclaimed prediction, not
+	# the first within tolerance: a volley fires many at once and rapid shots
+	# overlap, so first-match grabbed the wrong one and orphaned the real match.
 	var best_id := 0
 	var best_diff := ANGLE_TOLERANCE
 	var found := false
@@ -73,6 +77,8 @@ static func claim(bullets: Dictionary, wire: Dictionary, server_id: int, owner_i
 		if local_id >= 0:
 			continue
 		var prediction: Dictionary = bullets[local_id]
+		if int(prediction.get("group_id", -1)) != incoming_group:
+			continue
 		var claimed := int(prediction.get("server_id", 0))
 		# Already adopted this exact server bullet -- the 2s full-snapshot reconcile
 		# re-sends it, so without this the server copy gets added alongside the
