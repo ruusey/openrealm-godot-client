@@ -188,7 +188,9 @@ func buy_fame_token(amount: int, mint: String, recipient: String, decimals: int,
 		return
 	_window.godotPhantomRecipient = recipient
 	_window.godotPhantomMint = mint
-	_window.godotPhantomAmount = amount
+	# As a string so BigInt parses it exactly — a large base-unit amount would lose
+	# precision as a JS number (> 2^53).
+	_window.godotPhantomAmount = str(amount)
 	_window.godotPhantomDecimals = decimals
 	_window.godotPhantomBlockhash = blockhash
 	JavaScriptBridge.eval("""

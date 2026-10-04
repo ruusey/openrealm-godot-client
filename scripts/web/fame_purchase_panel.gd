@@ -12,12 +12,12 @@ extends CanvasLayer
 const RECIPIENT := "J9ZGigjmaKYcriwvjZGYqeaB9arofYMHtRorZfu3FQJj"
 const LAMPORTS_PER_FAME := 10000  # 0.00001 SOL per fame (1 SOL = 1e9 lamports)
 const SOL_PER_FAME := 0.00001
-# REALM ($REALM) is a Token-2022 SPL token. 0.01 fame per REALM -> 100 REALM = 1
-# fame. 6 decimals, so 100 REALM = 100_000_000 base units.
+# REALM ($REALM) is a Token-2022 SPL token. 0.001 fame per REALM -> 1000 REALM = 1
+# fame. 6 decimals, so 1000 REALM = 1_000_000_000 base units.
 const REALM_MINT := "GZnAMJ7DSCa3k4FoNNMCrA4ZZdDDE9DZAEvcef5Ypump"
 const REALM_DECIMALS := 6
-const REALM_BASE_UNITS_PER_FAME := 100000000  # 100 REALM
-const REALM_PER_FAME := 100.0
+const REALM_BASE_UNITS_PER_FAME := 1000000000  # 1000 REALM
+const REALM_PER_FAME := 1000.0
 
 ## Set by Main after construction; used to fetch the blockhash + submit the txid.
 var data_service
