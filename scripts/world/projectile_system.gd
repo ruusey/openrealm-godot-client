@@ -153,6 +153,11 @@ func _should_drop_locally(_id: int, bullet: Dictionary, now: int) -> bool:
 ## to us. NEVER keyed on the id's sign -- server bullet ids are random longs that are often
 ## negative, so an enemy bullet routinely has a negative id and must not be taken for ours.
 func _is_own_shot(bullet: Dictionary) -> bool:
+	# A Codex ally bolt carries the owner's id for kill credit, which would read as ours,
+	# but it's server-authoritative, not a local prediction: the ALLY_PROJECTILE flag says
+	# so, so we never cull/claim/hit-predict it -- we just draw the server's copy.
+	if ProjectileKind.has_flag(bullet, ProjectileKind.ALLY_PROJECTILE):
+		return false
 	return bool(bullet.get("predicted", false)) \
 		or int(bullet.get("src_entity_id", 0)) == _player.id \
 		or ProjectileKind.is_player_shot(bullet)

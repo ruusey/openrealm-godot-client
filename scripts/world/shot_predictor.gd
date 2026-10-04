@@ -59,6 +59,12 @@ static func build(shot_number: int, group_id: int, definitions: Array, base_angl
 static func claim(bullets: Dictionary, wire: Dictionary, server_id: int, owner_id: int) -> bool:
 	if int(wire.get("srcEntityId", 0)) != owner_id:
 		return false
+	# A Codex ally bolt passes the owner gate (owner-attributed for credit) but is the
+	# server's own bullet, not one of our predictions -- never let it claim one, or the
+	# real bolt is dropped and never drawn. Wire flags arrive as floats, so compare as int.
+	for flag in wire.get("flags", []):
+		if int(flag) == ProjectileKind.ALLY_PROJECTILE:
+			return false
 	var incoming_angle := float(wire.get("angle", 0.0))
 	# A server bullet may only claim a prediction from the SAME projectile group.
 	# Without this, any own shot (a melee burst bolt, another weapon's fan) would

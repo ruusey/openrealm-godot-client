@@ -9,6 +9,10 @@ extends RefCounted
 ## amplitude/frequency on projectiles that omit the flag.
 
 const PLAYER_PROJECTILE := 10
+## A player-owned ally's bullet (a Codex summon): server-authoritative, but it carries
+## the owner's id for kill credit, so this flag is what tells the client it is NOT a local
+## prediction to claim/cull. Must match ProjectileFlag.ALLY_PROJECTILE on the server.
+const ALLY_PROJECTILE := 11
 const PARAMETRIC := 12
 const INVERTED_PARAMETRIC := 13
 const ORBITAL := 20
