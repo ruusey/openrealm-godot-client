@@ -238,12 +238,13 @@ func _rescan() -> void:
 				Vector2(0, 0), Vector2(wide, 0), Vector2(wide, tall), Vector2(0, tall)])
 
 
-## A wall, or a solid prop on the collision layer, casts a shadow. Base-layer
-## collision -- deep water, the void -- is not a wall and does not, and a tile
-## that emits its own light is not made to shadow itself.
+## Only WALLS cast shadows. Solid decorations (trees, bushes -- hasCollision but
+## not isWall) used to occlude too, which threw hard trapezoidal wedge shadows off
+## every large tree; the web client casts no object shadows and reads far smoother.
+## Now a decoration just gets the soft radial bloom, while walls still block light.
+## A tile that emits its own light is never made to shadow itself.
 func _occludes(tile_id: int) -> bool:
-	return tile_id > 0 and not _emitters.has(tile_id) \
-		and (_content.tile_is_wall(tile_id) or _content.tile_has_collision(tile_id))
+	return tile_id > 0 and not _emitters.has(tile_id) and _content.tile_is_wall(tile_id)
 
 
 ## The CanvasModulate colour: the base ambient (a third darker in a dungeon),
