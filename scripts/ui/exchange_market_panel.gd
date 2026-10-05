@@ -163,8 +163,11 @@ func refresh_sell() -> void:
 		_sell_list.add_child(row)
 		var name_label := InventoryLayout.heading(row, String(item.get("name", "Item")))
 		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		var captured := slot
-		InventoryLayout.button(row, "Sell", func() -> void: if actions != null: actions.sell_for_points(captured))
+		var price := content.realm_price_for(item)
+		InventoryLayout.heading(row, ("%d REALM" % price) if price > 0 else "not sellable")
+		if price > 0:
+			var captured := slot
+			InventoryLayout.button(row, "Sell", func() -> void: if actions != null: actions.sell_for_points(captured))
 	if not any:
 		InventoryLayout.heading(_sell_list, "Your backpack is empty.")
 

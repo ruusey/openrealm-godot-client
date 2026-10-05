@@ -44,6 +44,15 @@ var dyes := {}
 var class_masks := {}
 ## itemId -> fame cost; the one content file that is an object, not a list.
 var fame_store := {}
+## REALM sale-price table (realm-prices.json) for Item Exchange quotes. The game
+## server is authoritative on the actual payout; this only drives the estimate
+## shown in the list. Defaults apply if the file is absent.
+var realm_rarity_mult := [0.25, 1.0, 2.0, 5.0, 12.0, 30.0]
+var realm_zero_categories := {}
+var realm_tier_base := []
+var realm_untiered_base := 800
+var realm_default_base := 8
+var realm_overrides := {}
 ## exp-levels.json as it comes: level -> "min-max". ExperienceLevels reads it.
 var exp_levels := {}
 var errors: Array[String] = []
@@ -66,6 +75,7 @@ func load_from(source: ContentSource) -> bool:
 	var prices: Dictionary = await _read_object(source, "fame-store.json")
 	for key in prices:
 		fame_store[int(key)] = int(prices[key])
+	await _load_realm_prices(source)
 	exp_levels = await _read_object(source, "exp-levels.json")
 	# Animations are keyed by objectId but only the player sets are useful here.
 	for entry in await _read_array(source, "animations.json"):
@@ -93,6 +103,61 @@ func summary() -> String:
 		tiles.size(), enemies.size(), classes.size(), animations.size(),
 		items.size(), projectile_groups.size(), portals.size(), abilities.size(),
 	]
+
+
+## Load the REALM price table. Tolerant: a missing/invalid file leaves defaults
+## and does NOT fail the content load (it only affects the estimate quote).
+func _load_realm_prices(source: ContentSource) -> void:
+	var result: Array = await source.read("realm-prices.json")
+	if result[0] != OK:
+		return
+	var parsed = JSON.parse_string(PackedByteArray(result[1]).get_string_from_utf8())
+	if not parsed is Dictionary:
+		return
+	var mult = parsed.get("rarityMultiplier", {})
+	for i in range(realm_rarity_mult.size()):
+		if mult.has(str(i)):
+			realm_rarity_mult[i] = float(mult[str(i)])
+	for cat in parsed.get("zeroCategories", []):
+		realm_zero_categories[String(cat)] = true
+	var buckets: Array = parsed.get("tierBase", [])
+	if not buckets.is_empty():
+		realm_tier_base.clear()
+		for b in buckets:
+			realm_tier_base.append({"max": int(b.get("maxTier", 0)), "realm": int(b.get("realm", 0))})
+	realm_untiered_base = int(parsed.get("untieredBase", realm_untiered_base))
+	realm_default_base = int(parsed.get("defaultBase", realm_default_base))
+	var ov = parsed.get("overrides", {})
+	for k in ov:
+		realm_overrides[int(k)] = int(ov[k])
+
+
+## Estimated REALM a backpack item sells for (0 = not cashable). Mirrors the
+## server's ServerRealmEconomyHelper.pointsForItem.
+func realm_price_for(item: Dictionary) -> int:
+	if item == null or item.is_empty():
+		return 0
+	var id := int(item.get("itemId", -1))
+	if realm_overrides.has(id):
+		return int(realm_overrides[id])
+	if realm_zero_categories.has(String(item.get("category", ""))):
+		return 0
+	if bool(item.get("consumable", false)) and bool(item.get("stackable", false)):
+		return 0
+	var base := _realm_base_for_tier(int(item.get("tier", 0)))
+	if base <= 0:
+		return 0
+	var rarity := clampi(int(item.get("rarity", 0)), 0, realm_rarity_mult.size() - 1)
+	return int(round(base * realm_rarity_mult[rarity]))
+
+
+func _realm_base_for_tier(tier: int) -> int:
+	if tier < 0:
+		return realm_untiered_base
+	for b in realm_tier_base:
+		if tier <= int(b["max"]):
+			return int(b["realm"])
+	return int(realm_tier_base[-1]["realm"]) if not realm_tier_base.is_empty() else realm_default_base
 
 
 ## A content file that is one JSON object rather than a list of entries.
