@@ -104,8 +104,12 @@ func _build_modal() -> void:
 func open() -> void:
 	_modal.visible = true
 	_status.text = ""
-	# Seed wallet/membership/points from the account DTO fetched at login; live
-	# point changes then arrive via SendPointsPacket.
+	# Points change server-side (sells credit them, withdrawals escrow them), so
+	# pull the authoritative account first — otherwise we'd seed the stale
+	# login-time total and clobber the live value. Live changes while the panel is
+	# open still arrive via SendPointsPacket.
+	if data_service != null:
+		await data_service.refresh_account()
 	if state != null and data_service != null and data_service.account is Dictionary:
 		state.progress.seed_from_account(data_service.account)
 	var available := PhantomWallet.is_available()
