@@ -79,6 +79,14 @@ func activate(from: int) -> bool:
 	return _fits(item, slot) and _send_move(slot, from, false, false)
 
 
+## Sell a backpack item for REALM points (the Item Exchange tab). The server
+## values it from its own price table and replies with SendPointsPacket.
+func sell_for_points(from: int) -> bool:
+	if not Inventory.is_backpack(from) or not _holds(from):
+		return false
+	return _send("SellItemForPointsPacket", {"inventorySlotIndex": from})
+
+
 ## Shift+right-click: half the stack into the first free backpack slot.
 func split(from: int) -> bool:
 	var item := item_in(from)

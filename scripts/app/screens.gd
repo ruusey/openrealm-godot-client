@@ -149,7 +149,7 @@ func build(state: RealmState, game_data: GameData, client: OpenRealmClient,
 	forge.setup(state, game_data, forge_actions)
 	add_child(forge)
 	market = ExchangeMarketPanel.new()
-	market.setup(state, game_data, shop)
+	market.setup(state, game_data, shop, inventory_actions)
 	add_child(market)
 	transition = TransitionScreen.new()
 	transition.setup(state, game_data)

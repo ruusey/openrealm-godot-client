@@ -73,6 +73,8 @@ const PACKET_NAMES := {
 	51: "OpenGuildEditorPacket",
 	52: "GuildInvitePacket",
 	53: "GuildInviteResponsePacket",
+	54: "SellItemForPointsPacket",
+	55: "SendPointsPacket",
 	101: "TestPacket",
 }
 
@@ -121,6 +123,8 @@ const PACKET_IDS := {
 	"QuestStatePacket": 46,
 	"RealmPurificationPacket": 42,
 	"RequestTradePacket": 16,
+	"SellItemForPointsPacket": 54,
+	"SendPointsPacket": 55,
 	"SkillsPacket": 43,
 	"SplitStackPacket": 37,
 	"TestPacket": 101,
@@ -361,6 +365,14 @@ const PACKETS := {
 		["xp6", "long", false],
 		["xp7", "long", false],
 		["xp8", "long", false],
+	],
+	"SellItemForPointsPacket": [
+		["inventorySlotIndex", "int", false],
+	],
+	"SendPointsPacket": [
+		["playerId", "long", false],
+		["newTotalPoints", "long", false],
+		["pointsAwarded", "long", false],
 	],
 	"SplitStackPacket": [
 		["fromSlot", "int", false],

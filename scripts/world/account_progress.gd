@@ -22,6 +22,11 @@ var mastery_xp: Array = [0, 0, 0, 0, 0, 0, 0, 0, 0]
 ## The public quest score, shown on the HUD and under our name.
 var stars := 0
 var quests: Array = []
+## REALM economy, seeded from the account DTO at login and kept live by
+## SendPointsPacket. Points are credited 1:1 with REALM.
+var earned_points := 0
+var linked_wallet := ""
+var membership_expires_ms := 0
 ## Bumped on every change, so a view redraws only then.
 var version := 0
 
@@ -41,6 +46,17 @@ func apply(name: String, data: Dictionary, local_id: int) -> void:
 			var parsed: Variant = reader.data if reader.parse(String(data.get("json", ""))) == OK else null
 			var list: Variant = parsed.get("quests") if parsed is Dictionary else null
 			quests = list if list is Array else []
+		"SendPointsPacket":
+			earned_points = int(data.get("newTotalPoints", 0))
+	version += 1
+
+
+## Seed the economy fields from the account DTO fetched at login (fields the
+## server marks read-only; live updates still arrive via SendPointsPacket).
+func seed_from_account(account: Dictionary) -> void:
+	earned_points = int(account.get("earnedPoints", earned_points))
+	linked_wallet = String(account.get("linkedWallet", linked_wallet))
+	membership_expires_ms = int(account.get("membershipExpiresAtMs", membership_expires_ms))
 	version += 1
 
 

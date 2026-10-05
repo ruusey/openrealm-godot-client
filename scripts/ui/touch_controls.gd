@@ -36,6 +36,7 @@ var _menu := TouchMenu.new()
 var _open_chat := Callable()   # the Chat button's; wired by `link`
 var _escape := Callable()      # the Nexus button's; wired by `set_escape`
 var _add_fame := Callable()    # the Add Fame button's; wired by `set_add_fame`
+var _economy := Callable()     # the Economy button's; wired by `set_economy`
 var _aim := TouchAim.new()
 
 
@@ -68,6 +69,7 @@ func _ready() -> void:
 	_cluster.chat.connect(func() -> void: if _open_chat.is_valid(): _open_chat.call())
 	_cluster.nexus.connect(func() -> void: if _escape.is_valid(): _escape.call())
 	_cluster.add_fame.connect(func() -> void: if _add_fame.is_valid(): _add_fame.call())
+	_cluster.economy.connect(func() -> void: if _economy.is_valid(): _economy.call())
 	add_child(_cluster)
 	add_child(_menu)
 	# Deferred: DisplayScale answers the same resize, and the canvas's own
@@ -148,6 +150,10 @@ func set_escape(escape: Callable) -> void:
 
 func set_add_fame(open: Callable) -> void:
 	_add_fame = open
+
+
+func set_economy(open: Callable) -> void:
+	_economy = open
 
 
 ## Where a basic shot goes: see the header.

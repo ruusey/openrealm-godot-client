@@ -30,6 +30,7 @@ signal menu
 signal chat
 signal nexus
 signal add_fame
+signal economy
 
 ## True while the thumb is on Attack.
 var attacking := false
@@ -82,6 +83,7 @@ func _init() -> void:
 	# Buy fame with SOL via Phantom -- web build only (Phantom is a browser wallet).
 	if OS.has_feature("web"):
 		_panels.add_child(_panel_button("Add Fame", add_fame))
+		_panels.add_child(_panel_button("Economy", economy))
 	add_child(_panels)
 	# On a phone the row hides behind a hamburger, with a tap-anywhere dim behind
 	# the open menu that darkens the game and closes on a tap.

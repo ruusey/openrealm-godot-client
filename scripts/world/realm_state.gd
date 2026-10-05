@@ -115,7 +115,7 @@ func apply_packet(name: String, data: Dictionary) -> void:
 		"RequestTradePacket", "AcceptTradeRequestPacket", "UpdateTradePacket", \
 				"UpdatePlayerTradeSelectionPacket":
 			trade.apply(name, data, local.id)
-		"SkillsPacket", "QuestStatePacket":
+		"SkillsPacket", "QuestStatePacket", "SendPointsPacket":
 			progress.apply(name, data, local.id)
 		"PartyUpdatePacket":
 			party.apply_update(data)

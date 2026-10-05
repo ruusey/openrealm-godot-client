@@ -154,6 +154,76 @@ func solana_blockhash() -> String:
 	return ""
 
 
+## --- REALM economy ---------------------------------------------------------
+
+## A single-use challenge the wallet must sign to prove ownership. Returns "".
+func wallet_nonce() -> String:
+	if token == "" or account_guid == "":
+		return ""
+	var response := await send(HTTPClient.METHOD_GET,
+		"/data/account/%s/wallet/nonce" % account_guid, "", true)
+	if response["ok"] and response["body"] is Dictionary:
+		return str(response["body"].get("nonce", ""))
+	return ""
+
+## Record a verified wallet. The service re-checks the ed25519 signature over
+## the nonce before storing it. Returns {success, result}; result is the account.
+func wallet_link(address: String, message: String, signature_b64: String) -> Dictionary:
+	if token == "" or account_guid == "":
+		return {"success": false, "result": "not signed in"}
+	var body := JSON.stringify({"address": address, "message": message, "signatureB64": signature_b64})
+	var response := await send(HTTPClient.METHOD_POST,
+		"/data/account/%s/wallet/link" % account_guid, body, true)
+	if not response["ok"]:
+		return {"success": false, "result": response["error"]}
+	if response["body"] is Dictionary:
+		account = response["body"]
+	return {"success": true, "result": response["body"]}
+
+## Submit a SOL payment receipt for a weekly membership. Verified on-chain.
+func purchase_membership(txid: String) -> Dictionary:
+	if token == "" or account_guid == "":
+		return {"success": false, "result": "not signed in"}
+	var body := JSON.stringify({"txid": txid})
+	var response := await send(HTTPClient.METHOD_POST,
+		"/data/account/%s/membership/purchase" % account_guid, body, true)
+	if not response["ok"]:
+		return {"success": false, "result": response["error"]}
+	if response["body"] is Dictionary:
+		account = response["body"]
+	return {"success": true, "result": response["body"]}
+
+## Queue a points -> REALM payout (points passed as a query param). Returns
+## {success, result}; result is the created withdrawal record on success.
+func request_withdrawal(points: int) -> Dictionary:
+	if token == "" or account_guid == "":
+		return {"success": false, "result": "not signed in"}
+	var response := await send(HTTPClient.METHOD_POST,
+		"/data/account/%s/withdraw/request?points=%d" % [account_guid, points], "", true)
+	if not response["ok"]:
+		return {"success": false, "result": response["error"]}
+	return {"success": true, "result": response["body"]}
+
+## Public economy config (membership price, payout rate, caps). {} on failure.
+func economy_config() -> Dictionary:
+	if token == "":
+		return {}
+	var response := await send(HTTPClient.METHOD_GET, "/data/economy/config", "", true)
+	if response["ok"] and response["body"] is Dictionary:
+		return response["body"]
+	return {}
+
+## This account's withdrawal history (array of records).
+func withdraw_history() -> Array:
+	if token == "" or account_guid == "":
+		return []
+	var response := await send(HTTPClient.METHOD_GET,
+		"/data/account/%s/withdraw/history" % account_guid, "", true)
+	if response["ok"] and response["body"] is Array:
+		return response["body"]
+	return []
+
+
 ## Drops the session, as the web client's clearSession does: what a
 ## refused Terms of Use leaves behind, so nothing signed in lingers.
 func sign_out() -> void:

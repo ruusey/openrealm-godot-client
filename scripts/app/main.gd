@@ -159,6 +159,12 @@ func _ready() -> void:
 		fame_panel.data_service = _data_service
 		add_child(fame_panel)
 		screens.touch.set_add_fame(fame_panel.open)
+		# REALM economy hub: link wallet, buy membership, cash out points.
+		var economy_panel := EconomyPanel.new()
+		economy_panel.data_service = _data_service
+		economy_panel.state = state
+		add_child(economy_panel)
+		screens.touch.set_economy(economy_panel.open)
 	_load_content()
 
 
