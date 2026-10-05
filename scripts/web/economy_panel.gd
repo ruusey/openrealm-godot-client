@@ -48,7 +48,7 @@ func _build_modal() -> void:
 	add_child(_modal)
 
 	var backdrop := ColorRect.new()
-	backdrop.color = Color(0, 0, 0, 0.6)
+	backdrop.color = Color(0, 0, 0, 0.66)
 	backdrop.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_modal.add_child(backdrop)
 
@@ -56,51 +56,36 @@ func _build_modal() -> void:
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_modal.add_child(center)
 
-	var dialog := PanelContainer.new()
-	dialog.custom_minimum_size = Vector2(380, 0)
+	var dialog := EconomyStyle.dialog()
 	center.add_child(dialog)
 
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 10)
+	box.add_theme_constant_override("separation", 12)
 	dialog.add_child(box)
 
-	var title := Label.new()
-	title.text = "REALM Economy"
-	box.add_child(title)
+	EconomyStyle.title(box, "REALM Economy")
 
-	# Wallet
-	_wallet_label = Label.new()
-	box.add_child(_wallet_label)
-	_link_btn = Button.new()
-	_link_btn.text = "Link Solana Wallet"
-	_link_btn.pressed.connect(_on_link)
-	box.add_child(_link_btn)
+	var wallet_card := EconomyStyle.card(box)
+	EconomyStyle.section(wallet_card, "Wallet")
+	_wallet_label = EconomyStyle.body(wallet_card, "")
+	_link_btn = EconomyStyle.secondary(wallet_card, "Link Solana Wallet", _on_link)
 
-	box.add_child(_separator())
-
-	# Membership
-	_membership_label = Label.new()
-	box.add_child(_membership_label)
-	_buy_btn = Button.new()
-	_buy_btn.text = "Buy 1 Week Membership"
-	_buy_btn.pressed.connect(_on_buy_membership)
-	box.add_child(_buy_btn)
-
-	_open_app_btn = Button.new()
-	_open_app_btn.text = "Open in Phantom app"
+	var member_card := EconomyStyle.card(box)
+	EconomyStyle.section(member_card, "Membership")
+	_membership_label = EconomyStyle.body(member_card, "")
+	_buy_btn = EconomyStyle.primary(member_card, "Buy 1 Week Membership", _on_buy_membership)
+	_open_app_btn = EconomyStyle.secondary(member_card, "Open in Phantom app", PhantomWallet.open_in_phantom)
 	_open_app_btn.visible = false
-	_open_app_btn.pressed.connect(PhantomWallet.open_in_phantom)
-	box.add_child(_open_app_btn)
 
-	box.add_child(_separator())
-
-	# Cash out
-	_points_label = Label.new()
-	box.add_child(_points_label)
+	var cash_card := EconomyStyle.card(box)
+	EconomyStyle.section(cash_card, "Cash Out")
+	_points_label = EconomyStyle.body(cash_card, "", EconomyStyle.GOLD)
 	var row := HBoxContainer.new()
-	box.add_child(row)
+	cash_card.add_child(row)
 	var lbl := Label.new()
-	lbl.text = "Cash out (REALM):"
+	lbl.text = "Amount (REALM)"
+	lbl.add_theme_color_override("font_color", EconomyStyle.MUTED)
+	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(lbl)
 	_amount = SpinBox.new()
 	_amount.min_value = 1
@@ -108,24 +93,12 @@ func _build_modal() -> void:
 	_amount.step = 1000
 	_amount.value = 50000
 	row.add_child(_amount)
-	_cashout_btn = Button.new()
-	_cashout_btn.text = "Request Payout"
-	_cashout_btn.pressed.connect(_on_cashout)
-	box.add_child(_cashout_btn)
+	_cashout_btn = EconomyStyle.primary(cash_card, "Request Payout", _on_cashout)
 
-	_status = Label.new()
-	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_status.custom_minimum_size = Vector2(360, 40)
-	box.add_child(_status)
+	_status = EconomyStyle.body(box, "", EconomyStyle.MUTED)
+	_status.custom_minimum_size = Vector2(360, 36)
 
-	var close := Button.new()
-	close.text = "Close"
-	close.pressed.connect(func() -> void: _modal.visible = false)
-	box.add_child(close)
-
-
-func _separator() -> HSeparator:
-	return HSeparator.new()
+	EconomyStyle.secondary(box, "Close", func() -> void: _modal.visible = false)
 
 
 func open() -> void:
@@ -262,7 +235,7 @@ func _on_cashout() -> void:
 	var points := int(_amount.value)
 	var r: Dictionary = await data_service.request_withdrawal(points)
 	if r.get("success", false):
-		_finish("Requested %d REALM. Payouts are reviewed + sent manually." % points)
+		_finish("Requested %d REALM — it will be sent to your linked wallet shortly." % points)
 	else:
 		_finish("Request failed: " + str(r.get("result", "?")))
 

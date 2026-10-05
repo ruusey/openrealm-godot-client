@@ -101,7 +101,8 @@ func _ready() -> void:
 	column.add_child(_exchange_view)
 	InventoryLayout.heading(_exchange_view, SELL_HINT)
 	_points_label = InventoryLayout.heading(_exchange_view, "")
-	_points_label.add_theme_color_override("font_color", Color.WHITE)
+	_points_label.add_theme_color_override("font_color", EconomyStyle.GOLD)
+	_points_label.add_theme_font_size_override("font_size", 16)
 	var scroll := ScrollContainer.new()
 	scroll.custom_minimum_size = Vector2(0, LIST_HEIGHT)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -164,7 +165,8 @@ func refresh_sell() -> void:
 		var name_label := InventoryLayout.heading(row, String(item.get("name", "Item")))
 		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		var price := content.realm_price_for(item)
-		InventoryLayout.heading(row, ("%d REALM" % price) if price > 0 else "not sellable")
+		var price_label := InventoryLayout.heading(row, ("%d REALM" % price) if price > 0 else "not sellable")
+		price_label.add_theme_color_override("font_color", EconomyStyle.GOLD if price > 0 else EconomyStyle.MUTED)
 		if price > 0:
 			var captured := slot
 			InventoryLayout.button(row, "Sell", func() -> void: if actions != null: actions.sell_for_points(captured))
