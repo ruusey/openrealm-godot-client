@@ -1,16 +1,19 @@
 class_name EconomyPanel
 extends CanvasLayer
 
-## The REALM economy hub (web build): link a Solana wallet, buy the weekly SOL
+## The REALM economy hub (web build): link a Solana wallet, buy the weekly REALM
 ## membership, and cash earned points out as a REALM payout.
 ##
 ## Everything here is a request the server verifies: wallet ownership by an
-## ed25519 signature over a server nonce, membership by on-chain SOL receipt,
+## ed25519 signature over a server nonce, membership by on-chain REALM receipt,
 ## and a withdrawal is only queued (an admin settles it manually from their own
 ## wallet). The client holds no keys and credits nothing itself.
 
 const RECIPIENT := "J9ZGigjmaKYcriwvjZGYqeaB9arofYMHtRorZfu3FQJj"
-const DEFAULT_MEMBERSHIP_LAMPORTS := 50000000  # 0.05 SOL fallback if config is slow
+# Membership is paid in REALM (same token as loot payouts). 6 decimals.
+const REALM_MINT := "GZnAMJ7DSCa3k4FoNNMCrA4ZZdDDE9DZAEvcef5Ypump"
+const REALM_DECIMALS := 6
+const DEFAULT_MEMBERSHIP_REALM_UNITS := 25000000000  # 25,000 REALM fallback if config is slow
 
 ## Set by Main after construction.
 var data_service
@@ -167,8 +170,8 @@ func _refresh() -> void:
 		else:
 			_membership_label.text = "Membership: inactive (needed to cash out)"
 		_points_label.text = "Banked: %d REALM" % state.progress.earned_points
-	var lamports := int(_config.get("membershipLamports", DEFAULT_MEMBERSHIP_LAMPORTS))
-	_buy_btn.text = "Buy 1 Week (%s SOL)" % String.num(lamports / 1e9, 4)
+	var realm_units := int(_config.get("membershipRealmBaseUnits", DEFAULT_MEMBERSHIP_REALM_UNITS))
+	_buy_btn.text = "Buy 1 Week (%d REALM)" % (realm_units / 1000000)
 	var minp := int(_config.get("minWithdrawPoints", 50000))
 	_amount.min_value = minp
 	if _amount.value < minp:
@@ -223,13 +226,13 @@ func _on_buy_membership() -> void:
 		return
 	_pending = true
 	_status.text = "Preparing transaction..."
-	var lamports := int(_config.get("membershipLamports", DEFAULT_MEMBERSHIP_LAMPORTS))
+	var realm_units := int(_config.get("membershipRealmBaseUnits", DEFAULT_MEMBERSHIP_REALM_UNITS))
 	var blockhash: String = await data_service.solana_blockhash()
 	if blockhash == "":
 		_finish("Couldn't get a blockhash.")
 		return
-	_status.text = "Approve the payment in Phantom..."
-	_wallet.buy_fame(lamports, RECIPIENT, blockhash, _after_membership_paid)
+	_status.text = "Approve the REALM payment in Phantom..."
+	_wallet.buy_fame_token(realm_units, REALM_MINT, RECIPIENT, REALM_DECIMALS, blockhash, _after_membership_paid)
 
 
 func _after_membership_paid(res: Dictionary) -> void:
