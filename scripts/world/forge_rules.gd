@@ -22,7 +22,7 @@ const GEM_SOCKET_RARITY := 4
 const HP_MP_DELTA := 5
 const GEM_NAMES := {1: "Vampiric Gem", 2: "Crit Gem", 3: "Multishot Gem", 4: "Venom Gem",
 	5: "Frost Gem", 6: "Thorns Gem", 7: "Crushing Gem", 8: "Wisdom Scaling Gem",
-	9: "Swift Scaling Gem", 10: "Attack Scaling Gem", 11: "Defense Scaling Gem",
+	9: "Swift Scaling Gem", 10: "Strength Scaling Gem", 11: "Defense Scaling Gem",
 	12: "Dexterity Scaling Gem", 13: "Vitality Scaling Gem", 14: "Health Scaling Gem",
 	15: "Mana Scaling Gem"}
 

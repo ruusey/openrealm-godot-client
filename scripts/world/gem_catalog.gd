@@ -16,7 +16,7 @@ const DESCRIPTIONS := {
 	7: "+15% basic attack damage.",
 	8: "+10% Wisdom while equipped.",
 	9: "+10% Speed while equipped.",
-	10: "+10% Attack while equipped.",
+	10: "+10% Strength while equipped.",
 	11: "+10% Defense while equipped.",
 	12: "+10% Dexterity while equipped.",
 	13: "+10% Vitality while equipped.",
