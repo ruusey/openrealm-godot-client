@@ -150,8 +150,24 @@ func advance(delta: float, input: Vector2, latency_ms: float) -> Array:
 
 func reset_world() -> void:
 	for component in [tiles, entities, projectiles, particles, texts, chat, bubbles,
-			abilities, store, fame, forge, market, minimap, trade, party]:
+			abilities, minimap, party]:
 		component.clear()
+	close_interactions()
+
+
+## Shut and RESET every open tile/region dialogue (vault/potion store, fame store,
+## forge, exchange market, trade, guild) whenever the player leaves a region -- a
+## portal, the nexus, the vault, or a disconnect. Uses clear() (not close()) so the
+## bound tile/container is wiped, not merely hidden: a panel from the old realm can't
+## linger on screen or be acted on in the new one.
+func close_interactions() -> void:
+	store.clear()
+	fame.clear()
+	forge.clear()
+	market.clear()
+	trade.clear()
+	guild.close_create()
+	guild.close_roster()
 
 
 func begin_transition(difficulty := 0.0) -> void:

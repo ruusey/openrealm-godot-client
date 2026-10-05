@@ -133,6 +133,9 @@ func apply_load_map(data: Dictionary) -> void:
 		_state.entities.clear_but(_state.local.id)
 		_state.projectiles.clear()
 		_state.particles.clear()
+		# Leaving the region (a portal, the nexus, the vault): shut every tile dialogue
+		# so e.g. the vault's potion storage can't follow you to the nexus still usable.
+		_state.close_interactions()
 	# Painted from the tiles just applied, so the lookup sees both layers.
 	_state.minimap.apply_load_map(data, _state.tiles, changed)
 	pending = false

@@ -138,6 +138,17 @@ func test_it_goes_with_the_world():
 	assert_false(market.is_open)
 
 
+func test_leaving_the_region_shuts_it():
+	# In a realm, with the market open...
+	state.apply_packet("LoadMapPacket", {"realmId": 1, "mapId": 31, "tiles": []})
+	state.apply_packet("OpenExchangeMarketPacket", {"playerId": 9})
+	assert_true(market.is_open)
+	# ...a portal/nexus/vault move (a new realm's LoadMapPacket) shuts it so it
+	# can't follow you out of the region still usable.
+	state.apply_packet("LoadMapPacket", {"realmId": 2, "mapId": 31, "tiles": []})
+	assert_false(market.is_open)
+
+
 # --- the request -------------------------------------------------------------
 
 func test_the_request_carries_the_choice_and_only_when_legal():
