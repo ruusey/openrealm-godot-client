@@ -15,6 +15,7 @@ const DEFAULT_SPIN_RATE := 6.0
 var _library: ContentLibrary
 var _offsets := {}   # group id -> resolved angleOffset
 var _spins := {}     # group id -> {} or {"rate": float, "additive": bool}
+var _no_rotate := {} # group id -> bool
 var _fx := {}        # group id -> {"trail", "impact", "muzzle": {} or the entry, "afterimage": Color}
 
 
@@ -44,6 +45,16 @@ func spin(group_id: int) -> Dictionary:
 	if not _spins.has(group_id):
 		_spins[group_id] = _parse_spin(_group(group_id).get("fx"))
 	return _spins[group_id]
+
+
+## When true, the group draws at a fixed orientation (its angleOffset only) and
+## is never turned onto its travel heading. A wavy (parametric) shot wobbles its
+## sprite with its oscillating heading, which is hard to track; pinning the
+## orientation reads far more clearly.
+func no_rotate(group_id: int) -> bool:
+	if not _no_rotate.has(group_id):
+		_no_rotate[group_id] = bool(_group(group_id).get("noRotate", false))
+	return _no_rotate[group_id]
 
 
 static func _parse_spin(fx: Variant) -> Dictionary:
