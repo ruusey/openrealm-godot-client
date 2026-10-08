@@ -23,7 +23,22 @@ extends RefCounted
 const S := 0.5
 
 
+## Resolved drawer per effect type, cached. The mapping is static, but effect_renderer
+## calls this for every active effect every frame, so the 60+ case match was pure
+## per-frame waste under heavy effect load; memoize it to a dictionary lookup.
+static var _type_cache := {}
+
+
 static func for_type(kind: int) -> Callable:
+	if _type_cache.has(kind):
+		var hit: Callable = _type_cache[kind]
+		return hit
+	var drawer := _resolve_type(kind)
+	_type_cache[kind] = drawer
+	return drawer
+
+
+static func _resolve_type(kind: int) -> Callable:
 	match kind:
 		EffectType.HEAL_RADIUS: return FxHealRadius.draw
 		EffectType.VAMPIRISM: return FxVampirism.draw

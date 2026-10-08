@@ -186,7 +186,7 @@ func _effect_text(effect: Dictionary) -> String:
 	match kind:
 		"STATUS_APPLY":
 			var duration := float(effect.get("baseDurationMs", 0)) / 1000.0
-			var status := _prettify(str(effect.get("statusId", "")))
+			var status := _status_name(effect.get("statusId", ""))
 			return "Apply %s%s%s" % [status, (" %.1fs" % duration) if duration > 0 else "", target]
 		"HEAL":
 			return "Heal %d HP%s" % [int(effect.get("baseMagnitude", 0)), target]
@@ -253,6 +253,18 @@ func _tags_text(definition: Dictionary) -> String:
 
 func _target_text(target: String) -> String:
 	return "" if target == "" else " to " + _prettify(target).to_lower()
+
+
+## A status id (as it arrives in ability JSON, a numeric string) to its name, so the
+## info card reads "Apply Slow" / "Apply Dome", never "Apply 21". Falls back to
+## prettifying whatever was there for any id the chip table doesn't know.
+func _status_name(raw: Variant) -> String:
+	var text := str(raw)
+	if text.is_valid_int():
+		var label := StatusChips.label_for(int(text))
+		if label != "":
+			return label
+	return _prettify(text)
 
 
 ## A JSON enum to words: "ENEMIES_HIT" -> "Enemies hit".

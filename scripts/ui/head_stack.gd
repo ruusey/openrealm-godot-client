@@ -21,6 +21,10 @@ static var bubble_style: LabelSettings = TagStyles.bubble_label()
 
 var _chips: VBoxContainer
 var _chips_key := ""
+## Raw-input gate so the per-entity 38-status scan + chip rebuild only runs when
+## the effect/stack arrays actually change, not every frame for every entity.
+var _raw_key := ""
+var _chips_empty := true
 var _bubble: PanelContainer
 var _bubble_text: Label
 
@@ -58,16 +62,22 @@ func has_bubble() -> bool:
 
 ## Returns the top of the stack, or 0 with nothing on it.
 func _show_chips(effects: Array, stacks: Array) -> float:
-	var active := StatusChips.active(effects, stacks)
-	var key := str(active)
-	if key != _chips_key:
-		_chips_key = key
-		for child in _chips.get_children():
-			child.free()
-		for chip in active:
-			_chips.add_child(TagStyles.chip(chip[0], chip[1], CHIP_SIZE, chip_style))
-	_chips.visible = not active.is_empty()
-	if active.is_empty():
+	# Cheap gate: the active-set scan (38 statuses x effects) and chip rebuild run per
+	# entity EVERY frame otherwise. Skip both unless the raw effect/stack arrays changed.
+	var raw_key := str(effects) + "|" + str(stacks)
+	if raw_key != _raw_key:
+		_raw_key = raw_key
+		var active := StatusChips.active(effects, stacks)
+		var key := str(active)
+		if key != _chips_key:
+			_chips_key = key
+			for child in _chips.get_children():
+				child.free()
+			for chip in active:
+				_chips.add_child(TagStyles.chip(chip[0], chip[1], CHIP_SIZE, chip_style))
+		_chips_empty = active.is_empty()
+	_chips.visible = not _chips_empty
+	if _chips_empty:
 		return 0.0
 	_chips.reset_size()
 	_chips.position = Vector2(-CHIP_SIZE.x * 0.5, -_chips.size.y).round()

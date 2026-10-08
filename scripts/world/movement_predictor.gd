@@ -114,15 +114,16 @@ func pace_at(position: Vector2) -> float:
 	return pace
 
 
-## One replayed tick during reconciliation, run at the SPD/SPEEDY/SLOWED/PARALYZED
-## that were true when the input was made (its snapshot) rather than the current
-## set -- so a slow that landed or ended mid-history replays exactly as the server
-## stepped it. SLOWED/PARALYZED also honour the *current* effect, so once we learn
-## of a slow the server already applied, the still-unprocessed inputs replay at the
-## slowed speed the server is about to (mirrors the web client).
+## One replayed tick during reconciliation, run at EXACTLY the SPD/SPEEDY/SLOWED/
+## PARALYZED that were true when the input was made (its snapshot) -- NOT the current
+## set. Honouring the current effect retroactively re-slowed every still-unacked input
+## the instant a slow landed, shortening the whole window at once; with an RTT of
+## inputs in flight that correction regularly blew past the smoothing cap and the
+## player visibly snapped backward. Replaying each input at its own captured speed
+## keeps the replay identical to what was predicted, so the slow's arrival trickles in
+## as tiny per-ack corrections the smoother absorbs instead of one hard jump.
 func _replay_step(position: Vector2, input: Vector2, snap: Dictionary) -> Vector2:
-	var paralyzed: bool = snap.get("paralyzed", false) or _player.effects.has(LocalPlayer.PARALYZED)
-	if input.length_squared() <= 0.000001 or paralyzed:
+	if input.length_squared() <= 0.000001 or snap.get("paralyzed", false):
 		return position
 	var base := _snapshot_speed_per_tick(snap)
 	if _tiles.slows(position, GameConstants.PLAYER_SIZE):
@@ -130,12 +131,14 @@ func _replay_step(position: Vector2, input: Vector2, snap: Dictionary) -> Vector
 	return _move(position, input, base)
 
 
-## The per-tick speed from a captured input snapshot, matching speed_per_tick().
+## The per-tick speed from a captured input snapshot, matching speed_per_tick() as it
+## was AT PREDICTION TIME. Uses only the snapshot (never the current effect set) so a
+## slow landing or ending mid-history doesn't retroactively rewrite the whole window.
 func _snapshot_speed_per_tick(snap: Dictionary) -> float:
 	var tiles_per_second := 4.0 + 5.6 * (float(snap.get("spd", 15)) / 75.0)
-	if snap.get("speedy", false) or _player.effects.has(LocalPlayer.SPEEDY):
+	if snap.get("speedy", false):
 		tiles_per_second *= 1.5
-	if snap.get("slowed", false) or _player.effects.has(LocalPlayer.SLOWED):
+	if snap.get("slowed", false):
 		tiles_per_second *= 0.5
 	return tiles_per_second * float(GameConstants.TILE_SIZE) / GameConstants.TICK_RATE
 

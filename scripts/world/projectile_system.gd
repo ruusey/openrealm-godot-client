@@ -187,6 +187,20 @@ func _hits_terrain(bullet: Dictionary) -> bool:
 func _predict_hits(now: int) -> void:
 	if _entities == null:
 		return
+	# Snapshot every enemy's centre + reach ONCE per call. This is the
+	# O(bullets x enemies) hot path; recomputing render_position() and allocating a
+	# Vector2 per enemy INSIDE the per-bullet loop was the dominant per-frame cost
+	# with many projectiles on screen. Hoisted out, the inner loop is allocation-free.
+	var enemy_centres: Array = []
+	var enemy_reaches: PackedFloat32Array = PackedFloat32Array()
+	for enemy_id in _entities.enemies:
+		var enemy: Dictionary = _entities.enemies[enemy_id]
+		var enemy_size := float(enemy.get("size", GameConstants.TILE_SIZE))
+		enemy_centres.append(_entities.render_position(enemy) + Vector2(enemy_size, enemy_size) * 0.5)
+		enemy_reaches.append(enemy_size * HIT_RADIUS_FACTOR)
+	if enemy_centres.is_empty():
+		return
+	var enemy_count := enemy_centres.size()
 	for id in bullets.keys():
 		var bullet: Dictionary = bullets[id]
 		if bullet.get("consumed", false):
@@ -206,12 +220,9 @@ func _predict_hits(now: int) -> void:
 		var size := float(bullet.get("size", 4))
 		var radius := size * HIT_RADIUS_FACTOR
 		var centre: Vector2 = bullet["pos"] + Vector2(size, size) * 0.5
-		for enemy_id in _entities.enemies:
-			var enemy: Dictionary = _entities.enemies[enemy_id]
-			var enemy_size := float(enemy.get("size", GameConstants.TILE_SIZE))
-			var reach := radius + enemy_size * HIT_RADIUS_FACTOR
-			var enemy_centre := _entities.render_position(enemy) + Vector2(enemy_size, enemy_size) * 0.5
-			if centre.distance_squared_to(enemy_centre) < reach * reach:
+		for i in enemy_count:
+			var reach := radius + enemy_reaches[i]
+			if centre.distance_squared_to(enemy_centres[i]) < reach * reach:
 				bullet["consumed"] = true
 				bullet["consumed_at"] = now
 				break

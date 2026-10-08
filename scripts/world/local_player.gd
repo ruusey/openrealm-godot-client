@@ -1,9 +1,12 @@
 class_name LocalPlayer
 extends RefCounted
 
-## How much of a correction can be hidden, and how fast the rest unwinds.
-const SMOOTHING_CAP_PX := 6.0
-const SMOOTHING_HALF_LIFE := 0.05
+## How much of a correction can be hidden, and how fast the rest unwinds. The cap
+## is generous enough to absorb a slow/speed transition's few-px drift without a
+## visible snap, and the half-life eases it back over a handful of frames rather
+## than one abrupt pop.
+const SMOOTHING_CAP_PX := 12.0
+const SMOOTHING_HALF_LIFE := 0.09
 ## The status effects the server's movement step reads (StatusEffectType).
 const PARALYZED := 2
 const SPEEDY := 4
