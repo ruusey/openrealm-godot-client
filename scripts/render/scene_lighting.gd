@@ -66,7 +66,7 @@ var _time := 0.0
 var _dungeon_dark := false
 ## Web GL-compat can't afford the 2D shadow passes, so on web every light is
 ## non-casting and no occluders are built (the ambient + additive pools stay).
-## Native has the headroom, so it keeps shadows AND runs the glows 50% brighter.
+## Native has the headroom, so it keeps shadows AND runs the glows slightly brighter.
 var _web := OS.has_feature("web")
 var _tile_energy := TILE_LIGHT_ENERGY
 var _bullet_energy := BULLET_LIGHT_ENERGY
@@ -88,7 +88,7 @@ func setup(state: RealmState, content: GameData) -> void:
 	add_child(_ambient)
 	_glow = _glow_environment()
 	add_child(_world_env)
-	var glow_mul := 1.0 if _web else 1.5
+	var glow_mul := 1.0 if _web else 1.08
 	_tile_energy = TILE_LIGHT_ENERGY * glow_mul
 	_bullet_energy = BULLET_LIGHT_ENERGY * glow_mul
 	var glow := _soft_texture()
