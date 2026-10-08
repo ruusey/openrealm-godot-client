@@ -165,9 +165,15 @@ func refresh_sell() -> void:
 		var name_label := InventoryLayout.heading(row, String(item.get("name", "Item")))
 		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		var price := content.realm_price_for(item)
-		var price_label := InventoryLayout.heading(row, ("%d REALM" % price) if price > 0 else "not sellable")
-		price_label.add_theme_color_override("font_color", EconomyStyle.GOLD if price > 0 else EconomyStyle.MUTED)
+		# Only items earned during an active membership are cashable (server-enforced);
+		# show why the rest can't sell instead of letting the player hit a rejection.
+		var eligible: bool = bool(item.get("earnedDuringMembership", false))
+		var label_text := "not sellable"
 		if price > 0:
+			label_text = ("%d REALM" % price) if eligible else ("%d REALM - not earned with membership" % price)
+		var price_label := InventoryLayout.heading(row, label_text)
+		price_label.add_theme_color_override("font_color", EconomyStyle.GOLD if (price > 0 and eligible) else EconomyStyle.MUTED)
+		if price > 0 and eligible:
 			var captured := slot
 			InventoryLayout.button(row, "Sell", func() -> void: if actions != null: actions.sell_for_points(captured))
 	if not any:

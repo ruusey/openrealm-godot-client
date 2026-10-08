@@ -554,6 +554,7 @@ const ENTITIES := {
 		["gemPixelX", "byte", false],
 		["gemPixelY", "byte", false],
 		["gemPixelColor", "int", false],
+		["earnedDuringMembership", "bool", false],
 	],
 	"NetGameItemRef": [
 		["itemId", "int", false],
