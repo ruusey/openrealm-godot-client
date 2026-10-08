@@ -87,11 +87,12 @@ func paint(canvas: CanvasItem, state: RealmState, content: GameData,
 			_draw_wall(canvas, texture, centre, size, angle, offset,
 				length, turn if additive else 0.0)
 		else:
-			# A no-rotate group pins its sprite to a fixed orientation (its
-			# angleOffset) rather than turning onto its heading, so a wavy shot
-			# stays easy to track instead of wobbling with its oscillating angle.
-			var rotation := offset if content.projectiles_art.no_rotate(group_id) \
-				else rotation_for(angle, offset, turn, additive)
+			# A no-rotate group (or a player's summon bolt) pins its sprite to a
+			# fixed orientation (its angleOffset) rather than turning onto its
+			# heading, so a wavy shot stays easy to track instead of wobbling.
+			var fixed := content.projectiles_art.no_rotate(group_id) \
+				or ProjectileKind.has_flag(bullet, ProjectileKind.ALLY_PROJECTILE)
+			var rotation := offset if fixed else rotation_for(angle, offset, turn, additive)
 			var afterimage: Color = content.projectiles_art.fx(group_id)["afterimage"]
 			if afterimage.a > 0.0:
 				BulletAfterimage.stamp(canvas, texture, centre, size, angle, rotation, afterimage)
