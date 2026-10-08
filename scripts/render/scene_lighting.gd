@@ -18,7 +18,7 @@ extends Node2D
 const AMBIENT := Color(0.78, 0.79, 0.85)
 ## How much a (non-vault) dungeon drops the ambient below the overworld -- this is
 ## where real darkness and light-pool contrast belong, not the hub.
-const DUNGEON_DARKEN := 0.5
+const DUNGEON_DARKEN := 0.375
 ## Additive over the darkened world; a candle reads as a warm pool without
 ## blowing out the tiles around it.
 const TILE_LIGHT_ENERGY := 2.0
