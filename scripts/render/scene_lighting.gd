@@ -33,9 +33,14 @@ const MAX_TILE_LIGHTS := 24
 ## The merge collapses wall runs into a handful of rects, so this cap is only ever
 ## approached by a huge open field; 192 covers a native viewport without leaking.
 const MAX_OCCLUDERS := 192
-## Penumbra width for the PCF13 filter. Wide enough that a shadow edge fades over
-## several pixels -- soft and natural, not a hard-lined wedge.
-const SHADOW_SMOOTH := 5.0
+## Penumbra width for the PCF13 filter. Wide so a shadow edge fades over many
+## pixels into an organic gradient rather than a hard-lined wedge.
+const SHADOW_SMOOTH := 11.0
+## Shadows are drawn as a translucent WARM dark rather than opaque black, so light
+## bleeds through behind an object (it never goes pitch black) and the shaded side
+## reads warm and inviting instead of a cold, cut-out silhouette. Lower the alpha
+## for even gentler shadows; raise it toward 1.0 for deeper ones.
+const SHADOW_COLOR := Color(0.14, 0.11, 0.10, 0.5)
 ## Tiles do not move, so the view is rescanned every Nth frame, not every frame.
 const SCAN_EVERY := 20
 
@@ -120,9 +125,11 @@ func _light(light: PointLight2D, glow: GradientTexture2D, colour: Color, energy:
 	light.shadow_enabled = not _web
 	if not _web:
 		# PCF13 + a wide smooth gives a soft penumbra -- the shadow edge fades and
-		# light bleeds gradually behind an object, instead of a hard black wedge.
+		# light bleeds gradually behind an object, instead of a hard black wedge. A
+		# translucent warm shadow_color keeps the shaded side from going cold-black.
 		light.shadow_filter = Light2D.SHADOW_FILTER_PCF13
 		light.shadow_filter_smooth = SHADOW_SMOOTH
+		light.shadow_color = SHADOW_COLOR
 	add_child(light)
 
 
