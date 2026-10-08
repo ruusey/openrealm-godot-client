@@ -165,7 +165,20 @@ func _ready() -> void:
 		economy_panel.state = state
 		add_child(economy_panel)
 		screens.touch.set_economy(economy_panel.open)
+	else:
+		# Desktop export: Phantom can't run in-app, so Economy opens the web economy
+		# page (membership, cash out, fame) in the system browser.
+		screens.touch.set_economy(_open_economy_page)
 	_load_content()
+
+
+## Opens the data-service economy page in the system browser for desktop players,
+## where Phantom can't run in-app. The session rides in the URL fragment.
+func _open_economy_page() -> void:
+	if _data_service == null:
+		return
+	var frag := "#token=" + _data_service.token.uri_encode() + "&accountGuid=" + _data_service.account_guid.uri_encode()
+	OS.shell_open(_data_service.base_url + "/game-data/economy/index.html" + frag)
 
 
 ## The web virtual keyboard rides on a transparent DOM <input> Godot overlays

@@ -69,6 +69,10 @@ func _on_connection_failed(reason: String) -> void:
 
 func _on_login_succeeded(response: Dictionary) -> void:
 	state.local.enter_realm(response)
+	# Seed economy fields (incl. the economy_enabled gate) from the account DTO
+	# fetched during character select, so the HUD can gate the economy UI at once.
+	if data_service != null and data_service.account is Dictionary and not data_service.account.is_empty():
+		state.progress.seed_from_account(data_service.account)
 	login_screen.visible = false
 	print("[net] logged in as playerId=%d class=%d at (%.1f, %.1f)" % [
 		state.local.id, state.local.class_id, state.local.position.x, state.local.position.y])

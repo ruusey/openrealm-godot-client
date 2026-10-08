@@ -41,6 +41,10 @@ var _sweeps: Array[CooldownSweep] = []
 var _hp: Button
 var _mp: Button
 var _panels: BoxContainer
+## Economy entry points; kept so refresh() can hide them when the account's
+## economy_enabled gate is off. Add Fame exists on web only.
+var _add_fame_btn: Button
+var _economy_btn: Button
 ## On a phone the top row collapses into a hamburger with a tap-to-close dim.
 var _mobile := OS.has_feature("web_android") or OS.has_feature("web_ios") \
 	or OS.has_feature("android") or OS.has_feature("ios")
@@ -80,10 +84,10 @@ func _init() -> void:
 	_panels.add_child(_panel_button("Chat", chat))
 	# Escape to safety: no portal to stand on on a phone, so it rides the top row.
 	_panels.add_child(_panel_button("Nexus", nexus))
-	# Buy fame with SOL via Phantom -- web build only (Phantom is a browser wallet).
+	# Add Fame pays via Phantom in-page (web only); Economy shows on all builds.
 	if OS.has_feature("web"):
-		_panels.add_child(_panel_button("Add Fame", add_fame))
-		_panels.add_child(_panel_button("Economy", economy))
+		_add_fame_btn = _panel_button("Add Fame", add_fame); _panels.add_child(_add_fame_btn)
+	_economy_btn = _panel_button("Economy", economy); _panels.add_child(_economy_btn)
 	add_child(_panels)
 	# On a phone the row hides behind a hamburger, with a tap-anywhere dim behind
 	# the open menu that darkens the game and closes on a tap.
@@ -136,6 +140,11 @@ func refresh(content: GameData, state: RealmState) -> void:
 		_show_count(_mp, "MP", state.local.inventory.mp_potions)
 		for slot in _sweeps.size():
 			_sweeps[slot].fraction = state.abilities.cooldown_fraction(slot)
+		# Economy entry points follow the account's economy_enabled gate.
+		if _economy_btn != null:
+			_economy_btn.visible = state.progress.economy_enabled
+		if _add_fame_btn != null:
+			_add_fame_btn.visible = state.progress.economy_enabled
 	if content == null or content.abilities == null or state == null:
 		return
 	var key := "%d:%d" % [state.local.class_id, state.abilities.version]

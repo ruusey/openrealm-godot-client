@@ -27,6 +27,9 @@ var quests: Array = []
 var earned_points := 0
 var linked_wallet := ""
 var membership_expires_ms := 0
+## Account-level economy gate (server flag economyEnabled). Defaults enabled;
+## when false the client hides the economy entry points entirely.
+var economy_enabled := true
 ## Bumped on every change, so a view redraws only then.
 var version := 0
 
@@ -57,6 +60,7 @@ func seed_from_account(account: Dictionary) -> void:
 	earned_points = int(account.get("earnedPoints", earned_points))
 	linked_wallet = String(account.get("linkedWallet", linked_wallet))
 	membership_expires_ms = int(account.get("membershipExpiresAtMs", membership_expires_ms))
+	economy_enabled = bool(account.get("economyEnabled", economy_enabled))
 	version += 1
 
 
