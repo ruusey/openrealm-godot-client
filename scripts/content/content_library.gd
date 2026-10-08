@@ -55,6 +55,9 @@ var realm_default_base := 8
 var realm_overrides := {}
 ## exp-levels.json as it comes: level -> "min-max". ExperienceLevels reads it.
 var exp_levels := {}
+## sounds.json as it comes: the event/archetype/ability-tag -> ogg map Sfx reads.
+## Optional content -- an older data service that doesn't serve it leaves this empty.
+var sounds := {}
 var errors: Array[String] = []
 
 
@@ -85,6 +88,14 @@ func load_from(source: ContentSource) -> bool:
 		if object_type == "player" or object_type == "enemy":
 			animations[int(entry.get("objectId", -1))] = entry
 
+	# Optional: a missing sounds.json leaves the client silent, not broken, so it
+	# is read without the _read_object error an absent required file would raise.
+	var sound_result: Array = await source.read("sounds.json")
+	if sound_result[0] == OK:
+		var parsed = JSON.parse_string(PackedByteArray(sound_result[1]).get_string_from_utf8())
+		if parsed is Dictionary:
+			sounds = parsed
+
 	return errors.is_empty()
 
 
@@ -99,6 +110,20 @@ func sheet_keys() -> Array:
 			if key != "":
 				keys[key] = true
 	return keys.keys()
+
+
+## Every ogg the sound map refers to -- what Sfx preloads, the way sheet_keys()
+## lists the sprite sheets.
+func sound_files() -> Array:
+	var files := {}
+	for group in ["attack", "abilityByTag", "abilityByName", "event"]:
+		for value in sounds.get(group, {}).values():
+			if value is String and value != "":
+				files[value] = true
+	var fallback: Variant = sounds.get("abilityDefault", "")
+	if fallback is String and fallback != "":
+		files[fallback] = true
+	return files.keys()
 
 
 func summary() -> String:

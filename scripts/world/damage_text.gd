@@ -68,6 +68,11 @@ func apply_text_effect(data: Dictionary, entities: EntityRegistry,
 		at = TextAnchor.of(int(data.get("entityType", 0)),
 			int(data.get("targetEntityId", 0)), entities, projectiles, local)
 
+	# A damage number on an enemy is a hit landing -- anyone's. Positional, so a
+	# fight across the map is quieter than one at your feet.
+	if effect_id == Sfx.DAMAGE_EFFECT and int(data.get("entityType", 0)) == GameConstants.ENTITY_ENEMY:
+		Sfx.hit("enemy_hit", at)
+
 	var info := effect_id == INFO_EFFECT
 	var colour := colour_of(effect_id)
 	if _merged_into_a_neighbour(label, at, colour):

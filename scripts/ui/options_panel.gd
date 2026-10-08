@@ -71,6 +71,11 @@ func _ready() -> void:
 	graphics.add_theme_constant_override("h_separation", 16)
 	tabs.add_child(graphics)
 	_boxes(graphics, GameSettings.GRAPHICS)
+	var audio := VBoxContainer.new()
+	audio.name = "Audio"
+	tabs.add_child(audio)
+	_boxes(audio, GameSettings.AUDIO)
+	_volume_row(audio)
 	controls = ControlsTab.new(settings)
 	tabs.add_child(controls)
 	var buttons := HBoxContainer.new()
@@ -123,6 +128,23 @@ func refresh() -> void:
 
 func captures_mouse() -> bool:
 	return visible and _root.get_global_rect().has_point(_root.get_global_mouse_position())
+
+
+## A labelled 0..100% slider for the master SFX volume, kept the moment it moves.
+func _volume_row(into: Container) -> void:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	row.add_child(HudWidgets.label("Volume", 14, Color(0.85, 0.85, 0.85)))
+	var slider := HSlider.new()
+	slider.min_value = 0.0
+	slider.max_value = 1.0
+	slider.step = 0.05
+	slider.custom_minimum_size = Vector2(200, 0)
+	slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	slider.value = settings.sound_volume if settings != null else 0.8
+	slider.value_changed.connect(func(value: float) -> void: if settings != null: settings.set_sound_volume(value))
+	row.add_child(slider)
+	into.add_child(row)
 
 
 func _boxes(into: Container, table: Dictionary) -> void:

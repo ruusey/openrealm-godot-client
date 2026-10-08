@@ -7,9 +7,10 @@ extends ContentSource
 ## out beside this one, so working on the client needs no service running.
 
 ## Searched in order. JSON lives under data/, sprite sheets under entity/ or
-## ui/, with a few at the root. These are the same locations the data service
-## serves /game-data from, which is what makes the two sources interchangeable.
-const SUBDIRECTORIES := ["data", "entity", "ui", ""]
+## ui/, sound effects under audio/, with a few at the root. These are the same
+## locations the data service serves /game-data from, which is what makes the
+## two sources interchangeable.
+const SUBDIRECTORIES := ["data", "entity", "ui", "audio", ""]
 
 var root := ""
 

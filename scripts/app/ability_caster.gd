@@ -64,6 +64,7 @@ func cast(slot: int, target: Vector2) -> bool:
 	var centre := state.local.centre()
 	target = content.abilities.clamp_target(id, centre, target)
 	client.send("UseAbilityPacket", {"posX": target.x, "posY": target.y, "abilityIndex": slot})
+	Sfx.ability(definition)
 
 	# The cast pose, aimed where the cast went; a self-cast faces front.
 	state.local.face_toward(target - centre)

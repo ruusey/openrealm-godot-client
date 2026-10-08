@@ -102,6 +102,11 @@ func _note_shooter(wire: Dictionary) -> void:
 	# that doesn't hold the id, so try both and the right one plays its swing.
 	RemoteAnimation.note_attack(_entities.players, source, angle)
 	RemoteAnimation.note_attack(_entities.enemies, source, angle)
+	# A remote player's swing is audible too (not the bullet-hell of enemies); the
+	# shot origin places it. Sfx throttles a multishot volley down to one sound.
+	if _entities.players.has(source):
+		var pos: Dictionary = wire.get("pos", {})
+		Sfx.remote_attack(source, Vector2(pos.get("x", 0.0), pos.get("y", 0.0)))
 
 
 func apply_unload(data: Dictionary) -> void:

@@ -62,6 +62,7 @@ func drop(from: int) -> bool:
 func consume(from: int) -> bool:
 	if Inventory.is_ground_loot(from) or not bool(item_in(from).get("consumable", false)):
 		return false
+	Sfx.event("item_use")
 	return _send_move(from, from, false, true)
 
 
@@ -117,6 +118,7 @@ func drink(hp: bool) -> bool:
 	var bag := state.local.inventory
 	if (bag.hp_potions if hp else bag.mp_potions) <= 0:
 		return false
+	Sfx.event("item_use")
 	return _send_move(NONE, Inventory.HP_POTION_SLOT if hp else Inventory.MP_POTION_SLOT, false, true)
 
 

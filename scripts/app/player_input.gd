@@ -92,6 +92,16 @@ func _fire(_delta: float) -> void:
 		return
 	_next_shot_ms = clock.call() + int(interval() * 1000.0)
 	client.send("PlayerShootPacket", shot)
+	_play_attack_sound()
+
+
+## The swing sound for the weapon in hand, by its archetype.
+func _play_attack_sound() -> void:
+	if content == null:
+		return
+	var weapon: Dictionary = state.local.equipped_weapon()
+	var archetype: Dictionary = content.archetype_for_item(int(weapon.get("itemId", -1)))
+	Sfx.attack(int(archetype.get("id", 0)))
 
 
 ## How long this weapon makes us wait, with whatever is on us right now.

@@ -59,7 +59,10 @@ static func _update_enemy(state: RealmState, id: int, data: Dictionary) -> void:
 
 ## HP/MP and statuses apply to the local player and the roster entry alike.
 static func player_state(state: RealmState, data: Dictionary) -> void:
+	var health_before := state.local.health
 	state.local.apply_player_state(data)
+	if int(data.get("playerId", 0)) == state.local.id and state.local.health < health_before:
+		Sfx.event("player_hurt")
 	var id := int(data.get("playerId", 0))
 	var entity := state.entities.find(GameConstants.ENTITY_PLAYER, id)
 	if entity.is_empty():

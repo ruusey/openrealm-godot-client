@@ -40,8 +40,17 @@ const GRAPHICS := {
 	"animated_liquids": ["Animated water & lava", true],
 	"show_transition_screen": ["Show the realm transition screen", true],
 }
+## The sound switches, each flipping one gate in Sfx. Volume is a float, kept
+## beside them (sound_volume), not a switch.
+const AUDIO := {
+	"sound": ["Sound effects", true],
+	"sound_others": ["Other players' sounds", true],
+	"sound_hits": ["Hit & damage sounds", true],
+}
 
 var path := ""
+## Master sound-effect volume, 0..1; Sfx reads it per play.
+var sound_volume := 0.8
 ## The player's UI scale and world zoom from the options, each 0 for
 ## automatic (DisplayScale); ScaleRow names them by these keys.
 var ui_scale := 0.0
@@ -51,7 +60,7 @@ var _panels := {}
 
 
 func _init() -> void:
-	for table in [DISPLAY, GRAPHICS]:
+	for table in [DISPLAY, GRAPHICS, AUDIO]:
 		for key in table:
 			_values[key] = table[key][1]
 	# Mobile GPUs can't afford the dynamic lights (20-30 fps in testing), so the
@@ -92,6 +101,7 @@ func load_from(file_path: String) -> void:
 			_values[key] = bool(file.get_value(SECTION, key, _values[key]))
 		ui_scale = float(file.get_value(SECTION, "ui_scale", 0.0))
 		world_zoom = float(file.get_value(SECTION, "world_zoom", 0.0))
+		sound_volume = float(file.get_value(SECTION, "sound_volume", sound_volume))
 		for action in file.get_section_keys(KEYS) if file.has_section(KEYS) else []:
 			keys[action] = int(file.get_value(KEYS, action, 0))
 		for panel in file.get_section_keys(PANELS) if file.has_section(PANELS) else []:
@@ -108,6 +118,7 @@ func save() -> void:
 		file.set_value(SECTION, key, _values[key])
 	file.set_value(SECTION, "ui_scale", ui_scale)
 	file.set_value(SECTION, "world_zoom", world_zoom)
+	file.set_value(SECTION, "sound_volume", sound_volume)
 	var keys := KeyBindings.custom()
 	for action in keys:
 		file.set_value(KEYS, action, keys[action])
@@ -139,6 +150,16 @@ func set_scale(key: String, scale: float) -> void:
 
 func scale_of(key: String) -> float:
 	return float(get(key))
+
+
+## The master SFX volume, 0..1; kept for next time.
+func set_sound_volume(volume: float) -> void:
+	volume = clampf(volume, 0.0, 1.0)
+	if is_equal_approx(volume, sound_volume):
+		return
+	sound_volume = volume
+	save()
+	changed.emit()
 
 
 ## A key for an action, kept; see KeyBindings.rebind for the swap.

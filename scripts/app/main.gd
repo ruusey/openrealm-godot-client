@@ -255,6 +255,12 @@ func _load_content() -> void:
 	if not game_data.errors.is_empty():
 		screens.login.set_status("Content warnings:\n  %s" % "\n  ".join(game_data.errors.slice(0, 3)), true)
 
+	# The sound map and its oggs load through the same source as the rest; done
+	# here so a data-only change to sounds.json needs no client release. Not
+	# awaited -- the oggs stream in while the player logs in, and every trigger
+	# no-ops until they have landed.
+	Sfx.configure(game_data, state.settings, source)
+
 	if session.can_autoconnect():
 		session.begin(config.email, config.password, config.character_uuid)
 	elif not screens.login.saved_session.read().is_empty():

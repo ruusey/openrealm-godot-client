@@ -23,6 +23,10 @@ boot_splash/image="res://assets/boot_splash.png"
 boot_splash/use_filter=false
 run/max_fps=240
 
+[autoload]
+
+Sfx="*res://scripts/app/sfx.gd"
+
 [display]
 
 window/size/viewport_width=1280
