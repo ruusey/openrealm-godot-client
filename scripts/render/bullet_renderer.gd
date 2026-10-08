@@ -12,11 +12,13 @@ extends Node2D
 ## rather than one.
 
 
-## An outline is eight extra commands per projectile, so a horde would pay
-## nine times over for it. The web client caps it the same way (its
-## BULLET_OUTLINE_BUDGET), and prioritises the shots nearest the camera; ours
-## simply stops once the budget is spent.
+## An outline is four extra draw commands per projectile. On the web GL-compat
+## renderer those draw calls are the dominant cost under a projectile horde, so web
+## skips outlines (and afterimages) entirely -- the single biggest frame-rate win
+## when the screen fills with shots. Native has the headroom and keeps them.
 const OUTLINE_BUDGET := 256
+var _web := OS.has_feature("web")
+var _outline_budget := 0 if OS.has_feature("web") else OUTLINE_BUDGET
 
 var state: RealmState
 var content: GameData
@@ -93,7 +95,8 @@ func paint(canvas: CanvasItem, state: RealmState, content: GameData,
 			# pinned — they face their heading exactly like the source enemy's shot.
 			var rotation := offset if content.projectiles_art.no_rotate(group_id) \
 				else rotation_for(angle, offset, turn, additive)
-			var afterimage: Color = content.projectiles_art.fx(group_id)["afterimage"]
+			var afterimage: Color = Color.TRANSPARENT if _web \
+				else content.projectiles_art.fx(group_id)["afterimage"]
 			if afterimage.a > 0.0:
 				BulletAfterimage.stamp(canvas, texture, centre, size, angle, rotation, afterimage)
 				afterimaged += 1
@@ -110,7 +113,7 @@ static func rotation_for(angle: float, offset: float, turn: float,
 
 
 func _take_outline() -> bool:
-	if outlined >= OUTLINE_BUDGET:
+	if outlined >= _outline_budget:
 		return false
 	outlined += 1
 	return true

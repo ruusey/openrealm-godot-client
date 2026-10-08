@@ -37,6 +37,11 @@ var _player: LocalPlayer
 var _content: GameData
 var _clock: Callable
 var _shot_counter := 0
+## Client-side hit prediction is O(own-bullets x enemies); it only consumes a
+## non-pierce shot a few ms before the server's Unload, so on the web renderer we
+## run it every 3rd frame instead of every frame. Native runs it every frame.
+var _web := OS.has_feature("web")
+var _predict_frame := 0
 ## Homing and anchored bullets steer toward / stick to an entity, so the
 ## simulation needs the roster. Optional: a system built without one simply
 ## leaves those bullets flying straight.
@@ -131,7 +136,12 @@ func advance(delta: float) -> void:
 			ProjectileTracking.anchor(bullet, _entities, _player)
 		if _should_drop_locally(id, bullet, now):
 			bullets.erase(id)
-	_predict_hits(now)
+	if _web:
+		_predict_frame = (_predict_frame + 1) % 3
+		if _predict_frame == 0:
+			_predict_hits(now)
+	else:
+		_predict_hits(now)
 
 
 ## Whether to drop a bullet from the local table on our own, WITHOUT a server Unload.
