@@ -88,7 +88,7 @@ func setup(state: RealmState, content: GameData) -> void:
 	add_child(_ambient)
 	_glow = _glow_environment()
 	add_child(_world_env)
-	var glow_mul := 1.0 if _web else 1.08
+	var glow_mul := 1.0 if _web else 1.134
 	_tile_energy = TILE_LIGHT_ENERGY * glow_mul
 	_bullet_energy = BULLET_LIGHT_ENERGY * glow_mul
 	var glow := _soft_texture()
