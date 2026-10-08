@@ -77,9 +77,12 @@ func load_from(source: ContentSource) -> bool:
 		fame_store[int(key)] = int(prices[key])
 	await _load_realm_prices(source)
 	exp_levels = await _read_object(source, "exp-levels.json")
-	# Animations are keyed by objectId but only the player sets are useful here.
+	# Animations are keyed by objectId. Player class sets drive the character
+	# sprites; enemy sets drive enemy walk/attack frames (EntityQueue). Class ids
+	# (0-11) and enemy ids (200+) never collide, so both live in one table.
 	for entry in await _read_array(source, "animations.json"):
-		if entry.get("objectType", "") == "player":
+		var object_type := String(entry.get("objectType", ""))
+		if object_type == "player" or object_type == "enemy":
 			animations[int(entry.get("objectId", -1))] = entry
 
 	return errors.is_empty()
