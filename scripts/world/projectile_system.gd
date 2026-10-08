@@ -147,19 +147,28 @@ func advance(delta: float) -> void:
 ## Whether to drop a bullet from the local table on our own, WITHOUT a server Unload.
 ## Our OWN shots (local predictions, or player-flagged copies) are predicted for snappy
 ## feedback: they expire at max range and stop at walls locally. ENEMY shots are
-## server-authoritative -- only the server's Unload removes them, so the client can never
-## hide a bullet that's still alive on the server and about to hit us (that was the
-## "die to an invisible projectile" bug: client-side terrain-guess / early range-expiry
-## dropped an enemy bullet the server kept flying into the player). A hard 10s lifetime
-## cap stays as a backstop for the rare case an Unload is never delivered.
+## server-authoritative: the client removes them only on a wall hit (which the server
+## mirrors exactly) or the Unload, so it can never hide a bullet the server keeps flying
+## into us (that was the "die to an invisible projectile" bug: client-side range/lifetime
+## GUESSES dropped an enemy bullet the server kept alive -- terrain is not a guess). A hard
+## 10s lifetime cap stays as a backstop for the rare case an Unload is never delivered.
 func _should_drop_locally(_id: int, bullet: Dictionary, now: int) -> bool:
 	if _is_own_shot(bullet):
 		return ProjectileMotion.is_expired(bullet, now) or _hits_terrain(bullet)
-	# Persistent walls are removed by the server's Unload, not the short local backstop
-	# (see WALL_FALLBACK_LIFETIME_MS) -- dropping one early left the server damaging us
-	# through a wall it had stopped drawing on our screen and would never re-send.
-	var cap := WALL_FALLBACK_LIFETIME_MS if ProjectileKind.has_flag(bullet, ProjectileKind.LINE_SEGMENT) \
-		else ProjectileMotion.MAX_LIFETIME_MS
+	# Enemy shots are server-authoritative, but a wall stops them on the server too
+	# (proccessTerrainHit), so mirroring that ONE rule client-side is safe: the bullet the
+	# server keeps flying is one that did not hit a wall, which _hits_terrain leaves alone.
+	# This only hides a shot at the exact tile the server also removes it, killing the frame
+	# or two it used to visibly clip through the wall before the Unload arrived. (The old
+	# "die to an invisible projectile" bug came from range/lifetime GUESSES, not terrain.)
+	# LINE_SEGMENT walls are persistent -- removed by the server's Unload only, never here.
+	var is_wall: bool = ProjectileKind.has_flag(bullet, ProjectileKind.LINE_SEGMENT)
+	if not is_wall and _hits_terrain(bullet):
+		return true
+	# Persistent walls fall back to the long cap (see WALL_FALLBACK_LIFETIME_MS) -- dropping
+	# one early left the server damaging us through a wall it had stopped drawing on our
+	# screen and would never re-send.
+	var cap := WALL_FALLBACK_LIFETIME_MS if is_wall else ProjectileMotion.MAX_LIFETIME_MS
 	return (now - int(bullet.get("created_ms", now))) > cap
 
 
