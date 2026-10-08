@@ -137,6 +137,7 @@ func advance(delta: float, input: Vector2, latency_ms: float) -> Array:
 	local.walk.advance(movement.pace_px, delta)
 	local.attack.tick(delta)
 	RemoteAnimation.advance(entities.players, delta)
+	RemoteAnimation.advance(entities.enemies, delta)
 	projectiles.advance(delta)
 	particles.advance(delta, projectiles.bullets,
 		func(bullet: Dictionary) -> bool: return Blind.hides_bullet(self, bullet))

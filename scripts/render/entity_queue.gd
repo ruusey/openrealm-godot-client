@@ -102,17 +102,47 @@ func _queue_enemies(queue: Array, state: RealmState, content: GameData, view: Re
 		var size := int(enemy.get("size", SIMPLE_SIZE))
 		if not view.has_point(position) or Blind.hides(state, position, size):
 			continue
+		var enemy_id: int = enemy.get("enemy_id", -1)
+		var texture: Texture2D = null
+		var flip := false
+		var draw := Vector2.ONE * float(size)
+		# Enemies with an animation set play idle/walk/attack frames and mirror on
+		# horizontal movement, exactly like remote players. These sheets are side-only,
+		# so always use the "side" clip and flip by travel direction. No animation set
+		# (or a missing frame) falls back to the single static sprite.
+		if content.library.animations.has(enemy_id):
+			var pose: AttackPose = enemy["attack"]
+			var action := "idle"
+			var frame: int = enemy["walk"].frame
+			if _enemy_moving(enemy):
+				action = "walk"
+			if pose.is_active():
+				action = "attack"
+				frame = pose.frame
+			texture = content.classes_art.frame(enemy_id, action, "side", frame)
+			if texture != null:
+				flip = enemy["facing_left"]
+				draw = frame_size(texture, content.classes_art.cell_size(enemy_id), size)
+		if texture == null:
+			texture = content.enemy_texture(enemy_id)
+			flip = false
+			draw = Vector2.ONE * float(size)
 		queue.append({
 			"kind": "enemies",
 			"pos": position,
 			"size": size,
-			"draw": Vector2.ONE * float(size),
-			"texture": content.enemy_texture(enemy.get("enemy_id", -1)),
+			"draw": draw,
+			"texture": texture,
 			"tint": Color(0.8, 0.25, 0.25),
 			"modulate": StatusTint.of(enemy.get("effects", [])),
-			"flip": false,
+			"flip": flip,
 			"lock": id == state.entities.lock_on,
 		})
+
+
+func _enemy_moving(enemy: Dictionary) -> bool:
+	var snapshots: Array = enemy.get("snaps", [])
+	return not snapshots.is_empty() and snapshots[-1]["vel"].length_squared() > 0.0001
 
 
 ## A portal draws a tile wide, which is what both references give it, and its

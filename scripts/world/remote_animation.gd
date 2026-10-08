@@ -4,8 +4,9 @@ extends RefCounted
 ## Keeps remote characters' animation state moving.
 ##
 ## Split from EntityRegistry, which holds where entities *are*; this is what
-## they look like while they are there. Only players have anything to advance
-## -- enemies are drawn from a single static sprite, with no cadence to keep.
+## they look like while they are there. Works on any entity table whose members
+## carry the walk/attack/facing fields (players AND animated enemies) -- the
+## caller advances each table it wants animated.
 
 
 ## Starts a remote player's swing, aimed along the bullet they fired.
@@ -19,9 +20,8 @@ static func note_attack(players: Dictionary, player_id: int, angle: float) -> vo
 	players[player_id]["attack"].begin(ProjectileAngle.direction(angle))
 
 
-## Advances every remote player's walk cycle from its streamed velocity.
-## Enemies are drawn from a single static sprite, so they have no cadence to
-## keep.
+## Advances every entry's walk cycle from its streamed velocity and faces it
+## along its travel. Called per table (remote players, animated enemies).
 static func advance(players: Dictionary, delta: float) -> void:
 	for id in players:
 		var player: Dictionary = players[id]

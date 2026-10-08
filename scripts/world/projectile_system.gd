@@ -92,7 +92,11 @@ func _note_shooter(wire: Dictionary) -> void:
 	var source := int(wire.get("srcEntityId", 0))
 	if source == 0 or source == _player.id:
 		return
-	RemoteAnimation.note_attack(_entities.players, source, float(wire.get("angle", 0.0)))
+	var angle := float(wire.get("angle", 0.0))
+	# The shooter is a remote player OR an enemy -- note_attack no-ops on the dict
+	# that doesn't hold the id, so try both and the right one plays its swing.
+	RemoteAnimation.note_attack(_entities.players, source, angle)
+	RemoteAnimation.note_attack(_entities.enemies, source, angle)
 
 
 func apply_unload(data: Dictionary) -> void:
