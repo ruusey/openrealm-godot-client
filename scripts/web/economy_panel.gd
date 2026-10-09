@@ -209,7 +209,9 @@ func _on_buy_membership() -> void:
 		_finish("Couldn't get a blockhash.")
 		return
 	_status.text = "Approve the REALM payment in Phantom..."
-	_wallet.buy_fame_token(realm_units, REALM_MINT, RECIPIENT, REALM_DECIMALS, blockhash, _after_membership_paid)
+	# Membership fees go to the hot wallet (server-driven) so payouts self-fund.
+	var membership_wallet: String = String(_config.get("membershipWallet", RECIPIENT))
+	_wallet.buy_fame_token(realm_units, REALM_MINT, membership_wallet, REALM_DECIMALS, blockhash, _after_membership_paid)
 
 
 func _after_membership_paid(res: Dictionary) -> void:
