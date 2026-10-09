@@ -129,7 +129,7 @@ func describe(index: int) -> Array:
 	lines.append_array(_damage_lines(definition, invested))
 	lines.append([_facts_text(definition, id, invested), MUTED])
 	for effect in definition.get("effects", []):
-		var effect_text := _effect_text(effect)
+		var effect_text := _effect_text(effect, definition, invested)
 		if effect_text != "":
 			lines.append([effect_text, EFFECT_COLOUR])
 	for scaling in definition.get("scalings", []):
@@ -180,7 +180,7 @@ func _facts_text(definition: Dictionary, id: int, invested: int) -> String:
 
 
 ## One effect in words: a status and its duration, a heal, a shield, and so on.
-func _effect_text(effect: Dictionary) -> String:
+func _effect_text(effect: Dictionary, definition: Dictionary, invested: int) -> String:
 	var kind := str(effect.get("type", "")).to_upper()
 	var target := _target_text(str(effect.get("target", "")))
 	match kind:
@@ -189,9 +189,11 @@ func _effect_text(effect: Dictionary) -> String:
 			var status := _status_name(effect.get("statusId", ""))
 			return "Apply %s%s%s" % [status, (" %.1fs" % duration) if duration > 0 else "", target]
 		"HEAL":
-			return "Heal %d HP%s" % [int(effect.get("baseMagnitude", 0)), target]
+			# Show the total at the current rank (base + per-point scaling), like damage,
+			# so the number matches what the ability actually heals in game.
+			return "Heal %d HP%s" % [_effect_total(effect, definition, invested, "HEAL"), target]
 		"SHIELD":
-			return "Shield %d HP%s" % [int(effect.get("baseMagnitude", 0)), target]
+			return "Shield %d HP%s" % [_effect_total(effect, definition, invested, "SHIELD"), target]
 		"CLEANSE":
 			var count := int(effect.get("baseMagnitude", 0))
 			return "Cleanse " + ("all effects" if count <= 0 else "%d effects" % count)
@@ -213,6 +215,17 @@ func _scaling_text(scaling: Dictionary, invested: int) -> String:
 	var contribution := _scaling_contribution(scaling, invested)
 	var current := " (+%d)" % int(contribution) if contribution > 0 else ""
 	return "%s x%s -> %s%s" % [_stat_label(scaling, invested), _number(scaling.get("coeff", 0)), target, current]
+
+
+## An effect's magnitude at the current rank: its base plus every scaling that
+## targets it (HEAL/SHIELD). Mirrors the server's base + scaling sum so the shown
+## number equals the real effect.
+func _effect_total(effect: Dictionary, definition: Dictionary, invested: int, target_kind: String) -> int:
+	var total := int(effect.get("baseMagnitude", 0))
+	for scaling in definition.get("scalings", []):
+		if str(scaling.get("target", "")).to_upper() == target_kind:
+			total += int(_scaling_contribution(scaling, invested))
+	return total
 
 
 ## How much a scaling adds right now: the stat (or invested points) times the
