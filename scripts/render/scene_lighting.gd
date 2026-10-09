@@ -196,15 +196,13 @@ func _place_bullet_lights() -> void:
 	var centre := _state.local.render_centre()
 	for id in _state.projectiles.bullets:
 		var bullet: Dictionary = _state.projectiles.bullets[id]
-		var light_def := _content.projectile_light(int(bullet.get("group_id", -1)))
-		var strength := float(light_def.get("strength", 0.0))
-		if strength <= 0.0:
+		# Resolved once per group (colour hex parsed there), not per bullet per frame.
+		var light_def := _content.projectile_light_resolved(int(bullet.get("group_id", -1)))
+		if light_def.is_empty():
 			continue
 		var size := float(bullet.get("size", 8))
 		var at: Vector2 = bullet["pos"] + Vector2(size, size) * 0.5
-		var hex := str(light_def.get("color", "#ffffff"))
-		var colour := Color.html(hex) if Color.html_is_valid(hex) else Color.WHITE
-		found.append([at.distance_squared_to(centre), at, colour, strength])
+		found.append([at.distance_squared_to(centre), at, light_def["color"], light_def["radius"]])
 	found.sort_custom(_nearer)
 	for i in _bullet_lights.size():
 		var light := _bullet_lights[i]

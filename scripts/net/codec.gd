@@ -13,17 +13,22 @@ extends RefCounted
 ## field is a masked-section block -- one byte, then the fields of each
 ## section whose bit is set, flattened into the same Dictionary as its parent.
 
-const PRIMITIVES := ["byte", "bool", "short", "int", "long", "float", "string"]
+# A set, not a list: this is tested per field of every decoded entity, so the
+# membership check is an O(1) hash lookup rather than a linear scan each time.
+const PRIMITIVES := {
+	"byte": true, "bool": true, "short": true, "int": true,
+	"long": true, "float": true, "string": true,
+}
 
 
 static func read_value(buf: StreamPeerBuffer, wire_type: String) -> Variant:
-	if wire_type in PRIMITIVES:
+	if PRIMITIVES.has(wire_type):
 		return WireBuffer.read_primitive(buf, wire_type)
 	return read_fields(buf, NetSchema.fields_for(wire_type), wire_type)
 
 
 static func write_value(buf: StreamPeerBuffer, wire_type: String, value: Variant) -> void:
-	if wire_type in PRIMITIVES:
+	if PRIMITIVES.has(wire_type):
 		WireBuffer.write_primitive(buf, wire_type, value)
 	else:
 		write_fields(buf, NetSchema.fields_for(wire_type), value if value is Dictionary else {})

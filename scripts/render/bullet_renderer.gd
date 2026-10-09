@@ -47,6 +47,12 @@ func paint(canvas: CanvasItem, state: RealmState, content: GameData,
 	var drawn := 0
 	outlined = 0
 	afterimaged = 0
+	# The wall clock drives the spin of every shot in phase, so it is read once
+	# for the whole frame; and each group's art (texture, offset, spin turn,
+	# afterimage) is resolved once per distinct group here, not re-looked-up for
+	# every one of the hundreds of bullets that share it.
+	var now_ms: int = clock.call()
+	var groups := {}
 	for id in state.projectiles.bullets:
 		var bullet: Dictionary = state.projectiles.bullets[id]
 		# The swing animation stands in for a melee arc; both references
@@ -64,10 +70,14 @@ func paint(canvas: CanvasItem, state: RealmState, content: GameData,
 		drawn += 1
 
 		var size: float = maxf(float(bullet.get("size", 8)), 4.0)
-		var texture := content.projectile_texture(int(bullet.get("group_id", -1)))
+		var group_id := int(bullet.get("group_id", -1))
+		if not groups.has(group_id):
+			groups[group_id] = _resolve_group(content, group_id, now_ms)
+		var art: Dictionary = groups[group_id]
+		var texture: Texture2D = art["texture"]
+		var centre := position + Vector2(size, size) * 0.5
 		if texture == null:
-			canvas.draw_circle(position + Vector2(size, size) * 0.5, size * 0.5,
-				Color(1.0, 0.9, 0.35))
+			canvas.draw_circle(centre, size * 0.5, Color(1.0, 0.9, 0.35))
 			continue
 
 		# Projectile art is drawn pointing diagonally, not up, which is why
@@ -75,16 +85,13 @@ func paint(canvas: CanvasItem, state: RealmState, content: GameData,
 		# angle alone leaves every shot 45 degrees off its heading. Mirrors
 		# the web client: -angle + PI/2 + angleOffset.
 		var angle: float = bullet["angle"]
-		var group_id := int(bullet.get("group_id", -1))
-		var offset := content.projectiles_art.angle_offset(group_id)
-		var centre := position + Vector2(size, size) * 0.5
+		var offset: float = art["offset"]
 		# A continuous spin replaces the heading outright -- a shuriken does
 		# not point where it is going -- while an additive one turns on top of
 		# it. A wall's tiles only ever take the additive kind, because a
 		# continuous one would break the line they are meant to form.
-		var spin := content.projectiles_art.spin(group_id)
-		var turn := ProjectileArt.spun(spin, clock.call())
-		var additive: bool = spin.is_empty() or spin["additive"]
+		var turn: float = art["turn"]
+		var additive: bool = art["additive"]
 		if is_wall:
 			_draw_wall(canvas, texture, centre, size, angle, offset,
 				length, turn if additive else 0.0)
@@ -93,15 +100,31 @@ func paint(canvas: CanvasItem, state: RealmState, content: GameData,
 			# angleOffset) rather than turning onto its heading, so a wavy shot
 			# stays easy to track instead of wobbling. Ally/summon bolts are NOT
 			# pinned — they face their heading exactly like the source enemy's shot.
-			var rotation := offset if content.projectiles_art.no_rotate(group_id) \
+			var rotation := offset if art["no_rotate"] \
 				else rotation_for(angle, offset, turn, additive)
-			var afterimage: Color = Color.TRANSPARENT if _web \
-				else content.projectiles_art.fx(group_id)["afterimage"]
+			var afterimage: Color = art["afterimage"]
 			if afterimage.a > 0.0:
 				BulletAfterimage.stamp(canvas, texture, centre, size, angle, rotation, afterimage)
 				afterimaged += 1
 			_draw_one(canvas, texture, centre, size, rotation, _take_outline())
 	return drawn
+
+
+## A group's render attributes resolved once per frame: the ProjectileArt getters
+## are per-group memoized but still a dict lookup each, and a bullet-hell draws
+## hundreds of bullets from a handful of groups -- so each group is resolved on
+## first sight and reused for its every bullet that frame. Afterimages are a
+## native-only trail (the web skips them for the draw-call budget).
+func _resolve_group(content: GameData, group_id: int, now_ms: int) -> Dictionary:
+	var spin := content.projectiles_art.spin(group_id)
+	return {
+		"texture": content.projectile_texture(group_id),
+		"offset": content.projectiles_art.angle_offset(group_id),
+		"no_rotate": content.projectiles_art.no_rotate(group_id),
+		"turn": ProjectileArt.spun(spin, now_ms),
+		"additive": spin.is_empty() or spin["additive"],
+		"afterimage": Color.TRANSPARENT if _web else content.projectiles_art.fx(group_id)["afterimage"],
+	}
 
 
 ## Where a bullet points. An additive spin turns on top of the heading; a

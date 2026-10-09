@@ -31,7 +31,13 @@ const MELEE_SWING := 40
 const CRITICAL := 50
 
 
+## Flags are packed into an int bitmask at construction (flag_bits), so every
+## motion/ownership predicate is a bit test rather than a linear Array scan --
+## this runs ~15-20 times per bullet per frame. Falls back to the flags Array
+## for the construction-time temp dicts that are built before flag_bits exists.
 static func has_flag(bullet: Dictionary, flag: int) -> bool:
+	if bullet.has("flag_bits"):
+		return (int(bullet["flag_bits"]) & (1 << flag)) != 0
 	return flag in bullet.get("flags", [])
 
 

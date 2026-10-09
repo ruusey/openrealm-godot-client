@@ -24,6 +24,16 @@ var _column: VBoxContainer
 var _name: Label
 var _detail: Label
 
+## The realm fields last drawn, so the per-frame tick skips rebuilding the text
+## and re-applying the colour override (which invalidates the theme cache) when
+## nothing about the realm changed -- which is every frame but the handful it does.
+var _drawn_name := ""
+var _drawn_difficulty := -1.0
+var _drawn_goal := -1
+var _drawn_progress := -1
+var _drawn_tier := -1
+var _drawn_modifiers := ""
+
 
 func setup(realm_state: RealmState, game_data: GameData) -> void:
 	state = realm_state
@@ -62,6 +72,19 @@ func _process(_delta: float) -> void:
 		return
 	var realm: Dictionary = state.minimap.realm
 	var difficulty := float(realm.get("difficulty", 0.0))
+	var goal := int(realm.get("goal", 0))
+	var progress := int(realm.get("progress", 0))
+	var tier := int(realm.get("tier", 0))
+	var modifiers := String(realm.get("modifiers", ""))
+	if name == _drawn_name and difficulty == _drawn_difficulty and goal == _drawn_goal \
+			and progress == _drawn_progress and tier == _drawn_tier and modifiers == _drawn_modifiers:
+		return
+	_drawn_name = name
+	_drawn_difficulty = difficulty
+	_drawn_goal = goal
+	_drawn_progress = progress
+	_drawn_tier = tier
+	_drawn_modifiers = modifiers
 	_name.text = name if difficulty <= 0.0 else "%s   %s" % [name, PortalCard.number(difficulty)]
 	_name.add_theme_color_override("font_color", difficulty_colour(difficulty) if difficulty > 0.0 else Color.WHITE)
 	_detail.text = purification(realm)

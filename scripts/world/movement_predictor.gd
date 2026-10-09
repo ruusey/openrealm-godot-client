@@ -143,14 +143,22 @@ func _snapshot_speed_per_tick(snap: Dictionary) -> float:
 	return tiles_per_second * float(GameConstants.TILE_SIZE) / GameConstants.TICK_RATE
 
 
-## The effect state to record with an input, for accurate replay later.
+## The effect state to record with an input, for accurate replay later. Effects
+## and SPD change rarely, so the same immutable snapshot is shared across the
+## inputs that saw identical state -- a fresh dict is built only when it changes,
+## not 64 times a second. Safe to share: replay reads the snapshot, never mutates it.
+var _snapshot_cache: Dictionary = {}
+
 func _effect_snapshot() -> Dictionary:
-	return {
-		"slowed": _player.effects.has(LocalPlayer.SLOWED),
-		"speedy": _player.effects.has(LocalPlayer.SPEEDY),
-		"paralyzed": _player.effects.has(LocalPlayer.PARALYZED),
-		"spd": float(_player.stats.get("spd", 15)),
-	}
+	var slowed := _player.effects.has(LocalPlayer.SLOWED)
+	var speedy := _player.effects.has(LocalPlayer.SPEEDY)
+	var paralyzed := _player.effects.has(LocalPlayer.PARALYZED)
+	var spd := float(_player.stats.get("spd", 15))
+	if _snapshot_cache.is_empty() or _snapshot_cache["slowed"] != slowed \
+			or _snapshot_cache["speedy"] != speedy \
+			or _snapshot_cache["paralyzed"] != paralyzed or _snapshot_cache["spd"] != spd:
+		_snapshot_cache = {"slowed": slowed, "speedy": speedy, "paralyzed": paralyzed, "spd": spd}
+	return _snapshot_cache
 
 
 func apply_position_ack(data: Dictionary) -> void:
@@ -167,7 +175,11 @@ func apply_position_ack(data: Dictionary) -> void:
 	# the history either. That was a 15px sawtooth on a real connection,
 	# invisible on loopback. Both references drop `<= seq` and replay the
 	# rest, and so does this.
-	_history = _history.filter(func(entry: Dictionary) -> bool: return entry["seq"] > acked_seq)
+	# seq is monotonic and history is append-ordered, so the acked inputs are a
+	# contiguous prefix: drop it in place instead of allocating a filtered Array
+	# and a lambda on every 32Hz ack. Equivalent to keeping every `seq > acked`.
+	while not _history.is_empty() and int(_history[0]["seq"]) <= acked_seq:
+		_history.pop_front()
 
 	# Replay from the server's position and adopt the result *always*, even
 	# when the error looks negligible. The server re-applies the last input on

@@ -24,6 +24,11 @@ var _loot_all: Button
 var _tooltip: ItemTooltip
 var _drawn := ""
 var _closed_on := -1   # the bag Close put away, until we step off it
+## Loot bags do not move, so the proximity scan runs a few times a second rather
+## than every frame; the window still appears within this of stepping onto a bag.
+## Primed to the interval so the very first frame always scans (tests drive one).
+const SCAN_INTERVAL := 0.1
+var _scan_elapsed := SCAN_INTERVAL
 
 
 func setup(realm_state: RealmState, game_data: GameData, inventory_actions: InventoryActions,
@@ -63,7 +68,22 @@ func _ready() -> void:
 	add_child(_tooltip)
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	_scan_elapsed += delta
+	if _scan_elapsed >= SCAN_INTERVAL:
+		_scan_elapsed = 0.0
+		_rescan()
+	if not visible:
+		return
+	_root.position = at.call()
+	PanelFit.shrink(_root, Vector2.ZERO)   # about its top-left, where it is pinned
+	if _tooltip.visible:
+		_tooltip.follow(_root.get_global_mouse_position())
+
+
+## Re-finds the bag at the player's feet and refreshes the strip if it changed.
+## Throttled by _process; the position/tooltip follow still runs every frame.
+func _rescan() -> void:
 	var bag: Dictionary = {} if actions == null or state == null or not state.local.is_present() \
 		else Inventory.nearest_loot(state.entities, state.local.position, GameConstants.PLAYER_SIZE)
 	var bag_id := int(bag.get("id", -1))
@@ -78,10 +98,6 @@ func _process(_delta: float) -> void:
 	if key != _drawn:
 		_drawn = key
 		refresh()
-	_root.position = at.call()
-	PanelFit.shrink(_root, Vector2.ZERO)   # about its top-left, where it is pinned
-	if _tooltip.visible:
-		_tooltip.follow(_root.get_global_mouse_position())
 
 
 ## The rows, one an item the bag holds, in the bag's own slot order.

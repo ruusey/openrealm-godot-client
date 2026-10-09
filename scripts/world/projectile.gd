@@ -16,8 +16,11 @@ static func from_wire(wire: Dictionary, now_ms: int) -> Dictionary:
 	# That silently dropped PASS_THROUGH_TERRAIN/ENEMIES on un-predicted own shots
 	# (melee burst volleys), so their bolts got culled on terrain and went missing.
 	var flags: Array = []
+	var flag_bits := 0
 	for flag in wire.get("flags", []):
-		flags.append(int(flag))
+		var id := int(flag)
+		flags.append(id)
+		flag_bits |= 1 << id
 	var bullet := {
 		"id": int(wire.get("id", 0)),
 		# NetBullet.projectileId carries the projectile *group* id, which is
@@ -31,6 +34,7 @@ static func from_wire(wire: Dictionary, now_ms: int) -> Dictionary:
 		"traveled": 0.0,
 		"damage": int(wire.get("damage", 0)),
 		"flags": flags,
+		"flag_bits": flag_bits,
 		"invert": bool(wire.get("invert", false)),
 		"time_step": float(wire.get("timeStep", 0)),
 		"amplitude": float(wire.get("amplitude", 0)),
@@ -62,11 +66,15 @@ static func predicted(local_id: int, group_id: int, position: Vector2, angle: fl
 	# Content flags parse as floats, and `in` is type-strict: a 34.0 is not
 	# the HOMING 34 to any flag test, so they are made ints here, once.
 	var flags: Array = []
+	var flag_bits := 0
 	for flag in definition.get("flags", []):
-		flags.append(int(flag))
+		var id := int(flag)
+		flags.append(id)
+		flag_bits |= 1 << id
 	for flag in extra_flags:
 		if not flag in flags:
 			flags.append(flag)
+			flag_bits |= 1 << int(flag)
 
 	var bullet := {
 		"id": local_id,
@@ -79,7 +87,8 @@ static func predicted(local_id: int, group_id: int, position: Vector2, angle: fl
 		"traveled": 0.0,
 		"damage": int(definition.get("damage", 0)),
 		"flags": flags,
-		"invert": ProjectileKind.has_flag({"flags": flags}, ProjectileKind.INVERTED_PARAMETRIC),
+		"flag_bits": flag_bits,
+		"invert": (flag_bits & (1 << ProjectileKind.INVERTED_PARAMETRIC)) != 0,
 		"time_step": 0.0,
 		"amplitude": float(definition.get("amplitude", 0)),
 		"frequency": float(definition.get("frequency", 0)),

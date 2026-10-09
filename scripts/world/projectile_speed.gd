@@ -32,6 +32,16 @@ static func multiplier(bullet: Dictionary, now_ms: int) -> float:
 	if sharpness <= 0.0:
 		sharpness = DEFAULT_SHARPNESS
 
-	if ProjectileKind.has_flag(bullet, ProjectileKind.SPEED_RAMP):
-		return (exp(sharpness * progress) - 1.0) / (exp(sharpness) - 1.0)
-	return (exp(-sharpness * progress) - exp(-sharpness)) / (1.0 - exp(-sharpness))
+	# The normalizers depend only on the (constant-per-bullet) sharpness, so they
+	# are computed once and cached -- leaving a single exp() per tick, not three.
+	var ramp: bool = ProjectileKind.has_flag(bullet, ProjectileKind.SPEED_RAMP)
+	if not bullet.has("curve_den"):
+		if ramp:
+			bullet["curve_end"] = 0.0
+			bullet["curve_den"] = exp(sharpness) - 1.0
+		else:
+			bullet["curve_end"] = exp(-sharpness)
+			bullet["curve_den"] = 1.0 - bullet["curve_end"]
+	if ramp:
+		return (exp(sharpness * progress) - 1.0) / bullet["curve_den"]
+	return (exp(-sharpness * progress) - bullet["curve_end"]) / bullet["curve_den"]

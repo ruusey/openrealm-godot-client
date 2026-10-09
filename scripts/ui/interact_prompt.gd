@@ -54,7 +54,11 @@ func _process(_delta: float) -> void:
 	_found = candidate()
 	visible = not _found.is_empty()
 	if visible:
-		_button.text = _found["text"] if touch else "%s (%s)" % [_found["text"], _found["key"]]
+		# Scanned every frame so the prompt and what the key sends stay in sync, but
+		# the Button text (which re-shapes on assignment) is set only when it changes.
+		var text: String = _found["text"] if touch else "%s (%s)" % [_found["text"], _found["key"]]
+		if text != _button.text:
+			_button.text = text
 
 
 static func box(pressed: bool) -> StyleBoxFlat:

@@ -799,7 +799,7 @@ func _place_lights(centre: Vector2) -> void:
 					if previously_lit.has(cell):
 						d -= LIGHT_HYSTERESIS_SQ
 					found.append([d, at, kind, cell])
-	found.sort_custom(func(a, b): return a[0] < b[0])
+	found.sort_custom(_nearer)
 	for i in _lights.size():
 		var light := _lights[i]
 		light.visible = i < found.size()
@@ -819,18 +819,16 @@ func _place_bullet_lights(centre: Vector2) -> void:
 	var found := []
 	for id in state.projectiles.bullets:
 		var bullet: Dictionary = state.projectiles.bullets[id]
-		var light_def := content.projectile_light(int(bullet.get("group_id", -1)))
-		var strength := float(light_def.get("strength", 0.0))
-		if strength <= 0.0:
+		# Resolved once per group (colour hex parsed there), not per bullet per frame.
+		var light_def := content.projectile_light_resolved(int(bullet.get("group_id", -1)))
+		if light_def.is_empty():
 			continue
 		var size := maxf(float(bullet.get("size", 8)), 4.0)
 		var mid: Vector2 = bullet["pos"] + Vector2(size, size) * 0.5
 		if mid.distance_to(centre) > ENTITY_RANGE:
 			continue
-		var hex := str(light_def.get("color", "#ffffff"))
-		var colour := Color.html(hex) if Color.html_is_valid(hex) else Color.WHITE
-		found.append([mid.distance_squared_to(centre), mid, colour, strength])
-	found.sort_custom(func(a, b): return a[0] < b[0])
+		found.append([mid.distance_squared_to(centre), mid, light_def["color"], light_def["radius"]])
+	found.sort_custom(_nearer)
 	for i in _bullet_lights.size():
 		var light := _bullet_lights[i]
 		light.visible = i < found.size()
@@ -861,6 +859,12 @@ func _new_shadow() -> Sprite3D:
 	sprite.modulate = Color(0.0, 0.0, 0.0, 0.5)
 	sprite.rotation = Vector3(-PI * 0.5, 0.0, 0.0)
 	return sprite
+
+
+## Nearest-first by the squared distance in slot 0. A static func so the two
+## per-frame light scans don't each allocate a fresh closure every call.
+static func _nearer(a: Array, b: Array) -> bool:
+	return a[0] < b[0]
 
 
 func _make_shadow() -> ImageTexture:

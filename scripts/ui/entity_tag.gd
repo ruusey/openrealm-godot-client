@@ -36,6 +36,22 @@ var _name: Label
 var _stars: Label
 var _head: HeadStack
 
+## The payload last drawn into the tag's children. They are positioned relative
+## to the tag, so when the sprite size and these values are unchanged only the
+## tag's own position moves -- which is the common case every frame the camera
+## scrolls but the character's name/HP/mana did not change. Gating on them skips
+## re-shaping the labels (reset_size) and recolouring the bars per entity per frame.
+## A pooled tag is bound to one entity for its whole life, so the cache never goes stale.
+var _drawn := false
+var _drawn_size := 0.0
+var _drawn_label := ""
+var _drawn_colour := Color.BLACK
+var _drawn_health := -1
+var _drawn_max_health := -1
+var _drawn_mana := -1
+var _drawn_max_mana := -1
+var _drawn_stars := -1
+
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -60,25 +76,38 @@ func show_player(at: Vector2, size: float, label: String, colour: Color, health:
 		max_health: int, mana: int, max_mana: int, effects: Array, stacks: Array,
 		bubble: Dictionary, stars := 0) -> void:
 	position = at
-	self.size = Vector2(size, size)
-	var top := size + BAR_DROP
-	_bar(_hp_back, _hp, BACK, HP, top, size, fraction(health, max_health))
-	_bar(_mp_back, _mp, BACK, MP, top + BAR_HEIGHT + BAR_GAP, size, fraction(mana, max_mana))
-	_name.visible = label != ""
-	_name.text = label
-	var style := name_settings(colour)
-	if _name.label_settings != style:
-		_name.label_settings = style
-	_name.reset_size()
-	_name.position = Vector2(size * 0.5 - _name.size.x * 0.5, top - NAME_GAP - _name.size.y).round()
-	# Under the bars, not over them as the web's line lands: its top meets the
-	# name's baseline and covers the HP and MP bars.
-	_stars.visible = stars > 0
-	if _stars.visible:
-		_stars.text = "\u2605 %d" % stars
-		_stars.reset_size()
-		_stars.position = Vector2(size * 0.5 - _stars.size.x * 0.5, top + 2.0 * BAR_HEIGHT + BAR_GAP + 1.0).round()
-	_head.position = Vector2(size * 0.5, -CHIP_LIFT).round()
+	if not _drawn or size != _drawn_size or label != _drawn_label or colour != _drawn_colour \
+			or health != _drawn_health or max_health != _drawn_max_health \
+			or mana != _drawn_mana or max_mana != _drawn_max_mana or stars != _drawn_stars:
+		_drawn = true
+		_drawn_size = size
+		_drawn_label = label
+		_drawn_colour = colour
+		_drawn_health = health
+		_drawn_max_health = max_health
+		_drawn_mana = mana
+		_drawn_max_mana = max_mana
+		_drawn_stars = stars
+		self.size = Vector2(size, size)
+		var top := size + BAR_DROP
+		_bar(_hp_back, _hp, BACK, HP, top, size, fraction(health, max_health))
+		_bar(_mp_back, _mp, BACK, MP, top + BAR_HEIGHT + BAR_GAP, size, fraction(mana, max_mana))
+		_name.visible = label != ""
+		_name.text = label
+		var style := name_settings(colour)
+		if _name.label_settings != style:
+			_name.label_settings = style
+		_name.reset_size()
+		_name.position = Vector2(size * 0.5 - _name.size.x * 0.5, top - NAME_GAP - _name.size.y).round()
+		# Under the bars, not over them as the web's line lands: its top meets the
+		# name's baseline and covers the HP and MP bars.
+		_stars.visible = stars > 0
+		if _stars.visible:
+			_stars.text = "\u2605 %d" % stars
+			_stars.reset_size()
+			_stars.position = Vector2(size * 0.5 - _stars.size.x * 0.5, top + 2.0 * BAR_HEIGHT + BAR_GAP + 1.0).round()
+		_head.position = Vector2(size * 0.5, -CHIP_LIFT).round()
+	# The head stack self-gates on its own content, so it is forwarded every frame.
 	_head.show_stack(effects, stacks, bubble)
 
 
@@ -97,18 +126,24 @@ static func name_settings(colour: Color) -> LabelSettings:
 func show_enemy(at: Vector2, width: float, health: int, max_health: int, effects: Array,
 		stacks: Array) -> void:
 	position = at
-	size = Vector2(width, width)
-	_name.visible = false
-	_stars.visible = false
-	_mp_back.visible = false
-	_mp.visible = false
-	var hurt := health < max_health
-	_hp_back.visible = hurt
-	_hp.visible = hurt
-	if hurt:
-		_bar(_hp_back, _hp, Color(0, 0, 0, 0.6), ENEMY_HP, -ENEMY_BAR_LIFT, width,
-			fraction(health, max_health), ENEMY_BAR_HEIGHT)
-	_head.position = Vector2(width * 0.5, -2.0).round()
+	if not _drawn or width != _drawn_size or health != _drawn_health or max_health != _drawn_max_health:
+		_drawn = true
+		_drawn_size = width
+		_drawn_health = health
+		_drawn_max_health = max_health
+		size = Vector2(width, width)
+		_name.visible = false
+		_stars.visible = false
+		_mp_back.visible = false
+		_mp.visible = false
+		var hurt := health < max_health
+		_hp_back.visible = hurt
+		_hp.visible = hurt
+		if hurt:
+			_bar(_hp_back, _hp, Color(0, 0, 0, 0.6), ENEMY_HP, -ENEMY_BAR_LIFT, width,
+				fraction(health, max_health), ENEMY_BAR_HEIGHT)
+		_head.position = Vector2(width * 0.5, -2.0).round()
+	# The head stack self-gates on its own content, so it is forwarded every frame.
 	_head.show_stack(effects, stacks, {})
 
 

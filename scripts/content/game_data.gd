@@ -34,6 +34,16 @@ var _liquid_built := false
 ## string atlas key per cell. Populated once content is ready.
 var _tex_by_id := {}
 var _top_face_by_id := {}
+## The same memoization for the per-bullet/per-enemy passes, which otherwise
+## rebuilt a string atlas key per projectile and per enemy every frame.
+var _proj_tex_by_group := {}
+var _enemy_tex_by_id := {}
+## tile id -> its data sub-dict, so the per-frame wall/collision/light scans stop
+## re-walking library.tiles.get(id).get("data") on every cell every call.
+var _data_by_id := {}
+## group id -> {color: Color, radius, flickers}, the resolved projectile light the
+## 2D/3D lighting scans read per bullet; the hex is parsed once here, not per frame.
+var _proj_light_by_group := {}
 
 
 ## Content first, then every sheet it refers to. Awaited, because over HTTP
@@ -139,7 +149,12 @@ func tile_top_face(tile_id: int) -> AtlasTexture:
 
 
 func tile_data(tile_id: int) -> Dictionary:
-	return library.tiles.get(tile_id, {}).get("data", {})
+	if _data_by_id.has(tile_id):
+		return _data_by_id[tile_id]
+	var data: Dictionary = library.tiles.get(tile_id, {}).get("data", {})
+	if ready:
+		_data_by_id[tile_id] = data
+	return data
 
 
 func tile_has_collision(tile_id: int) -> bool:
@@ -208,7 +223,12 @@ func light_emitters() -> Dictionary:
 # --- entities --------------------------------------------------------------
 
 func enemy_texture(enemy_id: int) -> AtlasTexture:
-	return sprites.atlas_for(library.enemies.get(enemy_id, {}))
+	if _enemy_tex_by_id.has(enemy_id):
+		return _enemy_tex_by_id[enemy_id]
+	var texture := sprites.atlas_for(library.enemies.get(enemy_id, {}))
+	if ready:
+		_enemy_tex_by_id[enemy_id] = texture
+	return texture
 
 
 func enemy_name(enemy_id: int) -> String:
@@ -216,7 +236,12 @@ func enemy_name(enemy_id: int) -> String:
 
 
 func projectile_texture(group_id: int) -> AtlasTexture:
-	return sprites.atlas_for(library.projectile_groups.get(group_id, {}))
+	if _proj_tex_by_group.has(group_id):
+		return _proj_tex_by_group[group_id]
+	var texture := sprites.atlas_for(library.projectile_groups.get(group_id, {}))
+	if ready:
+		_proj_tex_by_group[group_id] = texture
+	return texture
 
 
 ## The projectiles a group fires, with angles resolved from their string form.
@@ -239,6 +264,27 @@ func item_projectile_group(item_id: int) -> int:
 func projectile_light(group_id: int) -> Dictionary:
 	var light: Variant = library.projectile_groups.get(group_id, {}).get("light")
 	return light if light is Dictionary else {}
+
+
+## The same light resolved to a Color + reach, parsed once per group -- what the
+## per-frame lighting scans read, so they stop re-parsing the hex every bullet.
+## Empty for the groups that emit none; built lazily, cached once content is ready.
+func projectile_light_resolved(group_id: int) -> Dictionary:
+	if _proj_light_by_group.has(group_id):
+		return _proj_light_by_group[group_id]
+	var light := projectile_light(group_id)
+	var resolved := {}
+	var strength := float(light.get("strength", 0.0))
+	if strength > 0.0:
+		var hex := str(light.get("color", "#ffffff"))
+		resolved = {
+			"color": Color.html(hex) if Color.html_is_valid(hex) else Color.WHITE,
+			"radius": strength,
+			"flickers": str(light.get("style", "steady")) == "flicker",
+		}
+	if ready:
+		_proj_light_by_group[group_id] = resolved
+	return resolved
 
 
 func item_name(item_id: int) -> String:
