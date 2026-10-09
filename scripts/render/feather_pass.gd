@@ -39,6 +39,13 @@ func paint(canvas: CanvasItem, tiles: TileMapState, content: GameData,
 			var mine: int = base.get(Vector2i(tile_x, tile_y), VOID_TILE)
 			if mine <= VOID_TILE or _blocks_blending(tiles, content, tile_x, tile_y, mine):
 				continue
+			# Never lay a fringe OVER a liquid cell: water/lava are drawn by the animated
+			# LiquidRenderer above-which this static fringe would paint a dark band, and on
+			# a lake's perimeter that becomes a hard rectangular outline that reads as a
+			# reversed gradient. The land cells beside the liquid still feather toward it
+			# (mine=land, neighbour=liquid below), so the join stays soft from the land side.
+			if content.tile_is_liquid(mine):
+				continue
 			var origin := Vector2(tile_x * TILE_SIZE, tile_y * TILE_SIZE)
 			for direction in EDGES:
 				var step: Vector2i = EDGES[direction]
