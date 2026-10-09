@@ -10,11 +10,20 @@ extends Node2D
 const EMPTY_COUNTS := {"players": 0, "enemies": 0, "containers": 0,
 	"portals": 0, "shadows": 0}
 
+## An outline is 4 extra draw calls per sprite (SpriteOutline). Players and enemies
+## always get one -- they're few and the focus -- but loot bags and portals are static
+## props, and a room strewn with ~100 of each would otherwise add 4 draws EACH every
+## frame, the dominant cost of the loot-pile FPS drop. Cap how many static props get an
+## outline per frame; the rest draw plain. Normal play (a handful of bags) is under the
+## cap, so it only bites the pathological pile.
+const STATIC_OUTLINE_BUDGET := 64
+
 
 var state: RealmState
 var content: GameData
 var queue := EntityQueue.new()
 var counts := EMPTY_COUNTS.duplicate()
+var _static_outlined := 0
 
 
 func _draw() -> void:
@@ -32,12 +41,17 @@ func _draw() -> void:
 ## loops renders byte-identical output.
 func draw_ground(canvas: CanvasItem, items: Array) -> Dictionary:
 	var counts := EMPTY_COUNTS.duplicate()
+	_static_outlined = 0
 	# Every body on the pixel grid -- the same snap the overlay applies to
 	# the name and bars under it, through the same transform, so the two
 	# land on the same pixel and move together. Snapped after the sort,
-	# which reads the true feet.
+	# which reads the true feet. The canvas transform + its inverse are the
+	# same for every entity this frame, so compute them once here rather than
+	# per entity inside PixelSnap.world (an affine_inverse per sprite per frame).
+	var to_screen := canvas.get_global_transform_with_canvas()
+	var inverse := to_screen.affine_inverse()
 	for item in items:
-		item["pos"] = PixelSnap.world(canvas, item["pos"])
+		item["pos"] = inverse * (to_screen * item["pos"]).round()
 	for item in items:
 		if GroundShadow.under_entity(canvas, item["pos"], item["size"]):
 			counts["shadows"] += 1
@@ -105,7 +119,17 @@ func _draw_entity(canvas: CanvasItem, item: Dictionary) -> void:
 		rect = Rect2(Vector2.ZERO, rect.size)
 
 	if texture != null:
-		SpriteOutline.stamp(canvas, texture, rect, slice)
+		# Static props (loot/portals) outline only up to the per-frame budget; players
+		# and enemies always do. Keeps a loot pile from spending 4 draw calls per bag.
+		var kind: String = item["kind"]
+		var outline := true
+		if kind == "containers" or kind == "portals":
+			if _static_outlined >= STATIC_OUTLINE_BUDGET:
+				outline = false
+			else:
+				_static_outlined += 1
+		if outline:
+			SpriteOutline.stamp(canvas, texture, rect, slice)
 		if slice.size == Vector2.ZERO:
 			canvas.draw_texture_rect(texture, rect, false, item["modulate"])
 		else:
