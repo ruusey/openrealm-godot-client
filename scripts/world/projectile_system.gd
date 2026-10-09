@@ -158,6 +158,12 @@ func advance(delta: float) -> void:
 ## GUESSES dropped an enemy bullet the server kept alive -- terrain is not a guess). A hard
 ## 10s lifetime cap stays as a backstop for the rare case an Unload is never delivered.
 func _should_drop_locally(_id: int, bullet: Dictionary, now: int) -> bool:
+	# A LINE_SEGMENT beam/wall is server-authoritative no matter who fired it -- removed by
+	# the server's Unload, with the long cap only as a backstop. It must NOT take the
+	# own-shot path below: a stationary beam never expires by range, so a player's own beam
+	# would otherwise sit on screen for the full MAX_LIFETIME instead of clearing on Unload.
+	if ProjectileKind.has_flag(bullet, ProjectileKind.LINE_SEGMENT):
+		return (now - int(bullet.get("created_ms", now))) > WALL_FALLBACK_LIFETIME_MS
 	if _is_own_shot(bullet):
 		return ProjectileMotion.is_expired(bullet, now) or _hits_terrain(bullet)
 	# Enemy shots are server-authoritative, but a wall stops them on the server too
@@ -166,15 +172,9 @@ func _should_drop_locally(_id: int, bullet: Dictionary, now: int) -> bool:
 	# This only hides a shot at the exact tile the server also removes it, killing the frame
 	# or two it used to visibly clip through the wall before the Unload arrived. (The old
 	# "die to an invisible projectile" bug came from range/lifetime GUESSES, not terrain.)
-	# LINE_SEGMENT walls are persistent -- removed by the server's Unload only, never here.
-	var is_wall: bool = ProjectileKind.has_flag(bullet, ProjectileKind.LINE_SEGMENT)
-	if not is_wall and _hits_terrain(bullet):
+	if _hits_terrain(bullet):
 		return true
-	# Persistent walls fall back to the long cap (see WALL_FALLBACK_LIFETIME_MS) -- dropping
-	# one early left the server damaging us through a wall it had stopped drawing on our
-	# screen and would never re-send.
-	var cap := WALL_FALLBACK_LIFETIME_MS if is_wall else ProjectileMotion.MAX_LIFETIME_MS
-	return (now - int(bullet.get("created_ms", now))) > cap
+	return (now - int(bullet.get("created_ms", now))) > ProjectileMotion.MAX_LIFETIME_MS
 
 
 ## A bullet WE are responsible for: our own local prediction, or one the server attributes
@@ -229,7 +229,9 @@ func _predict_hits(now: int) -> void:
 	if enemy_centres.is_empty():
 		return
 	var enemy_count := enemy_centres.size()
-	for id in bullets.keys():
+	# Iterated directly, not over .keys(): this loop never erases, so the full
+	# key-Array snapshot .keys() allocates every (hot) call is pure waste.
+	for id in bullets:
 		var bullet: Dictionary = bullets[id]
 		if bullet.get("consumed", false):
 			continue
@@ -300,10 +302,17 @@ func fire_basic_attack(target: Vector2) -> Dictionary:
 	var archetype := _content.archetype_for_item(int(weapon.get("itemId", -1)))
 	# Match the server's bullet count: a Multishot Gem adds one more.
 	var extra := 1 if int(weapon.get("gemstoneType", 0)) == MULTISHOT_GEM else 0
+	# A LINE_SEGMENT beam is a stationary, server-authoritative hazard, like an enemy
+	# beam -- never locally predicted. A predicted copy drew a SECOND beam along the
+	# client's aim angle, a quarter turn off the server's segment axis, and because a
+	# stationary bullet never expires by range it lingered for the full MAX_LIFETIME.
+	# Draw only the server's copy, removed by its Unload, exactly as enemy beams are.
+	var is_beam := definitions.any(func(d: Dictionary) -> bool:
+		return ProjectileKind.has_flag(d, ProjectileKind.LINE_SEGMENT))
 	# Origin is the body centre (matches the server's getCenteredPosition), so a
 	# resized player (/size) still fires from the middle of the sprite rather than
 	# its top-left corner.
-	if not bool(archetype.get("melee", false)):
+	if not bool(archetype.get("melee", false)) and not is_beam:
 		bullets.merge(ShotPredictor.build(shot, group_id, definitions,
 			base_angle, centre, archetype, _clock.call(), extra))
 
