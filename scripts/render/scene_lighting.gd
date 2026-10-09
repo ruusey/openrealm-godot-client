@@ -306,12 +306,15 @@ func _glow_environment() -> Environment:
 	var env := Environment.new()
 	env.background_mode = Environment.BG_CANVAS
 	env.glow_enabled = true
-	env.glow_intensity = 0.9
+	env.glow_intensity = 0.7
 	env.glow_strength = 1.0
 	env.glow_bloom = 0.0
 	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SCREEN
-	env.glow_hdr_threshold = 1.0
-	env.glow_hdr_scale = 2.0
+	# Threshold raised 1.0 -> 1.5: the lava SURFACE sits just over 1.0 and was blooming
+	# wholesale into a yellow wash. Point lights (crystals/bullets ~1.8-2.3 energy) are
+	# still above this, so their halo stays; only the broad over-bright terrain stops.
+	env.glow_hdr_threshold = 1.5
+	env.glow_hdr_scale = 1.4
 	for level in 7:
 		env.set_glow_level(level, 0.0)
 	env.set_glow_level(1, 0.4)
