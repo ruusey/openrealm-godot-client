@@ -124,10 +124,10 @@ func test_the_menu_opens_on_a_click_and_each_choice_is_the_chats_command():
 	assert_true(panel.menu.choose("teleport"))
 	panel.open_menu(state.entities.players[20])
 	assert_true(panel.menu.choose("invite"))
-	assert_eq(_commands(), ["/trade Mingau", "/tp Mingau", "/party invite Mingau"])
-	assert_false(panel.menu.choose("invite"), "nothing open")
 	panel.open_menu(state.entities.players[20])
-	assert_false(panel.menu.choose("pvp"), "not a choice here")
+	assert_true(panel.menu.choose("pvp"))
+	assert_eq(_commands(), ["/trade Mingau", "/tp Mingau", "/party invite Mingau", "/pvp Mingau"])
+	assert_false(panel.menu.choose("pvp"), "nothing open")
 
 
 func test_guild_invite_shows_only_when_your_rank_allows_and_sends_a_guild_action():

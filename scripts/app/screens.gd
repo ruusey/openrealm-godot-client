@@ -29,6 +29,7 @@ var trade_request: TradeRequestPopup
 var trade: TradePanel
 var party_invite: PartyInvitePopup
 var party: PartyPanel
+var pvp_challenge: PvpChallengePopup
 var guild_dialog: CreateGuildDialog
 var guild_roster: GuildRosterPanel
 var guild_invite: GuildInvitePopup
@@ -114,6 +115,9 @@ func build(state: RealmState, game_data: GameData, client: OpenRealmClient,
 	party = PartyPanel.new()
 	party.setup(state, game_data, party_actions, hud)
 	add_child(party)
+	pvp_challenge = PvpChallengePopup.new()
+	pvp_challenge.setup(state, chat_actions)
+	add_child(pvp_challenge)
 	var guild_actions := GuildActions.new(state, client, data_service)
 	guild_dialog = CreateGuildDialog.new()
 	guild_dialog.setup(state, guild_actions)
@@ -167,8 +171,8 @@ func build(state: RealmState, game_data: GameData, client: OpenRealmClient,
 ## A click on the bag, the bar or the sheet is a gesture on it, not a shot.
 func captures_mouse() -> bool:
 	return [inventory, abilities, skills, masteries, quests, store, fame, forge, minimap, market, trade,
-		trade_request, party, party_invite, guild_dialog, guild_roster, guild_invite, nearby, options,
-		chat, player, prompt, loot, leaderboard, touch, tutorial_exit, vault].any(func(panel) -> bool: return panel.captures_mouse())
+		trade_request, party, party_invite, pvp_challenge, guild_dialog, guild_roster, guild_invite,
+		nearby, options, chat, player, prompt, loot, leaderboard, touch, tutorial_exit, vault].any(func(panel) -> bool: return panel.captures_mouse())
 
 func captures_keyboard() -> bool:
 	return chat.is_typing() or options.capturing() or guild_dialog.is_typing() \

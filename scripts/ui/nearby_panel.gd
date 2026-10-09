@@ -73,7 +73,8 @@ func _ready() -> void:
 		func(name: String) -> bool: return chat != null and chat.say("/tp %s" % name),
 		func(name: String) -> bool: return party != null and party.invite(name),
 		func(name: String) -> bool: return guild != null and guild.invite(name),
-		func() -> bool: return state != null and state.guild.can_invite())
+		func() -> bool: return state != null and state.guild.can_invite(),
+		func(name: String) -> bool: return chat != null and chat.say("/pvp %s" % name))
 	add_child(menu)
 	_inspect = PlayerInspectCard.new()
 	_inspect.setup(content)

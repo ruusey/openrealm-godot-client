@@ -32,6 +32,7 @@ var market: ExchangeMarket
 var minimap: MinimapState
 var trade: TradeSession
 var party: PartyState
+var pvp: PvpChallengeState
 var transition: RealmTransition
 ## The difficulty of the realm being entered, when a portal said so.
 var transition_difficulty := 0.0
@@ -64,6 +65,7 @@ func _init(content: GameData = null,
 	minimap = MinimapState.new(content, clock)
 	trade = TradeSession.new(clock)
 	party = PartyState.new(clock)
+	pvp = PvpChallengeState.new(clock)
 	transition = RealmTransition.new(self, clock)
 
 
@@ -92,7 +94,7 @@ func apply_packet(name: String, data: Dictionary) -> void:
 		"TextEffectPacket":
 			texts.apply_text_effect(data, entities, projectiles, local)
 		"TextPacket":
-			for listener in [chat, bubbles, transition, minimap, party]:
+			for listener in [chat, bubbles, transition, minimap, party, pvp]:
 				listener.apply_text(data)
 		"GlobalPlayerPositionPacket":
 			minimap.apply_global_positions(data)
@@ -146,12 +148,13 @@ func advance(delta: float, input: Vector2, latency_ms: float) -> Array:
 	minimap.expire()
 	trade.expire()
 	party.expire()
+	pvp.expire()
 	return to_send
 
 
 func reset_world() -> void:
 	for component in [tiles, entities, projectiles, particles, texts, chat, bubbles,
-			abilities, minimap, party]:
+			abilities, minimap, party, pvp]:
 		component.clear()
 	close_interactions()
 
