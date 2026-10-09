@@ -37,12 +37,14 @@ void fragment() {
 	// Lava: strong glow pulse plus moving hot cracks pushing toward yellow.
 	float flow = sin(p.x * 0.8 + TIME * lava_speed) + sin(p.y * 1.2 - TIME * lava_speed * 0.8);
 	float pulse = 0.5 + 0.5 * sin(TIME * lava_speed * 1.5 + (p.x + p.y) * 0.4);
-	float hot = pow(max(flow * 0.5 + 0.5, 0.0), 3.0);
+	// CLAMP, not max(): flow*0.5+0.5 reaches 1.5, so pow(_,3) spiked hot to ~3.4 and the
+	// yellow additive below blew past 1.0 into a bloom-amplified yellow oval. Capped at 1.0.
+	float hot = pow(clamp(flow * 0.5 + 0.5, 0.0, 1.0), 3.0);
 	// ~20% dimmer than before: the additive glow pushed lava well past 1.0, which the
 	// native bloom then blew out to super-bright up close. (0.30->0.24, 0.45->0.36.)
 	vec3 lava = base.rgb
 		+ 0.24 * pulse * vec3(1.0, 0.35, 0.05)
-		+ 0.36 * hot * vec3(1.0, 0.7, 0.1);
+		+ 0.28 * hot * vec3(1.0, 0.7, 0.1);
 
 	COLOR = vec4(mix(water, lava, warm), base.a);
 }

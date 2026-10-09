@@ -48,6 +48,10 @@ const SHADOW_SMOOTH := 11.0
 const SHADOW_COLOR := Color(0.14, 0.11, 0.10, 0.5)
 ## Tiles do not move, so the view is rescanned every Nth frame, not every frame.
 const SCAN_EVERY := 20
+## Re-pick the glowing tiles the moment the player has moved this far (px), not only on
+## the fixed cadence -- walking through a dense emitter field (a lava lake) otherwise
+## only updates the lit set ~3x/sec and the glow steps instead of flowing.
+const RESCAN_MOVE_SQ := 36.0
 
 var _state: RealmState
 var _content: GameData
@@ -65,6 +69,9 @@ var _bullet_lights: Array[PointLight2D] = []
 var _occluders: Array[LightOccluder2D] = []
 var _emitters := {}   # GameData.light_emitters(): tile id -> {color, radius, flickers}
 var _frames := 0
+## Player position at the last tile-light rescan, so a move past RESCAN_MOVE_SQ re-picks
+## the lit set immediately for smooth glow while walking.
+var _last_scan_centre := Vector2(INF, INF)
 var _time := 0.0
 ## Whether the ambient is currently dimmed for a dungeon, so it only re-sets the
 ## CanvasModulate colour when that changes rather than every frame.
@@ -160,8 +167,12 @@ func _process(delta: float) -> void:
 		_dungeon_dark = dark
 		_ambient.color = _ambient_color(dark)
 	_time += delta
-	if _frames % SCAN_EVERY == 0:
+	# Rescan on the fixed cadence OR as soon as the player moves enough that the nearest
+	# lit tiles would change, so the glow flows while walking instead of stepping ~3x/sec.
+	var scan_centre := _state.local.render_centre()
+	if _frames % SCAN_EVERY == 0 or scan_centre.distance_squared_to(_last_scan_centre) > RESCAN_MOVE_SQ:
 		_rescan()
+		_last_scan_centre = scan_centre
 	_frames += 1
 	for i in _pool.size():
 		var light := _pool[i]
