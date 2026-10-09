@@ -50,6 +50,18 @@ func _ready() -> void:
 		voice.max_distance = POSITIONAL_MAX_DISTANCE
 		add_child(voice)
 		_positional.append(voice)
+	# Every button anywhere clicks, without touching each call site: catch each
+	# BaseButton as it enters the tree and play the UI click on its press.
+	get_tree().node_added.connect(_on_node_added)
+
+
+func _on_node_added(node: Node) -> void:
+	if node is BaseButton and not node.pressed.is_connected(_on_button_pressed):
+		node.pressed.connect(_on_button_pressed)
+
+
+func _on_button_pressed() -> void:
+	event("ui_click")
 
 
 ## Reads every referenced ogg through the same source the sprites came from, then

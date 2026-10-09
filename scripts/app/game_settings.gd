@@ -49,8 +49,9 @@ const AUDIO := {
 }
 
 var path := ""
-## Master sound-effect volume, 0..1; Sfx reads it per play.
-var sound_volume := 0.8
+## Master sound-effect volume, 0..1; Sfx reads it per play. The oggs are already
+## loudness-normalized quiet, so this starts low.
+var sound_volume := 0.5
 ## The player's UI scale and world zoom from the options, each 0 for
 ## automatic (DisplayScale); ScaleRow names them by these keys.
 var ui_scale := 0.0

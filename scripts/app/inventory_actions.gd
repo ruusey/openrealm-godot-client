@@ -44,6 +44,12 @@ func move(from: int, to: int) -> bool:
 		return false
 	if Inventory.is_equipment(from) and _holds(to) and not _fits(item_in(to), from):
 		return false
+	if Inventory.is_equipment(to):
+		Sfx.event("item_equip")
+	elif Inventory.is_equipment(from):
+		Sfx.event("item_unequip")
+	else:
+		Sfx.event("item_move")
 	return _send_move(to, from, false, false)
 
 
@@ -56,6 +62,7 @@ func stash(from: int) -> bool:
 func drop(from: int) -> bool:
 	if Inventory.is_ground_loot(from) or not _holds(from):
 		return false
+	Sfx.event("item_drop")
 	return _send_move(NONE, from, true, false)
 
 
@@ -77,7 +84,10 @@ func activate(from: int) -> bool:
 	if bool(item.get("consumable", false)):
 		return consume(from)
 	var slot := int(item.get("targetSlot", NONE))
-	return _fits(item, slot) and _send_move(slot, from, false, false)
+	if not _fits(item, slot):
+		return false
+	Sfx.event("item_equip")
+	return _send_move(slot, from, false, false)
 
 
 ## Sell a backpack item for REALM points (the Item Exchange tab). The server
