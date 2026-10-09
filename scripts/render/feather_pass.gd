@@ -64,11 +64,17 @@ func paint(canvas: CanvasItem, tiles: TileMapState, content: GameData,
 						drawn += 1
 
 
-## A wall cell, or a tile that opts out of blending.
+## A tile that opts out of blending, or one hidden under a solid block above it
+## (a wall or any collision tile): water under a wall must not feather into the
+## bordering floor. Checking hasCollision as well as isWall catches solid wall
+## blocks that aren't flagged isWall. This runs at chunk build, not per frame.
 func _blocks_blending(tiles: TileMapState, content: GameData,
 		tile_x: int, tile_y: int, tile_id: int) -> bool:
 	if int(content.tile_data(tile_id).get("noBlend", 0)) != 0:
 		return true
 	var above: int = tiles.layers.get(GameConstants.COLLISION_LAYER, {}).get(
 		Vector2i(tile_x, tile_y), VOID_TILE)
-	return above > VOID_TILE and int(content.tile_data(above).get("isWall", 0)) != 0
+	if above <= VOID_TILE:
+		return false
+	var above_data: Dictionary = content.tile_data(above)
+	return int(above_data.get("isWall", 0)) != 0 or int(above_data.get("hasCollision", 0)) != 0
