@@ -81,6 +81,11 @@ func _ready() -> void:
 	_camera.position_smoothing_enabled = false
 	add_child(_camera)
 	_camera.make_current()
+	# Positional SFX (other players' shots) are heard from the camera, which rides
+	# the player; without a listener 2D audio attenuates from the screen origin.
+	var listener := AudioListener2D.new()
+	_camera.add_child(listener)
+	listener.make_current()
 	display.camera = _camera   # the world's zoom, apart from the UI's
 
 	inventory_actions = InventoryActions.new(state, client, game_data)

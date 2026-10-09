@@ -17,9 +17,10 @@ const POSITIONAL_VOICES := 10
 ## A remote player's multishot loads many bullets at once; one swing is one sound.
 const REMOTE_ATTACK_THROTTLE_MS := 150
 const POSITIONAL_MAX_DISTANCE := 1400.0
-## textEffectId 0 is a damage number (COLORS[0] in DamageText); others are heals,
-## environment and info, which the hit sound ignores.
+## textEffectId 0 is a damage number, 2 an armor-break hit (COLORS in DamageText);
+## both are a hit landing. Heals/environment/info make no hit sound.
 const DAMAGE_EFFECT := 0
+const ARMOR_BREAK_EFFECT := 2
 ## WeaponArchetype ids -> the `attack` key they sound as. Fixed by the enum, not data.
 const ARCHETYPE_NAMES := {
 	1: "sword", 2: "axe", 3: "hammer",
@@ -113,10 +114,13 @@ func remote_attack(shooter_id: int, at: Vector2) -> void:
 
 ## A damage number landing on an enemy -- anyone's hit. Positional, gated by the
 ## "hit sounds" switch (the one that gets noisy in a crowd).
-func hit(key: String, at: Vector2) -> void:
+## A hit landing on an enemy -- anyone's. Flat, not positional: the camera is on
+## the player and hits happen at the player, so a world-anchored 2D voice only
+## risked inaudibility. Gated by the "hit sounds" switch (noisy in a crowd).
+func hit(key: String) -> void:
 	if not _can_play() or not _on("sound_hits"):
 		return
-	_play_positional(_event_file(key), at)
+	_play_flat(_event_file(key))
 
 
 func _attack_file(archetype_id: int) -> String:
