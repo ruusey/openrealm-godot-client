@@ -185,7 +185,11 @@ func _effect_text(effect: Dictionary, definition: Dictionary, invested: int) -> 
 	var target := _target_text(str(effect.get("target", "")))
 	match kind:
 		"STATUS_APPLY":
-			var duration := float(effect.get("baseDurationMs", 0)) / 1000.0
+			# Total duration at the current rank (base + per-point/per-stat scaling),
+			# so the shown duration equals the real one -- base alone was wrong for
+			# every scaling self-buff and HoT.
+			var duration := (float(effect.get("baseDurationMs", 0))
+				+ _status_duration_bonus(effect, definition, invested)) / 1000.0
 			var status := _status_name(effect.get("statusId", ""))
 			return "Apply %s%s%s" % [status, (" %.1fs" % duration) if duration > 0 else "", target]
 		"HEAL":
@@ -226,6 +230,23 @@ func _effect_total(effect: Dictionary, definition: Dictionary, invested: int, ta
 		if str(scaling.get("target", "")).to_upper() == target_kind:
 			total += int(_scaling_contribution(scaling, invested))
 	return total
+
+
+## Extra duration (ms) a status gains at the current rank. Mirrors the server: a
+## SELF status takes every "DURATION" scaling (selfDurationBonusMs); a targeted
+## status (allies/enemies) takes the "STATUS_DURATION_MS" scalings keyed to its
+## own effect index (statusDurationBonusMs).
+func _status_duration_bonus(effect: Dictionary, definition: Dictionary, invested: int) -> float:
+	var is_self := str(effect.get("target", "")).to_upper() == "SELF"
+	var index: int = definition.get("effects", []).find(effect)
+	var bonus := 0.0
+	for scaling in definition.get("scalings", []):
+		var target := str(scaling.get("target", "")).to_upper()
+		if is_self and target == "DURATION":
+			bonus += _scaling_contribution(scaling, invested)
+		elif target == "STATUS_DURATION_MS" and int(scaling.get("effectIndex", -1)) == index:
+			bonus += _scaling_contribution(scaling, invested)
+	return bonus
 
 
 ## How much a scaling adds right now: the stat (or invested points) times the

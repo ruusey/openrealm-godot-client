@@ -111,6 +111,8 @@ func split(from: int) -> bool:
 func pick_up(loot_index: int) -> bool:
 	if not Inventory.holds(loot_item(loot_index)):
 		return false
+	# Same "into the bag" sound as moving an item between inventory slots.
+	Sfx.event("item_move")
 	return _send_move(Inventory.BACKPACK_START, Inventory.GROUND_LOOT_START + loot_index, false, false)
 
 

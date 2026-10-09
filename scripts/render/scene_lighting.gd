@@ -28,6 +28,11 @@ const TILE_LIGHT_ENERGY := 2.0
 const MAX_BULLET_LIGHTS := 20
 const BULLET_LIGHT_ENERGY := 1.6
 const MAX_TILE_LIGHTS := 24
+## Lava/water glow reaches farther but dimmer. The pooled tile light sat right on the
+## liquid shader's own moving highlights and blew out its bright sine-wave spots up
+## close; spreading the light over a wider radius at -15% energy softens that overlap.
+const LIQUID_GLOW_RANGE_MUL := 1.5
+const LIQUID_GLOW_ENERGY_MUL := 0.85
 ## Shadow casting is per-platform (see _shadow_casters): a shadow pass runs per
 ## caster per frame, so web casts none and native casts from every visible light.
 ## The merge collapses wall runs into a handful of rects, so this cap is only ever
@@ -161,7 +166,7 @@ func _process(delta: float) -> void:
 	for i in _pool.size():
 		var light := _pool[i]
 		if light.visible and light.get_meta("flickers", false):
-			light.energy = _tile_energy \
+			light.energy = float(light.get_meta("energy_base", _tile_energy)) \
 				* (1.0 + 0.12 * sin(_time * 9.0 + i * 1.7) + 0.06 * sin(_time * 23.0 + i))
 	# Bullets move every frame, so this is not on the tile scan's cadence.
 	_place_bullet_lights()
@@ -213,10 +218,11 @@ func _rescan() -> void:
 		for x in range(floori(view.position.x / tile), ceili(view.end.x / tile)):
 			var cell := Vector2i(x, y)
 			for layer in _state.tiles.layers:
-				var kind: Variant = _emitters.get(_state.tiles.layers[layer].get(cell, -1))
+				var tile_id: int = _state.tiles.layers[layer].get(cell, -1)
+				var kind: Variant = _emitters.get(tile_id)
 				if kind != null:
 					var at := Vector2(x + 0.5, y + 0.5) * tile
-					found.append([at.distance_squared_to(centre), at, kind])
+					found.append([at.distance_squared_to(centre), at, kind, tile_id])
 			if not _web and _occludes(solid.get(cell, -1)):
 				walls.append(cell)
 	found.sort_custom(_nearer)
@@ -225,11 +231,17 @@ func _rescan() -> void:
 		light.visible = i < found.size()
 		if light.visible:
 			var kind: Dictionary = found[i][2]
+			var liquid: bool = _content.tile_is_liquid(int(found[i][3]))
 			light.position = found[i][1]
 			light.color = kind["color"]
-			light.texture_scale = _scale_for(kind["radius"])
+			var radius: float = float(kind["radius"]) * (LIQUID_GLOW_RANGE_MUL if liquid else 1.0)
+			light.texture_scale = _scale_for(radius)
 			light.set_meta("flickers", kind["flickers"])
-			light.energy = _tile_energy
+			# Base energy (incl. the liquid dimming) is stashed so the per-frame flicker
+			# loop modulates THIS value, not the raw _tile_energy.
+			var energy := _tile_energy * (LIQUID_GLOW_ENERGY_MUL if liquid else 1.0)
+			light.energy = energy
+			light.set_meta("energy_base", energy)
 			# found is distance-sorted; the nearest _shadow_casters cast (all on native).
 			light.shadow_enabled = i < _shadow_casters
 	var rects := _merge_wall_rects(walls)
