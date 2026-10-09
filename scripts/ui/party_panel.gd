@@ -33,6 +33,7 @@ var _rows_box: VBoxContainer
 var _rows: Array = []
 var _shape := ""
 var fold: PanelFold
+var _inspect: PlayerInspectCard
 
 
 func setup(realm_state: RealmState, game_data: GameData, party_actions: PartyActions,
@@ -64,11 +65,16 @@ func _ready() -> void:
 	column.add_child(_rows_box)
 	fold = PanelFold.new(self, "Party", "party", state.settings if state != null else null,
 		func(folded: bool) -> void: _root.visible = not folded)
+	_inspect = PlayerInspectCard.new()
+	_inspect.setup(content)
+	add_child(_inspect)
 
 
 func _process(_delta: float) -> void:
 	visible = shown and state != null and content != null and state.local.is_present() and state.party.in_party()
 	if not visible:
+		if _inspect != null:
+			_inspect.hide_card()
 		_shape = ""
 		return
 	_root.offset_top = top()
@@ -119,8 +125,29 @@ func _rebuild(others: Array) -> void:
 	for member in others:
 		var row := PartyRow.new(func(name: String) -> void: if actions != null: actions.kick(name))
 		row.show_member(member, content, int(member.get("playerId", 0)) == party.leader_id, leader)
+		row.mouse_entered.connect(_show_inspect.bind(member, row))
+		row.mouse_exited.connect(_inspect.hide_card)
 		_rows_box.add_child(row)
 		_rows.append(row)
+
+
+## The richer party inspect pane: stats AND equipped items, both carried by the
+## PartyUpdatePacket's NetPartyMember (not available for plain nearby players).
+func _show_inspect(member: Dictionary, row: Control) -> void:
+	_inspect.show_player({
+		"name": member.get("name", ""),
+		"role": "",
+		"class_id": int(member.get("classId", 0)),
+		"dye_id": 0,
+		"level": int(member.get("level", 0)),
+		"hp": int(member.get("health", 0)),
+		"max_hp": int(member.get("maxHealth", 0)),
+		"mp": int(member.get("mana", 0)),
+		"max_mp": int(member.get("maxMana", 0)),
+		"stats": member.get("stats", {}),
+		"equipment": member.get("equipment", []),
+	})
+	_inspect.show_at(Vector2(MARGIN + WIDTH + 8, row.global_position.y))
 
 
 func captures_mouse() -> bool:

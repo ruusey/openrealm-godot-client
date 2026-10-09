@@ -35,6 +35,7 @@ var _rows_box: VBoxContainer
 var _empty: Label
 var _listed := ""
 var fold: PanelFold
+var _inspect: PlayerInspectCard
 
 
 func setup(realm_state: RealmState, game_data: GameData, trade_actions: TradeActions,
@@ -74,12 +75,17 @@ func _ready() -> void:
 		func(name: String) -> bool: return guild != null and guild.invite(name),
 		func() -> bool: return state != null and state.guild.can_invite())
 	add_child(menu)
+	_inspect = PlayerInspectCard.new()
+	_inspect.setup(content)
+	add_child(_inspect)
 
 
 func _process(_delta: float) -> void:
 	visible = shown and state != null and content != null and state.local.is_present()
 	if not visible:
 		menu.close()
+		if _inspect != null:
+			_inspect.hide_card()
 		_listed = ""
 		return
 	var top := above.top() if above != null else float(PartyPanel.TOP)
@@ -102,23 +108,50 @@ func _rebuild(players: Array) -> void:
 	for player in players:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 6)
-		row.tooltip_text = NearbyPlayers.tooltip(player, content)
+		# The row owns the whole hover area (children ignore the mouse), so the inspect
+		# card shows reliably instead of a child eating the hover and showing nothing.
 		row.mouse_filter = Control.MOUSE_FILTER_STOP
 		var icon := TextureRect.new()
 		icon.custom_minimum_size = Vector2(ICON, ICON)
 		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		icon.texture = content.classes_art.frame(int(player.get("class_id", 0)), "idle", "front", 0,
 			int(player.get("dye_id", 0)))
 		row.add_child(icon)
 		var role := String(player.get("chat_role", ""))
 		var name := HudWidgets.label(String(player.get("name", "")).left(14), 12, NearbyPlayers.role_colour(role))
+		name.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		if NearbyPlayers.bold(role):
 			name.add_theme_font_override("font", TagStyles.bold())
 		row.add_child(name)
 		row.gui_input.connect(_on_row_input.bind(player))
+		row.mouse_entered.connect(_show_inspect.bind(player, row))
+		row.mouse_exited.connect(_inspect.hide_card)
 		_rows_box.add_child(row)
+
+
+## The hover pane for a nearby player: name, class, level, HP/MP and what they
+## have equipped (the server keeps a remote's equipped slots on its update).
+func _show_inspect(player: Dictionary, row: Control) -> void:
+	var level := 0
+	if player.has("experience") and content.levels.loaded():
+		level = content.levels.level_for(int(player["experience"]))
+	_inspect.show_player({
+		"name": player.get("name", ""),
+		"role": player.get("chat_role", ""),
+		"class_id": int(player.get("class_id", 0)),
+		"dye_id": int(player.get("dye_id", 0)),
+		"level": level,
+		"hp": int(player.get("health", 0)),
+		"max_hp": int(player.get("max_health", 0)),
+		"mp": int(player.get("mana", 0)),
+		"max_mp": int(player.get("max_mana", 0)),
+		"stats": {},
+		"equipment": player.get("equipment", []),
+	})
+	_inspect.show_at(Vector2(MARGIN + WIDTH + GAP, row.global_position.y))
 
 
 ## A click on a row opens the menu beside it; a click on the panel's

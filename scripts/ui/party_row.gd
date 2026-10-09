@@ -63,6 +63,16 @@ func _init(on_kick: Callable) -> void:
 	_kick.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	_kick.pressed.connect(func() -> void: on_kick.call(member_name))
 	row.add_child(_kick)
+	# The row (this PanelContainer, still STOP) owns the hover so the inspect card shows
+	# reliably; every child ignores the mouse except the kick button, which needs clicks.
+	_ignore_mouse_except_kick(self)
+
+
+func _ignore_mouse_except_kick(node: Node) -> void:
+	for child in node.get_children():
+		if child is Control and child != _kick:
+			(child as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_ignore_mouse_except_kick(child)
 
 
 ## The parts that only change with the roster: who, what class, what is
@@ -78,7 +88,6 @@ func show_member(member: Dictionary, content: GameData, leader: bool, can_kick: 
 		var id := int(bindings[i]) if i < bindings.size() else 0
 		_cells[i][0].texture = content.abilities.icon(id) if id > 0 else null
 	_kick.visible = can_kick
-	tooltip_text = inspect_text(member, content)
 
 
 ## The parts that move between rosters: bars, cooldowns, which realm.

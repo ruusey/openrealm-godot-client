@@ -43,6 +43,9 @@ static func update(state: RealmState, data: Dictionary) -> void:
 	entity["dye_id"] = int(data.get("dyeId", 0))
 	# The account's quest score, under the name for everyone watching.
 	entity["stars"] = int(data.get("stars", 0))
+	# The server strips the backpack but keeps the equipped slots (0-4) on a remote's
+	# update, so the nearby-player inspect card can show what they're wearing.
+	entity["equipment"] = data.get("inventory", [])
 
 
 ## An enemy's current HP (and max) ride the stripped update keyed by its id; only
