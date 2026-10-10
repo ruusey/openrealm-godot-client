@@ -9,7 +9,7 @@ extends CanvasLayer
 ## which verifies the transfer on-chain and credits the fame. The client never
 ## credits anything itself; the txid is just a receipt the server checks.
 
-const RECIPIENT := "J9ZGigjmaKYcriwvjZGYqeaB9arofYMHtRorZfu3FQJj"
+const RECIPIENT := "AR9VdXQa4ka82tw2xRpL2mCZ9pvndDuUvahcaeSRdfxq"
 const LAMPORTS_PER_FAME := 10000  # 0.00001 SOL per fame (1 SOL = 1e9 lamports)
 const SOL_PER_FAME := 0.00001
 # REALM ($REALM) is a Token-2022 SPL token. 0.001 fame per REALM -> 1000 REALM = 1
