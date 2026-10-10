@@ -15,16 +15,52 @@ var state: RealmState
 var drawn := 0
 
 static var _dot: ImageTexture
+## Every in-view particle is one instance of a shared unit quad, so the whole
+## field draws in a single draw_multimesh call rather than a draw_texture_rect
+## per particle -- draw-call count is the frame ceiling under a horde on the GL
+## compatibility backend. The per-instance transform carries the particle's size
+## and position, the per-instance colour its tint and fade.
+var _multimesh: MultiMesh
 
 
 func _ready() -> void:
 	# The one world layer that is not nearest-filtered: a soft dot sampled
 	# nearest is a stepped one.
 	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	_multimesh = MultiMesh.new()
+	_multimesh.transform_format = MultiMesh.TRANSFORM_2D
+	_multimesh.use_colors = true
+	var quad := QuadMesh.new()
+	quad.size = Vector2.ONE
+	_multimesh.mesh = quad
 
 
 func _draw() -> void:
-	drawn = 0 if state == null else paint(self, state.particles, ViewRect.of(self))
+	drawn = 0 if state == null else _paint_batched(state.particles, ViewRect.of(self))
+
+
+## The in-view particles packed into the shared MultiMesh and drawn at once.
+## Culls and counts exactly as paint() does; instances past the visible count are
+## left undrawn, and instance_count only grows so the buffer is not re-allocated
+## every frame. Returns the number drawn.
+func _paint_batched(field: ParticleField, view: Rect2) -> int:
+	if _multimesh.instance_count < field.count:
+		_multimesh.instance_count = field.count
+	var count := 0
+	for i in field.count:
+		var size := field.size_at(i)
+		var at := Vector2(field.x[i], field.y[i])
+		if not view.grow(size).has_point(at):
+			continue
+		var colour: Color = field.tint[i]
+		colour.a = field.alpha_at(i)
+		_multimesh.set_instance_transform_2d(count, Transform2D(0.0, Vector2(size, size), 0.0, at))
+		_multimesh.set_instance_color(count, colour)
+		count += 1
+	_multimesh.visible_instance_count = count
+	if count > 0:
+		draw_multimesh(_multimesh, soft_dot())
+	return count
 
 
 static func paint(canvas: CanvasItem, field: ParticleField, view: Rect2) -> int:
