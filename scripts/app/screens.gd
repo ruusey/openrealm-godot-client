@@ -29,6 +29,7 @@ var trade_request: TradeRequestPopup
 var trade: TradePanel
 var party_invite: PartyInvitePopup
 var party: PartyPanel
+var companions: CompanionPanel
 var pvp_challenge: PvpChallengePopup
 var guild_dialog: CreateGuildDialog
 var guild_roster: GuildRosterPanel
@@ -115,6 +116,10 @@ func build(state: RealmState, game_data: GameData, client: OpenRealmClient,
 	party = PartyPanel.new()
 	party.setup(state, game_data, party_actions, hud)
 	add_child(party)
+	var companion_actions := CompanionActions.new(client)
+	companions = CompanionPanel.new()
+	companions.setup(state, game_data, companion_actions)
+	add_child(companions)
 	pvp_challenge = PvpChallengePopup.new()
 	pvp_challenge.setup(state, chat_actions)
 	add_child(pvp_challenge)
@@ -141,7 +146,7 @@ func build(state: RealmState, game_data: GameData, client: OpenRealmClient,
 	leaderboard = LeaderboardWindow.new(state, game_data, data_service)
 	add_child(leaderboard)
 	touch.link([["Character", skills.toggle], ["Skills", masteries.toggle], ["Quests", quests.toggle],
-		["Leaderboard", leaderboard.toggle], ["Options", options.toggle]], chat.open_line)
+		["Leaderboard", leaderboard.toggle], ["Options", options.toggle], ["Companions", companions.toggle]], chat.open_line)
 	party.buttons_bottom = touch.row_bottom
 	store = ItemStorePanel.new()
 	store.setup(state, game_data, inventory_actions, shop)
@@ -172,8 +177,8 @@ func build(state: RealmState, game_data: GameData, client: OpenRealmClient,
 func captures_mouse() -> bool:
 	return [inventory, abilities, skills, masteries, quests, store, fame, forge, minimap, market, trade,
 		trade_request, party, party_invite, pvp_challenge, guild_dialog, guild_roster, guild_invite,
-		nearby, options, chat, player, prompt, loot, leaderboard, touch, tutorial_exit, vault].any(func(panel) -> bool: return panel.captures_mouse())
+		nearby, options, chat, player, prompt, loot, leaderboard, touch, tutorial_exit, vault, companions].any(func(panel) -> bool: return panel.captures_mouse())
 
 func captures_keyboard() -> bool:
 	return chat.is_typing() or options.capturing() or guild_dialog.is_typing() \
-		or guild_roster.is_typing() or quests.is_typing()
+		or guild_roster.is_typing() or quests.is_typing() or companions.is_typing()

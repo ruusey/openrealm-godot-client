@@ -62,4 +62,11 @@ func display_name(class_id: int) -> String:
 	return _library.classes.get(class_id, {}).get("className", "Class_%d" % class_id)
 
 
+## Every known class id, ascending — used to populate pickers.
+func class_ids() -> Array:
+	var ids := _library.classes.keys()
+	ids.sort()
+	return ids
+
+
 # --- weapons and projectiles ----------------------------------------------

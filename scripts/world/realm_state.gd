@@ -40,6 +40,7 @@ var transition_difficulty := 0.0
 var settings := GameSettings.new()
 var progress := AccountProgress.new()   # masteries, quests, stars: kept across realms
 var guild := GuildState.new()           # account-wide guild: roster, dialog, invite
+var companions := CompanionState.new()  # account-wide AI party roster: kept across realms
 
 var transition_pending: bool:
 	get: return transition.pending
@@ -129,6 +130,8 @@ func apply_packet(name: String, data: Dictionary) -> void:
 			guild.apply_editor(data)
 		"GuildInvitePacket":
 			guild.apply_invite(data)
+		"CompanionRosterPacket":
+			companions.apply_roster(data)
 
 
 func advance(delta: float, input: Vector2, latency_ms: float) -> Array:

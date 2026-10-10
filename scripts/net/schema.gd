@@ -3,8 +3,9 @@
 # Regenerate with:
 #   python3 tools/gen_schema.py <java-src-root>
 #
-# Source tree : /Users/seand/development/openrealm/src
-# Packets     : 54
+# Source tree : C:\Users\ruuse\Documents\GitHub\openrealm\src
+# Generated   : 2026-10-10 03:28:20Z
+# Packets     : 58
 # Entities    : 21
 #
 # Field tuples are [name, wire_type, is_collection]; list order is wire order.
@@ -16,7 +17,7 @@
 # sections is [[bit, [field tuples]], ...].
 class_name NetSchema
 
-const SOURCE_TREE := "/Users/seand/development/openrealm/src"
+const SOURCE_TREE := "C:\\Users\\ruuse\\Documents\\GitHub\\openrealm\\src"
 
 # packet id -> class name
 const PACKET_NAMES := {
@@ -75,6 +76,8 @@ const PACKET_NAMES := {
 	53: "GuildInviteResponsePacket",
 	54: "SellItemForPointsPacket",
 	55: "SendPointsPacket",
+	56: "CompanionActionPacket",
+	57: "CompanionRosterPacket",
 	101: "TestPacket",
 }
 
@@ -85,6 +88,8 @@ const PACKET_IDS := {
 	"BuyFameItemPacket": 33,
 	"CommandPacket": 7,
 	"CompactMovePacket": 25,
+	"CompanionActionPacket": 56,
+	"CompanionRosterPacket": 57,
 	"ConsumeShardStackPacket": 27,
 	"CreateEffectPacket": 21,
 	"CreateGuildPacket": 48,
@@ -165,6 +170,16 @@ const PACKETS := {
 	],
 	"CompactMovePacket": [
 		["movements", "NetCompactMovement", true],
+	],
+	"CompanionActionPacket": [
+		["action", "byte", false],
+		["companionUuid", "string", false],
+		["arg1", "int", false],
+		["arg2", "int", false],
+		["text", "string", false],
+	],
+	"CompanionRosterPacket": [
+		["json", "string", false],
 	],
 	"ConsumeShardStackPacket": [
 		["fromSlotIndex", "byte", false],
@@ -354,6 +369,14 @@ const PACKETS := {
 	"RequestTradePacket": [
 		["requestingPlayerName", "string", false],
 	],
+	"SellItemForPointsPacket": [
+		["inventorySlotIndex", "int", false],
+	],
+	"SendPointsPacket": [
+		["playerId", "long", false],
+		["newTotalPoints", "long", false],
+		["pointsAwarded", "long", false],
+	],
 	"SkillsPacket": [
 		["playerId", "long", false],
 		["xp0", "long", false],
@@ -365,14 +388,6 @@ const PACKETS := {
 		["xp6", "long", false],
 		["xp7", "long", false],
 		["xp8", "long", false],
-	],
-	"SellItemForPointsPacket": [
-		["inventorySlotIndex", "int", false],
-	],
-	"SendPointsPacket": [
-		["playerId", "long", false],
-		["newTotalPoints", "long", false],
-		["pointsAwarded", "long", false],
 	],
 	"SplitStackPacket": [
 		["fromSlot", "int", false],
