@@ -138,6 +138,10 @@ var _grey_wall := StandardMaterial3D.new()
 var _wall_materials := {}
 var _shadow: ImageTexture
 var _map_built := false
+## Vector2i cell -> Array of emitter kinds (one per layer that emits there),
+## built once per map in _rebuild_map_if_changed. The light scan walks this
+## handful of cells instead of sweeping the whole ~150x150 reach box every call.
+var _emitter_cells := {}
 var _yaw := 0.0
 var _pitch := PITCH_DEFAULT
 
@@ -357,6 +361,8 @@ func _rebuild_map_if_changed() -> void:
 
 	var wall_cells := {}   # texture -> Array[Vector2i]
 	var wall_set := {}     # Vector2i -> true, so a face between two walls is culled
+	var emitters := content.light_emitters()
+	var emitter_cells := {}
 	var layers := tiles.layers.keys()
 	layers.sort()
 	for layer in layers:
@@ -365,6 +371,13 @@ func _rebuild_map_if_changed() -> void:
 			var tile_id: int = cells[cell]
 			if tile_id <= 0:
 				continue
+			# A glowing tile is indexed for the light scan whatever layer it sits on,
+			# independent of whether it is also a wall or a prop.
+			var kind: Variant = emitters.get(tile_id)
+			if kind != null:
+				if not emitter_cells.has(cell):
+					emitter_cells[cell] = []
+				emitter_cells[cell].append(kind)
 			if content.tile_is_wall(tile_id):
 				var texture := content.tile_texture(tile_id)
 				if not wall_cells.has(texture):
@@ -384,6 +397,7 @@ func _rebuild_map_if_changed() -> void:
 		instance.mesh = _build_wall_chunk(wall_cells[texture], wall_set)
 		instance.material_override = _wall_material_for(texture)
 		_map_root.add_child(instance)
+	_emitter_cells = emitter_cells
 	_map_built = true
 
 
@@ -783,22 +797,22 @@ func _in_dungeon() -> bool:
 func _place_lights(centre: Vector2) -> void:
 	var previously_lit := _lit_cells
 	_lit_cells = {}
-	var emitters := content.light_emitters()
 	var tile := float(TILE)
 	var reach := ceili(_light_range / tile)
 	var origin := Vector2i(floori(centre.x / tile), floori(centre.y / tile))
 	var found := []
-	for gy in range(origin.y - reach, origin.y + reach + 1):
-		for gx in range(origin.x - reach, origin.x + reach + 1):
-			var cell := Vector2i(gx, gy)
-			for layer in state.tiles.layers:
-				var kind: Variant = emitters.get(state.tiles.layers[layer].get(cell, -1))
-				if kind != null:
-					var at := Vector2(gx + 0.5, gy + 0.5) * tile
-					var d := at.distance_squared_to(centre)
-					if previously_lit.has(cell):
-						d -= LIGHT_HYSTERESIS_SQ
-					found.append([d, at, kind, cell])
+	# Only the indexed emitter cells, filtered to the same square reach the grid
+	# sweep used -- the candidate set is identical, the walk is over a handful of
+	# cells instead of (2*reach+1)^2 x layers dictionary probes every scan.
+	for cell in _emitter_cells:
+		if absi(cell.x - origin.x) > reach or absi(cell.y - origin.y) > reach:
+			continue
+		var at := Vector2(cell.x + 0.5, cell.y + 0.5) * tile
+		var d := at.distance_squared_to(centre)
+		if previously_lit.has(cell):
+			d -= LIGHT_HYSTERESIS_SQ
+		for kind in _emitter_cells[cell]:
+			found.append([d, at, kind, cell])
 	found.sort_custom(_nearer)
 	for i in _lights.size():
 		var light := _lights[i]
