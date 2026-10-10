@@ -56,18 +56,29 @@ static func encode(packet_id: int, payload: PackedByteArray) -> PackedByteArray:
 ## (the caller should drop the connection -- the stream is desynced), otherwise
 ## {"id": int, "payload": PackedByteArray, "consumed": int}.
 static func try_decode(buffer: PackedByteArray) -> Dictionary:
-	if buffer.size() < HEADER_SIZE:
+	return try_decode_at(buffer, 0)
+
+
+## As try_decode, but reads the frame starting at byte `start` instead of 0, so
+## the drain loop can advance an offset rather than re-slicing the whole
+## remaining buffer every frame (that copy was O(n^2) on a first-world burst of
+## hundreds of frames). `consumed` is still the frame's own length, relative, so
+## the caller accumulates it exactly as before.
+static func try_decode_at(buffer: PackedByteArray, start: int) -> Dictionary:
+	var available := buffer.size() - start
+	if available < HEADER_SIZE:
 		return {}
 
-	var id_byte := buffer[0]
-	var total_length := (buffer[1] << 24) | (buffer[2] << 16) | (buffer[3] << 8) | buffer[4]
+	var id_byte := buffer[start]
+	var total_length := (buffer[start + 1] << 24) | (buffer[start + 2] << 16) \
+		| (buffer[start + 3] << 8) | buffer[start + 4]
 
 	if total_length < HEADER_SIZE or total_length > MAX_FRAME_SIZE:
 		return {"error": "implausible frame length %d (id byte 0x%02x)" % [total_length, id_byte]}
-	if buffer.size() < total_length:
+	if available < total_length:
 		return {}
 
-	var payload := buffer.slice(HEADER_SIZE, total_length)
+	var payload := buffer.slice(start + HEADER_SIZE, start + total_length)
 
 	if is_compressed(id_byte):
 		if payload.size() < 4:

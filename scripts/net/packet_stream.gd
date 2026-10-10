@@ -32,8 +32,10 @@ func drain() -> Dictionary:
 	var consumed := 0
 
 	while true:
-		var view := _buffer.slice(consumed) if consumed > 0 else _buffer
-		var frame := NetFrame.try_decode(view)
+		# Advance an offset into the buffer rather than slicing off a fresh view
+		# each frame: on a burst of hundreds of frames the per-frame copy of the
+		# shrinking tail was quadratic. The single compacting slice is in _trim.
+		var frame := NetFrame.try_decode_at(_buffer, consumed)
 		if frame.is_empty():
 			break
 		if frame.has("error"):

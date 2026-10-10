@@ -103,6 +103,13 @@ func get_data(count: int) -> Array:
 		return [OK, PackedByteArray()]
 	if count > _inbox.size():
 		return [ERR_UNAVAILABLE, PackedByteArray()]
+	# The common case: a read drains the whole inbox (each WS message is one
+	# frame). Hand it over whole and reset, avoiding the two slice-copies the
+	# partial path needs.
+	if count == _inbox.size():
+		var all := _inbox
+		_inbox = PackedByteArray()
+		return [OK, all]
 	var chunk := _inbox.slice(0, count)
 	_inbox = _inbox.slice(count)
 	return [OK, chunk]
