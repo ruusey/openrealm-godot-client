@@ -17,6 +17,10 @@ const SLOTS := 4
 const PERSISTENT_TYPES := [EffectType.BLADE_ORBIT, EffectType.BLADE_BLENDER]
 ## How long the cast-range ring lingers; the web client's showCastRing.
 const RING_MS := 700
+## Hard ceiling on concurrent landed effects. A crowd of companions can otherwise
+## pile these up faster than they expire; past the cap the oldest is dropped so the
+## per-frame draw + expire stays bounded.
+const MAX_EFFECTS := 96
 
 var available_points := 0
 var invested: Array = [0, 0, 0, 0]
@@ -98,6 +102,8 @@ func apply_effect(data: Dictionary, entities: EntityRegistry = null, local: Loca
 	if origin != Vector2.INF:
 		fx["origin"] = origin
 	effects.append(fx)
+	if effects.size() > MAX_EFFECTS:
+		effects.remove_at(0)   # drop the oldest to stay bounded under crowd load
 
 
 ## Where the caster stands right now, or INF when we cannot place them.
@@ -110,11 +116,22 @@ func _caster_centre(owner: int, entities: EntityRegistry, local: LocalPlayer) ->
 	return Vector2.INF
 
 
-## Drops what has run its course.
+## Drops what has run its course. Compacts in place (iterate from the back and
+## remove_at) so a frame where nothing expired — the common case — allocates no new
+## array, unlike the old per-frame filter().
 func expire() -> void:
 	var at := now()
-	effects = effects.filter(func(fx: Dictionary) -> bool: return at - fx["started"] < fx["duration_ms"])
-	rings = rings.filter(func(ring: Dictionary) -> bool: return at - ring["started"] < RING_MS)
+	var i := effects.size() - 1
+	while i >= 0:
+		var fx: Dictionary = effects[i]
+		if at - fx["started"] >= fx["duration_ms"]:
+			effects.remove_at(i)
+		i -= 1
+	var r := rings.size() - 1
+	while r >= 0:
+		if at - rings[r]["started"] >= RING_MS:
+			rings.remove_at(r)
+		r -= 1
 	for id in casts.keys():
 		if at - casts[id]["started"] >= casts[id]["duration_ms"]:
 			casts.erase(id)

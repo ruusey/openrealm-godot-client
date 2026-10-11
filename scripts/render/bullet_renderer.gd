@@ -17,8 +17,13 @@ extends Node2D
 ## skips outlines (and afterimages) entirely -- the single biggest frame-rate win
 ## when the screen fills with shots. Native has the headroom and keeps them.
 const OUTLINE_BUDGET := 256
+## An afterimage is five extra stamps per bullet; under a companion-crowd horde
+## that dominates the native frame. Cap how many bullets trail per frame (nearest
+## drawn first, so the closest keep their trail) — the rest still draw, just flat.
+const AFTERIMAGE_BUDGET := 64
 var _web := OS.has_feature("web")
 var _outline_budget := 0 if OS.has_feature("web") else OUTLINE_BUDGET
+var _afterimage_budget := 0 if OS.has_feature("web") else AFTERIMAGE_BUDGET
 
 var state: RealmState
 var content: GameData
@@ -103,7 +108,7 @@ func paint(canvas: CanvasItem, state: RealmState, content: GameData,
 			var rotation := offset if art["no_rotate"] \
 				else rotation_for(angle, offset, turn, additive)
 			var afterimage: Color = art["afterimage"]
-			if afterimage.a > 0.0:
+			if afterimage.a > 0.0 and afterimaged < _afterimage_budget:
 				BulletAfterimage.stamp(canvas, texture, centre, size, angle, rotation, afterimage)
 				afterimaged += 1
 			_draw_one(canvas, texture, centre, size, rotation, _take_outline())
