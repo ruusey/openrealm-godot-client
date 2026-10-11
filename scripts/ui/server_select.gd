@@ -13,6 +13,12 @@ extends VBoxContainer
 
 const PING_TIMEOUT_MS := 4000
 
+## A direct-to-localhost entry pinned to the bottom of the list, so a locally
+## run server is reachable without a /servers registry. `local` tells the login
+## screen to dial the raw listener directly (no proxy route, no TLS) rather than
+## the wss ingress path the registered nodes use.
+const LOCAL_SERVER := {"name": "Local (127.0.0.1)", "host": "127.0.0.1", "webSocketPort": 2223, "local": true}
+
 var data_service: DataService
 ## Called with the chosen server Dictionary when the selection changes (and once
 ## for the default on load). The screen uses it to mutate its ClientConfig.
@@ -42,12 +48,13 @@ func _ready() -> void:
 
 func _load() -> void:
 	var response: Dictionary = await data_service.send(HTTPClient.METHOD_GET, "/servers", "", false)
-	if not response.get("ok", false):
-		return
-	var body: Variant = response.get("body")
-	if not (body is Array) or (body as Array).is_empty():
-		return
-	_servers = body
+	var fetched: Array = []
+	if response.get("ok", false) and response.get("body") is Array:
+		fetched = response.get("body")
+	# Always offer the direct localhost connection at the bottom, even when the
+	# registry is empty/unreachable (a purely local server has no /servers list).
+	_servers = fetched.duplicate()
+	_servers.append(LOCAL_SERVER)
 	_dropdown.clear()
 	_pings.clear()
 	for server in _servers:
@@ -55,7 +62,11 @@ func _load() -> void:
 		_pings.append({"state": "pending", "socket": null, "start_ms": 0, "ms": 0})
 	visible = true
 	_dropdown.select(0)
-	_on_selected(0)
+	# Only auto-apply when a registered server leads the list; if the fetch failed
+	# and Local is the only entry, leave the compiled-in default route in place
+	# until the player picks Local themselves.
+	if not fetched.is_empty():
+		_on_selected(0)
 	_start_pings()
 
 
@@ -103,6 +114,11 @@ func _process(_delta: float) -> void:
 
 ## wss via the page's nginx route on TLS web; raw ws to the node otherwise.
 func _connect_url(server: Dictionary) -> String:
+	# Local liveness is probed over ws regardless of how it'll actually be dialed
+	# (desktop uses raw TCP) -- WebSocketPeer can't open a raw socket, and 2222/2223
+	# are the same server, so a ws hit still means "a local server is up".
+	if server.get("local", false):
+		return "ws://127.0.0.1:%d" % int(server.get("webSocketPort", 2223))
 	if data_service.base_url.begins_with("https"):
 		var authority := data_service.base_url.substr(data_service.base_url.find("://") + 3)
 		return "wss://%s%s" % [authority, str(server.get("route", ""))]

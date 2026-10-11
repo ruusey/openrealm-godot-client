@@ -134,6 +134,17 @@ func forget_characters(status: String) -> void:
 func _apply_server(server: Dictionary) -> void:
 	if client_config == null:
 		return
+	# Direct localhost: skip the proxy route and TLS entirely. The desktop build
+	# dials the game server's raw TCP listener (2222); a browser has no raw socket,
+	# so there it falls back to the plain WebSocket listener (2223). Either way no
+	# wss and no ingress path, which is what makes a local server reachable.
+	if server.get("local", false):
+		client_config.host = "127.0.0.1"
+		client_config.port = 0
+		client_config.secure = false
+		client_config.socket_path = ""
+		client_config.websocket = OS.has_feature("web")
+		return
 	client_config.websocket = true
 	if client_config.secure:
 		client_config.socket_path = str(server.get("route", client_config.socket_path))

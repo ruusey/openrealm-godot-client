@@ -22,6 +22,10 @@ const HEADING_COLOUR := Color("fff0a0")
 var state: RealmState
 var content: GameData
 var actions: PartyActions
+## For the synthetic AI-companion party, the row's remove button recalls the
+## companion instead of a party kick (which the server refuses — it is not a real
+## party). Null for a plain party, where only the kick path is used.
+var companion_actions: CompanionActions
 ## The diagnostics, which the panel moves down to clear while they show.
 var hud: DebugHud
 ## Off for a scripted render that is about something else.
@@ -38,11 +42,12 @@ var _leave: Button
 
 
 func setup(realm_state: RealmState, game_data: GameData, party_actions: PartyActions,
-		debug_hud: DebugHud = null) -> void:
+		debug_hud: DebugHud = null, companion_acts: CompanionActions = null) -> void:
 	state = realm_state
 	content = game_data
 	actions = party_actions
 	hud = debug_hud
+	companion_actions = companion_acts
 
 
 func _ready() -> void:
@@ -126,18 +131,48 @@ func _rebuild(others: Array) -> void:
 	var party := state.party
 	_count.text = "Party %d/%d" % [party.members.size(), PartyState.MAX_SIZE]
 	var leader := party.is_leader(state.local.id)
+	# The AI-companion party is synthetic (partyId == our own id): its rows remove
+	# via a companion recall, not a party kick the server would refuse.
+	var companion_party := party.party_id == state.local.id
 	for member in others:
-		var row := PartyRow.new(func(name: String) -> void: if actions != null: actions.kick(name))
-		row.show_member(member, content, int(member.get("playerId", 0)) == party.leader_id, leader)
-		row.mouse_entered.connect(_show_inspect.bind(member, row))
+		var class_id := int(member.get("classId", 0))
+		var player_id := int(member.get("playerId", 0))
+		var on_remove := func(name: String) -> void:
+			if companion_party:
+				_recall_companion(class_id)
+			elif actions != null:
+				actions.kick(name)
+		var row := PartyRow.new(on_remove)
+		row.show_member(member, content, player_id == party.leader_id, leader)
+		# Bind the id, not the member dict: apply_update swaps the whole array every
+		# packet, so a captured dict would freeze the inspected gear/HP at rebuild.
+		row.mouse_entered.connect(_show_inspect.bind(player_id, row))
 		row.mouse_exited.connect(_inspect.hide_card)
 		_rows_box.add_child(row)
 		_rows.append(row)
 
 
+## Recall the deployed companion whose class matches this row. Each deployed
+## companion is a distinct class, so the row's classId identifies it uniquely.
+func _recall_companion(class_id: int) -> void:
+	if companion_actions == null or state == null:
+		return
+	for c in state.companions.roster:
+		if int(c.get("characterClass", -1)) == class_id and bool(c.get("active", false)):
+			companion_actions.recall(str(c.get("companionUuid", "")))
+			return
+
+
 ## The richer party inspect pane: stats AND equipped items, both carried by the
 ## PartyUpdatePacket's NetPartyMember (not available for plain nearby players).
-func _show_inspect(member: Dictionary, row: Control) -> void:
+func _show_inspect(player_id: int, row: Control) -> void:
+	var member := {}
+	for m in state.party.members:
+		if int(m.get("playerId", 0)) == player_id:
+			member = m
+			break
+	if member.is_empty():
+		return
 	_inspect.show_player({
 		"name": member.get("name", ""),
 		"role": "",
