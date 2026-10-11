@@ -83,7 +83,7 @@ The bag color tells you what's inside:
 [color=#e0e0e0][font_size=18]■[/font_size][/color] [b]White[/b] — untiered legendary items
 [color=#c04040][font_size=18]■[/font_size][/color] [b]Red[/b] — a tier-upgraded bonus drop from tougher enemies
 [color=#888888][font_size=18]■[/font_size][/color] [b]Grave[/b] — gear a fallen player left behind[/indent]
-[b]Soulbound loot:[/b] deal at least 5% of an enemy's health and you earn your own private loot roll — only you can see or grab your soulbound bags. Potions, dropped items, and graves are public; everything else binds to you.""",
+[b]Soulbound loot:[/b] deal at least 5% of an enemy's health and you earn your own private loot roll. You and your party can see and grab each other's soulbound bags, so the team can share drops; to everyone else they're invisible. Potions, dropped items, and graves are public.""",
 	"Dungeons, Portals & Difficulty": """[ul]
 Overworld islands are linked in a graph; [b]portals[/b] drop you into [b]dungeons[/b] — self-contained instances built from prefab rooms, each ending in a boss.
 A portal carries a [b]difficulty[/b] and sometimes a [b]tier[/b] with rolled [b]Realm Modifiers[/b] — buffs/twists that raise the challenge and the rewards. Check the portal card before you enter.
