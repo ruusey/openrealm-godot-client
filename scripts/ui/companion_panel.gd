@@ -69,13 +69,9 @@ func _ready() -> void:
 	_new_row.add_theme_constant_override("separation", 6)
 	column.add_child(_new_row)
 	_line(_new_row, "New:", 12, MUTED)
+	# Filled lazily in _process once shown — the class catalog loads from the data
+	# service after login, so it is empty here at build time.
 	_picker = OptionButton.new()
-	if content != null:
-		for class_id in content.classes_art.class_ids():
-			_picker.add_item(content.classes_art.display_name(int(class_id)))
-			_picker.set_item_id(_picker.item_count - 1, int(class_id))
-		if _picker.item_count > 0:
-			_picker.select(0)
 	_new_row.add_child(_picker)
 	InventoryLayout.button(_new_row, "Create", _on_create)
 
@@ -88,9 +84,24 @@ func _process(_delta: float) -> void:
 	visible = state != null and content != null and shown and state.local.is_present()
 	if not visible:
 		return
+	if _picker.item_count == 0:
+		_populate_picker()
 	PanelFit.shrink(_root)
 	if state.companions.version != _drawn:
 		_rebuild()
+
+
+## Fill the class dropdown from the content catalog. Called the first time the
+## panel is shown (not in _ready) because character-classes.json loads from the
+## data service after login, so the catalog is empty at build time.
+func _populate_picker() -> void:
+	if content == null:
+		return
+	for class_id in content.classes_art.class_ids():
+		_picker.add_item(content.classes_art.display_name(int(class_id)))
+		_picker.set_item_id(_picker.item_count - 1, int(class_id))
+	if _picker.item_count > 0:
+		_picker.select(0)
 
 
 func toggle() -> void:
