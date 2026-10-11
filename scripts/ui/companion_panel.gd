@@ -33,6 +33,7 @@ var _picker: OptionButton
 var _cards_box: VBoxContainer
 var _drawn := -1
 var _typing := false
+var _tooltip: ItemTooltip
 
 
 func setup(realm_state: RealmState, game_data: GameData, companion_actions: CompanionActions) -> void:
@@ -81,10 +82,16 @@ func _ready() -> void:
 	_cards_box.add_theme_constant_override("separation", 10)
 	column.add_child(_cards_box)
 
+	# Hover card for companion gear + backpack items (reuses the inventory tooltip).
+	_tooltip = ItemTooltip.of(state, content)
+	add_child(_tooltip)
+
 
 func _process(_delta: float) -> void:
 	visible = state != null and content != null and shown and state.local.is_present()
 	if not visible:
+		if _tooltip != null:
+			_tooltip.hide_card()
 		return
 	PanelFit.shrink(_root)
 	if state.companions.version != _drawn:
@@ -200,7 +207,9 @@ func _card(companion: Dictionary) -> Control:
 	deploy.disabled = not is_active and state.companions.active_count() >= MAX_ACTIVE
 	InventoryLayout.button(head, "X", func() -> void: actions.delete(uuid))
 
+	_stats_row(box, companion, uuid)
 	_gear_row(box, companion, uuid)
+	_backpack_grid(box, companion, uuid)
 	_skills(box, companion, uuid, class_id)
 	return frame
 
@@ -215,12 +224,66 @@ func _gear_row(into: Container, companion: Dictionary, uuid: String) -> void:
 	for i in 5:
 		var cell := VBoxContainer.new()
 		var slot := CompanionEquipSlot.new(i, true)
-		slot.show_from(by_slot.get(i, {}), content)
+		var equipped: Dictionary = by_slot.get(i, {})
+		slot.show_from(equipped, content)
 		slot.dropped.connect(func(from_index: int, _to: int) -> void: actions.equip(uuid, from_index, i))
 		slot.activated.connect(func(_index: int) -> void: actions.unequip(uuid, i))
+		slot.hovered.connect(func(_index: int, over: bool) -> void: _hover_item(equipped, over))
 		cell.add_child(slot)
 		InventoryLayout.heading(cell, CAPTIONS[i]).horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		row.add_child(cell)
+
+
+## The companion's stats, which double as a stat-potion drop target: drag a stat
+## potion from your bag onto this line to feed it (the server consumes it only if
+## it still raises a stat — a maxed companion leaves it in your bag).
+func _stats_row(into: Container, companion: Dictionary, uuid: String) -> void:
+	var stats: Dictionary = companion.get("stats", {})
+	var drop := CompanionStatDrop.new()
+	drop.setup(func(bag_slot: int) -> void: actions.consume_potion(uuid, bag_slot))
+	into.add_child(drop)
+	var label := Label.new()
+	label.text = "HP %d  MP %d  DEF %d  STR %d  SPD %d  DEX %d  VIT %d  WIS %d  (drag a stat potion here)" % [
+		int(stats.get("hp", 0)), int(stats.get("mp", 0)), int(stats.get("def", 0)),
+		int(stats.get("str", 0)), int(stats.get("spd", 0)), int(stats.get("dex", 0)),
+		int(stats.get("vit", 0)), int(stats.get("wis", 0))]
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.add_theme_font_size_override("font_size", 11)
+	label.add_theme_color_override("font_color", MUTED)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	drop.add_child(label)
+
+
+## Items the companion auto-looted (untiered gear + potions it couldn't use).
+## Hover for details; double-click a cell to pull it back into your bag.
+func _backpack_grid(into: Container, companion: Dictionary, uuid: String) -> void:
+	var backpack: Array = []
+	for item in companion.get("items", []):
+		if int(item.get("slotIdx", -1)) >= 5:
+			backpack.append(item)
+	if backpack.is_empty():
+		return
+	InventoryLayout.heading(into, "Backpack %d  (double-click to take)" % backpack.size())
+	var grid := GridContainer.new()
+	grid.columns = 5
+	into.add_child(grid)
+	for item in backpack:
+		var sidx := int(item.get("slotIdx", -1))
+		var slot := CompanionEquipSlot.new(sidx, false)
+		slot.show_from(item, content)
+		slot.activated.connect(func(_i: int) -> void: actions.retrieve(uuid, sidx))
+		slot.hovered.connect(func(_i: int, over: bool) -> void: _hover_item(item, over))
+		grid.add_child(slot)
+
+
+## Show/hide the item tooltip for a companion gear/backpack cell on hover.
+func _hover_item(item: Dictionary, over: bool) -> void:
+	if _tooltip == null:
+		return
+	if over and Inventory.holds(item):
+		_tooltip.show_for(item, get_viewport().get_mouse_position())
+	else:
+		_tooltip.hide_card()
 
 
 ## Skill-point rows, one per class ability slot — mirrors SkillsPanel but invests

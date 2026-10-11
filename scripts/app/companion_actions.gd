@@ -13,6 +13,8 @@ const UNEQUIP := 5
 const INVEST := 6
 const RENAME := 7
 const SUMMON_ALL := 8
+const CONSUME_POTION := 9
+const RETRIEVE := 10
 
 var client: OpenRealmClient
 
@@ -58,6 +60,17 @@ func rename(uuid: String, new_name: String) -> void:
 ## Teleport every deployed companion to the player — a last-resort unstick.
 func summon_all() -> void:
 	_send(SUMMON_ALL, "", 0, 0, "")
+
+
+## Feed a stat potion from your bag (`inventory_slot`) to the companion. The
+## server consumes it only if it still raises a stat (no-op if maxed).
+func consume_potion(uuid: String, inventory_slot: int) -> void:
+	_send(CONSUME_POTION, uuid, inventory_slot, 0, "")
+
+
+## Pull an item out of the companion's backpack (`backpack_slot`, 5-44) into your bag.
+func retrieve(uuid: String, backpack_slot: int) -> void:
+	_send(RETRIEVE, uuid, backpack_slot, 0, "")
 
 
 func _send(action: int, uuid: String, arg1: int, arg2: int, text: String) -> void:
