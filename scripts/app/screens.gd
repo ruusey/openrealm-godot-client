@@ -145,8 +145,11 @@ func build(state: RealmState, game_data: GameData, client: OpenRealmClient,
 	add_child(touch)
 	leaderboard = LeaderboardWindow.new(state, game_data, data_service)
 	add_child(leaderboard)
-	touch.link([["Character", skills.toggle], ["Skills", masteries.toggle], ["Quests", quests.toggle],
-		["Leaderboard", leaderboard.toggle], ["Options", options.toggle], ["Companions", companions.toggle]], chat.open_line)
+	var menu_buttons := [["Character", skills.toggle], ["Skills", masteries.toggle], ["Quests", quests.toggle],
+		["Leaderboard", leaderboard.toggle], ["Options", options.toggle]]
+	if CompanionPanel.ENABLED:
+		menu_buttons.append(["Companions", companions.toggle])
+	touch.link(menu_buttons, chat.open_line)
 	party.buttons_bottom = touch.row_bottom
 	store = ItemStorePanel.new()
 	store.setup(state, game_data, inventory_actions, shop)
