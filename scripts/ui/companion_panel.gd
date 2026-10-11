@@ -102,15 +102,24 @@ func _populate_picker() -> void:
 		taken[int(c.get("characterClass", -1))] = true
 	var prev := _picker.get_selected_id()
 	_picker.clear()
+	# Show every class; grey out (disable) the ones already on the team so the
+	# player can see what's unavailable rather than wondering where it went.
+	var first_available := -1
 	for class_id in content.classes_art.class_ids():
 		var cid := int(class_id)
-		if taken.has(cid):
-			continue
+		var idx := _picker.item_count
 		_picker.add_item(content.classes_art.display_name(cid))
-		_picker.set_item_id(_picker.item_count - 1, cid)
-	if _picker.item_count > 0:
-		var idx := _picker.get_item_index(prev) if prev >= 0 else -1
-		_picker.select(idx if idx >= 0 else 0)
+		_picker.set_item_id(idx, cid)
+		if taken.has(cid):
+			_picker.set_item_disabled(idx, true)
+		elif first_available < 0:
+			first_available = idx
+	# Keep the prior pick if it's still selectable, else the first available class.
+	var prev_idx := _picker.get_item_index(prev) if prev >= 0 else -1
+	if prev_idx >= 0 and not _picker.is_item_disabled(prev_idx):
+		_picker.select(prev_idx)
+	elif first_available >= 0:
+		_picker.select(first_available)
 
 
 func toggle() -> void:
@@ -134,9 +143,13 @@ func captures_mouse() -> bool:
 
 
 func _on_create() -> void:
-	if state.companions.count() >= MAX_OWNED or _picker.item_count == 0:
+	if state.companions.count() >= MAX_OWNED:
 		return
-	actions.create(_picker.get_selected_id())
+	var cid := _picker.get_selected_id()
+	# -1 when every class is taken (nothing selectable); server also rejects dupes.
+	if cid < 0:
+		return
+	actions.create(cid)
 
 
 func _rebuild() -> void:
@@ -146,7 +159,7 @@ func _rebuild() -> void:
 	_title.text = "Companions %d/%d  (deployed %d/%d)" % [roster.size(), MAX_OWNED, active, MAX_ACTIVE]
 	# Taken-class set changes with the roster, so refresh the picker here.
 	_populate_picker()
-	_new_row.visible = roster.size() < MAX_OWNED and _picker.item_count > 0
+	_new_row.visible = roster.size() < MAX_OWNED
 	for child in _cards_box.get_children():
 		child.queue_free()
 	for companion in roster:
