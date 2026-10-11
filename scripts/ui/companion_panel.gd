@@ -84,28 +84,41 @@ func _process(_delta: float) -> void:
 	visible = state != null and content != null and shown and state.local.is_present()
 	if not visible:
 		return
-	if _picker.item_count == 0:
-		_populate_picker()
 	PanelFit.shrink(_root)
 	if state.companions.version != _drawn:
 		_rebuild()
 
 
-## Fill the class dropdown from the content catalog. Called the first time the
-## panel is shown (not in _ready) because character-classes.json loads from the
-## data service after login, so the catalog is empty at build time.
+## Fill the class dropdown from the content catalog, excluding classes already on
+## the team (your own class + each companion's) so no two members share a class.
+## Called lazily (character-classes.json loads from the data service after login)
+## and again on every roster change, since the taken-class set shifts.
 func _populate_picker() -> void:
 	if content == null:
 		return
+	var taken := {}
+	taken[int(state.local.class_id)] = true
+	for c in state.companions.roster:
+		taken[int(c.get("characterClass", -1))] = true
+	var prev := _picker.get_selected_id()
+	_picker.clear()
 	for class_id in content.classes_art.class_ids():
-		_picker.add_item(content.classes_art.display_name(int(class_id)))
-		_picker.set_item_id(_picker.item_count - 1, int(class_id))
+		var cid := int(class_id)
+		if taken.has(cid):
+			continue
+		_picker.add_item(content.classes_art.display_name(cid))
+		_picker.set_item_id(_picker.item_count - 1, cid)
 	if _picker.item_count > 0:
-		_picker.select(0)
+		var idx := _picker.get_item_index(prev) if prev >= 0 else -1
+		_picker.select(idx if idx >= 0 else 0)
 
 
 func toggle() -> void:
 	shown = not shown
+	# Force a rebuild on open so the picker reflects the current taken-class set
+	# even if the roster version hasn't changed since last time.
+	if shown:
+		_drawn = -1
 
 
 func close() -> void:
@@ -131,7 +144,9 @@ func _rebuild() -> void:
 	var roster := state.companions.roster
 	var active := state.companions.active_count()
 	_title.text = "Companions %d/%d  (deployed %d/%d)" % [roster.size(), MAX_OWNED, active, MAX_ACTIVE]
-	_new_row.visible = roster.size() < MAX_OWNED
+	# Taken-class set changes with the roster, so refresh the picker here.
+	_populate_picker()
+	_new_row.visible = roster.size() < MAX_OWNED and _picker.item_count > 0
 	for child in _cards_box.get_children():
 		child.queue_free()
 	for companion in roster:
