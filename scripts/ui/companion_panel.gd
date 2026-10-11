@@ -10,11 +10,10 @@ extends CanvasLayer
 ## to the server, which answers with a fresh roster (CompanionRosterPacket) — so
 ## the panel only ever rebuilds from state.companions, never from local guesses.
 
-# Master client kill switch for the AI companion UI. Defaults OFF so the feature
-# is invisible on main; flip to true (and enable the server's
-# OPENREALM_COMPANIONS_ENABLED) to expose it for a test build. When false the
-# Companions menu button is never added, so the panel is unreachable.
-const ENABLED := false
+# Master client kill switch for the AI companion UI. Defaults ON; set to false
+# to hide it (the Companions menu button is never added, so the panel becomes
+# unreachable).
+const ENABLED := true
 
 const MAX_OWNED := 3
 const MAX_ACTIVE := 3
