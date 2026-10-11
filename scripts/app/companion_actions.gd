@@ -12,6 +12,7 @@ const EQUIP := 4
 const UNEQUIP := 5
 const INVEST := 6
 const RENAME := 7
+const SUMMON_ALL := 8
 
 var client: OpenRealmClient
 
@@ -52,6 +53,11 @@ func invest(uuid: String, ability_id: int) -> void:
 
 func rename(uuid: String, new_name: String) -> void:
 	_send(RENAME, uuid, 0, 0, new_name)
+
+
+## Teleport every deployed companion to the player — a last-resort unstick.
+func summon_all() -> void:
+	_send(SUMMON_ALL, "", 0, 0, "")
 
 
 func _send(action: int, uuid: String, arg1: int, arg2: int, text: String) -> void:

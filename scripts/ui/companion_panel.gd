@@ -63,6 +63,8 @@ func _ready() -> void:
 	column.add_child(header)
 	_title = _line(header, "Companions", 16, TITLE_COLOUR)
 	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# Last-resort unstick: yank every deployed companion to your side.
+	InventoryLayout.button(header, "Summon All", func() -> void: if actions != null: actions.summon_all())
 	InventoryLayout.button(header, "Close", close)
 
 	_new_row = HBoxContainer.new()
