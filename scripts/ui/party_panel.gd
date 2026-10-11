@@ -34,6 +34,7 @@ var _rows: Array = []
 var _shape := ""
 var fold: PanelFold
 var _inspect: PlayerInspectCard
+var _leave: Button
 
 
 func setup(realm_state: RealmState, game_data: GameData, party_actions: PartyActions,
@@ -59,7 +60,7 @@ func _ready() -> void:
 	_count = HudWidgets.label("Party", 13, HEADING_COLOUR)
 	_count.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	heading.add_child(_count)
-	InventoryLayout.button(heading, "Leave", func() -> void: if actions != null: actions.leave())
+	_leave = InventoryLayout.button(heading, "Leave", func() -> void: if actions != null: actions.leave())
 	_rows_box = VBoxContainer.new()
 	_rows_box.add_theme_constant_override("separation", 4)
 	column.add_child(_rows_box)
@@ -79,6 +80,9 @@ func _process(_delta: float) -> void:
 		return
 	_root.offset_top = top()
 	fold.place(Vector2(MARGIN + WIDTH - fold.chip.size.x - 2.0, top() + 2.0))
+	# The synthetic AI-companion party (partyId == your own id) can't be "left" —
+	# hide the button there so it doesn't read as broken.
+	_leave.visible = state.party.party_id != state.local.id
 	var party := state.party
 	var others := party.others(state.local.id)
 	var shape := shape_key(party, others)
