@@ -15,7 +15,6 @@ extends CanvasLayer
 # unreachable).
 const ENABLED := true
 
-const MAX_OWNED := 3
 const MAX_ACTIVE := 3
 const TITLE_COLOUR := Color(1.0, 0.85, 0.42)
 const MUTED := Color(0.6, 0.6, 0.65)
@@ -29,6 +28,7 @@ var shown := false
 var _root: PanelContainer
 var _title: Label
 var _new_row: HBoxContainer
+var _buy_row: HBoxContainer
 var _picker: OptionButton
 var _cards_box: VBoxContainer
 var _drawn := -1
@@ -77,6 +77,13 @@ func _ready() -> void:
 	_picker = OptionButton.new()
 	_new_row.add_child(_picker)
 	InventoryLayout.button(_new_row, "Create", _on_create)
+
+	# Expand the owned/bench capacity with fame (server validates fame + the 20 cap).
+	_buy_row = HBoxContainer.new()
+	_buy_row.add_theme_constant_override("separation", 6)
+	column.add_child(_buy_row)
+	InventoryLayout.button(_buy_row, "Buy companion slot (20,000 fame)",
+		func() -> void: if actions != null: actions.buy_slot())
 
 	_cards_box = VBoxContainer.new()
 	_cards_box.add_theme_constant_override("separation", 10)
@@ -152,7 +159,7 @@ func captures_mouse() -> bool:
 
 
 func _on_create() -> void:
-	if state.companions.count() >= MAX_OWNED:
+	if state.companions.count() >= state.companions.owned_cap:
 		return
 	var cid := _picker.get_selected_id()
 	# -1 when every class is taken (nothing selectable); server also rejects dupes.
@@ -165,10 +172,13 @@ func _rebuild() -> void:
 	_drawn = state.companions.version
 	var roster := state.companions.roster
 	var active := state.companions.active_count()
-	_title.text = "Companions %d/%d  (deployed %d/%d)" % [roster.size(), MAX_OWNED, active, MAX_ACTIVE]
+	var cap := state.companions.owned_cap
+	_title.text = "Companions %d/%d  (deployed %d/%d)" % [roster.size(), cap, active, MAX_ACTIVE]
 	# Taken-class set changes with the roster, so refresh the picker here.
 	_populate_picker()
-	_new_row.visible = roster.size() < MAX_OWNED
+	_new_row.visible = roster.size() < cap
+	# Offer the buy button whenever the bench can still grow.
+	_buy_row.visible = cap < CompanionState.MAX_OWNED_CAP
 	for child in _cards_box.get_children():
 		child.queue_free()
 	for companion in roster:

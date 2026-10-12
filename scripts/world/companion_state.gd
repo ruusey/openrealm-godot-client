@@ -7,6 +7,10 @@ extends RefCounted
 ## keeps it across realms rather than clearing it on a transition.
 
 var roster: Array = []
+## Owned/bench capacity: how many companions this account may save (5..20, bought with
+## fame). Deploy-at-once cap is always 3. Defaults to 5 until the first roster arrives.
+var owned_cap := 5
+const MAX_OWNED_CAP := 20
 ## Bumped on every change so the panel knows to rebuild.
 var version := 0
 
@@ -14,6 +18,7 @@ var version := 0
 func apply_roster(data: Dictionary) -> void:
 	var parsed: Variant = JSON.parse_string(str(data.get("json", "[]")))
 	roster = parsed if parsed is Array else []
+	owned_cap = int(data.get("ownedCap", owned_cap))
 	version += 1
 
 

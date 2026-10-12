@@ -180,6 +180,7 @@ const PACKETS := {
 	],
 	"CompanionRosterPacket": [
 		["json", "string", false],
+		["ownedCap", "int", false],
 	],
 	"ConsumeShardStackPacket": [
 		["fromSlotIndex", "byte", false],
