@@ -249,19 +249,20 @@ func _gear_row(into: Container, companion: Dictionary, uuid: String) -> void:
 ## it still raises a stat — a maxed companion leaves it in your bag).
 func _stats_row(into: Container, companion: Dictionary, uuid: String) -> void:
 	var stats: Dictionary = companion.get("stats", {})
-	var drop := CompanionStatDrop.new()
-	drop.setup(func(bag_slot: int) -> void: actions.consume_potion(uuid, bag_slot))
-	into.add_child(drop)
 	var label := Label.new()
-	label.text = "HP %d  MP %d  DEF %d  STR %d  SPD %d  DEX %d  VIT %d  WIS %d  (drag a stat potion here)" % [
+	label.text = "HP %d  MP %d  DEF %d  STR %d  SPD %d  DEX %d  VIT %d  WIS %d" % [
 		int(stats.get("hp", 0)), int(stats.get("mp", 0)), int(stats.get("def", 0)),
 		int(stats.get("str", 0)), int(stats.get("spd", 0)), int(stats.get("dex", 0)),
 		int(stats.get("vit", 0)), int(stats.get("wis", 0))]
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.add_theme_font_size_override("font_size", 11)
 	label.add_theme_color_override("font_color", MUTED)
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	drop.add_child(label)
+	into.add_child(label)
+	# A real, highlighted drop box below the stats — dragging onto a line of text
+	# wasn't discoverable, so give the potion an obvious target.
+	var drop := CompanionStatDrop.new()
+	drop.setup(func(bag_slot: int) -> void: actions.consume_potion(uuid, bag_slot))
+	into.add_child(drop)
 
 
 ## Items the companion auto-looted (untiered gear + potions it couldn't use).
