@@ -196,6 +196,10 @@ func _place_bullet_lights() -> void:
 	var centre := _state.local.render_centre()
 	for id in _state.projectiles.bullets:
 		var bullet: Dictionary = _state.projectiles.bullets[id]
+		# A bullet we don't draw must not cast light either — another player's shot
+		# with "show other players' bullets" off, or one hidden by Blind.
+		if BulletRenderer._hidden(_state, bullet):
+			continue
 		# Resolved once per group (colour hex parsed there), not per bullet per frame.
 		var light_def := _content.projectile_light_resolved(int(bullet.get("group_id", -1)))
 		if light_def.is_empty():
