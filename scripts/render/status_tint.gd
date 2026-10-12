@@ -20,6 +20,7 @@ extends RefCounted
 
 const CLEAR := Color.WHITE
 
+const DOWNED := 43
 const INVINCIBLE := 6
 const ARMOR_BROKEN := 22
 const PARALYZED := 2
@@ -37,6 +38,9 @@ const POISONED := 17
 
 ## [effect id, tint], most significant first.
 const PRIORITY := [
+	# Downed companion: a light-grey "dead" wash. Above everything (incl. the STASIS
+	# it also carries) so the collapsed look always wins.
+	[DOWNED, Color(0.6, 0.6, 0.62)],
 	[INVINCIBLE, Color(1.0, 1.0, 0.8)],
 	[ARMOR_BROKEN, Color(0.44, 0.38, 0.8)],
 	[PARALYZED, Color(0.53, 0.53, 0.53)],
