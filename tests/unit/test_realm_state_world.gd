@@ -33,6 +33,21 @@ func test_a_tile_lands_where_its_world_position_says():
 	assert_eq(state.tiles.tile_at(GameConstants.COLLISION_LAYER, 2, 10), -1)
 
 
+func test_breakable_wall_crack_stage_tracks_the_stream():
+	var wall := {"tileId": 61, "layer": GameConstants.COLLISION_LAYER, "xIndex": 2, "yIndex": 10}
+	var cracked := wall.duplicate()
+	cracked["crackStage"] = 2
+	state.apply_packet("LoadMapPacket", {"realmId": 1, "tiles": [wall]})
+	assert_eq(state.tiles.crack_at(Vector2i(10, 2)), 0, "an intact wall has no crack")
+	state.tiles.changed_cells.clear()
+	state.apply_packet("LoadMapPacket", {"realmId": 1, "tiles": [cracked]})
+	assert_eq(state.tiles.crack_at(Vector2i(10, 2)), 2)
+	assert_true(state.tiles.changed_cells.has(Vector2i(10, 2)), "a new stage redraws the cell")
+	state.apply_packet("LoadMapPacket", {"realmId": 1, "tiles": [
+		{"tileId": 0, "layer": GameConstants.COLLISION_LAYER, "xIndex": 2, "yIndex": 10}]})
+	assert_eq(state.tiles.crack_at(Vector2i(10, 2)), 0, "a destroyed wall drops its crack")
+
+
 func test_load_map_records_dimensions_and_tiles():
 	state.apply_packet("LoadMapPacket", {
 		"realmId": 7, "mapId": 2, "mapWidth": 64, "mapHeight": 32,

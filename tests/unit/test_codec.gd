@@ -177,12 +177,21 @@ func test_read_and_write_value_dispatch_to_entities():
 	var tile: Dictionary = NetCodec.read_value(WireBuffer.make_reader(writer.data_array), "NetTile")
 	assert_eq(tile["tileId"], 3)
 	assert_eq(tile["yIndex"], 5)
+	assert_false(tile.has("crackStage"), "an intact tile carries no crack section")
+
+
+func test_cracked_tile_rides_its_masked_section():
+	var writer := WireBuffer.make_writer()
+	NetCodec.write_value(writer, "NetTile", {"tileId": 61, "layer": 1, "xIndex": 4, "yIndex": 5, "crackStage": 2})
+	assert_eq(writer.data_array.size(), 2 + 1 + 2 + 2 + 1 + 1)
+	var tile: Dictionary = NetCodec.read_value(WireBuffer.make_reader(writer.data_array), "NetTile")
+	assert_eq(tile["crackStage"], 2)
 
 
 func test_write_value_tolerates_a_non_dictionary_entity():
 	var writer := WireBuffer.make_writer()
 	NetCodec.write_value(writer, "NetTile", "not a struct")
-	assert_eq(writer.data_array.size(), 2 + 1 + 4 + 4, "falls back to a zeroed NetTile")
+	assert_eq(writer.data_array.size(), 2 + 1 + 2 + 2 + 1, "falls back to a zeroed NetTile")
 
 
 func test_deeply_nested_entities_roundtrip():

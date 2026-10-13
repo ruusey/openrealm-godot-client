@@ -62,6 +62,12 @@ func _draw() -> void:
 			var face := content.tile_top_face(tile_id)
 			if face == null:
 				continue
-			draw_texture_rect(face,
-				Rect2(tile_x * size, tile_y * size, size, size), false)
+			var face_rect := Rect2(tile_x * size, tile_y * size, size, size)
+			draw_texture_rect(face, face_rect, false)
+			# The clean top face would otherwise paint over a breakable wall's cracks.
+			var stage := state.tiles.crack_at(Vector2i(tile_x, tile_y))
+			if stage > 0:
+				var crack := content.crack_top_face(stage)
+				if crack != null:
+					draw_texture_rect(crack, face_rect, false)
 			drawn += 1

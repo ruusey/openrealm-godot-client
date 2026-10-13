@@ -113,6 +113,8 @@ func paint_cells(canvas: CanvasItem, own: Rect2i) -> Dictionary:
 					billboards.ring(canvas, content.tile_texture(tile_id),
 						content.tile_render_rect(tile_id, rect), own)
 				_draw_tile(canvas, content, tile_id, rect)
+				if layer == GameConstants.COLLISION_LAYER:
+					_draw_crack(canvas, content, tile_id, tiles.crack_at(key), rect)
 				if GroundChunk.counts(own, tile_x, tile_y):
 					drawn += 1
 		# Fringes blend the base layer's seams, so they go on after it and
@@ -153,3 +155,20 @@ func _draw_tile(canvas: CanvasItem, content: GameData, tile_id: int, rect: Rect2
 		missing_tiles[tile_id] = true
 		push_warning("no sprite for tile id %d" % tile_id)
 	canvas.draw_rect(rect, Color.from_hsv(fmod(tile_id * 0.137, 1.0), 0.35, 0.45))
+
+
+## A damaged breakable wall's crack overlay, laid over the art exactly as the
+## tile itself was drawn: the full 8x16 cell for walls, its top square otherwise.
+func _draw_crack(canvas: CanvasItem, content: GameData, tile_id: int, stage: int, rect: Rect2) -> void:
+	if stage <= 0:
+		return
+	var draw_rect := content.tile_render_rect(tile_id, rect)
+	var height := content.tile_render_height(tile_id)
+	if draw_rect == rect and height > rect.size.y:
+		var overlay := content.crack_overlay(stage)
+		if overlay != null:
+			canvas.draw_texture_rect(overlay, Rect2(rect.position, Vector2(rect.size.x, height)), false)
+		return
+	var face := content.crack_top_face(stage)
+	if face != null:
+		canvas.draw_texture_rect(face, draw_rect, false)

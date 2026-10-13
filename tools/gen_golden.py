@@ -177,8 +177,11 @@ def main():
 
     packets, entities, ids = load_schema(os.path.abspath(args.src_root))
 
-    def net_tile(tid, layer, x, y):
-        return {"tileId": tid, "layer": layer, "xIndex": x, "yIndex": y}
+    def net_tile(tid, layer, x, y, crack=0):
+        tile = {"tileId": tid, "layer": layer, "xIndex": x, "yIndex": y}
+        if crack:
+            tile["crackStage"] = crack
+        return tile
 
     def net_player(pid, name, cls, x, y):
         return {
@@ -207,7 +210,7 @@ def main():
         # --- nested entities + collections, server -> client ---
         ("LoadMapPacket", {
             "realmId": -1, "mapId": 3, "dungeonId": 7, "mapWidth": 128, "mapHeight": 128,
-            "tiles": [net_tile(i % 253, i % 3, i * 2, i * 3) for i in range(5)],
+            "tiles": [net_tile(i % 253, i % 3, i * 2, i * 3, i % 4 if i % 2 else 0) for i in range(5)],
         }),
         ("UnloadPacket", {"players": [1, 2, 3], "bullets": [], "enemies": [9223372036854775807],
                           "containers": [0], "portals": [-1]}),

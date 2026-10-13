@@ -9,6 +9,8 @@ extends RefCounted
 ## the data service over HTTP, which is what a web build has to use.
 
 ## filename -> destination dictionary key, keyed by the id field in each entry.
+## Shared crack overlay for breakable walls: one 8x16 cell per stage (75/50/25% HP).
+const CRACK_SHEET := "openrealm-wall-cracks.png"
 const SOURCES := {
 	"tiles.json": ["tiles", "tileId"],
 	"enemies.json": ["enemies", "enemyId"],
@@ -109,6 +111,7 @@ func sheet_keys() -> Array:
 			var key: String = entry.get("spriteKey", "")
 			if key != "":
 				keys[key] = true
+	keys[CRACK_SHEET] = true
 	return keys.keys()
 
 

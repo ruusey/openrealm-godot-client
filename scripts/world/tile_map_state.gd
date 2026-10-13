@@ -24,6 +24,8 @@ var height := 0
 var layers := {}
 ## What changed since the ground last redrew (TileRenderer takes both).
 var changed_cells := {}   # Vector2i -> true; a re-sent, unchanged id is none
+## Breakable walls' crack overlay stage (1-3), collision layer only.
+var cracks := {}   # Vector2i -> stage; intact cells are absent
 var cleared := false
 
 var _content: GameData
@@ -35,6 +37,7 @@ func _init(content: GameData = null) -> void:
 
 func clear() -> void:
 	layers.clear()
+	cracks.clear()
 	changed_cells.clear()
 	cleared = true
 
@@ -84,7 +87,23 @@ func apply_load_map(data: Dictionary) -> bool:
 		if layers[layer].get(cell) != tile_id:
 			layers[layer][cell] = tile_id
 			changed_cells[cell] = true
+		if layer == COLLISION_LAYER:
+			_apply_crack(cell, int(tile.get("crackStage", 0)))
 	return changed
+
+
+func crack_at(cell: Vector2i) -> int:
+	return int(cracks.get(cell, 0))
+
+
+func _apply_crack(cell: Vector2i, stage: int) -> void:
+	if crack_at(cell) == stage:
+		return
+	if stage > 0:
+		cracks[cell] = stage
+	else:
+		cracks.erase(cell)
+	changed_cells[cell] = true
 
 
 ## Whether the ground under an entity's feet slows it -- and, since the

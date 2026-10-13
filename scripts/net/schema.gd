@@ -4,7 +4,7 @@
 #   python3 tools/gen_schema.py <java-src-root>
 #
 # Source tree : C:\Users\ruuse\Documents\GitHub\openrealm\src
-# Generated   : 2026-10-10 03:28:20Z
+# Generated   : 2026-10-13 18:44:21Z
 # Packets     : 58
 # Entities    : 21
 #
@@ -673,8 +673,13 @@ const ENTITIES := {
 	"NetTile": [
 		["tileId", "short", false],
 		["layer", "byte", false],
-		["xIndex", "int", false],
-		["yIndex", "int", false],
+		["xIndex", "short", false],
+		["yIndex", "short", false],
+		["_mask", "mask", false, [
+			[1, [
+				["crackStage", "byte", false],
+			]],
+		]],
 	],
 	"NetTradeSelection": [
 		["player0Selection", "NetInventorySelection", false],

@@ -97,10 +97,10 @@
   "packet": "LoadMapPacket",
   "id": 8,
   "offset": 155,
-  "frame_size": 80,
-  "payload_size": 75,
+  "frame_size": 67,
+  "payload_size": 62,
   "compressed": false,
-  "payload_hex": "ffffffffffffffff0003000700800080000000050000000000000000000000000101000000020000000300020200000004000000060003000000000600000009000401000000080000000c",
+  "payload_hex": "ffffffffffffffff000300070080008000000005000000000000000000010100020003010100020200040006000003000006000901030004010008000c00",
   "expected": {
    "realmId": -1,
    "mapId": 3,
@@ -112,31 +112,38 @@
      "tileId": 0,
      "layer": 0,
      "xIndex": 0,
-     "yIndex": 0
+     "yIndex": 0,
+     "_mask": 0
     },
     {
      "tileId": 1,
      "layer": 1,
      "xIndex": 2,
-     "yIndex": 3
+     "yIndex": 3,
+     "_mask": 1,
+     "crackStage": 1
     },
     {
      "tileId": 2,
      "layer": 2,
      "xIndex": 4,
-     "yIndex": 6
+     "yIndex": 6,
+     "_mask": 0
     },
     {
      "tileId": 3,
      "layer": 0,
      "xIndex": 6,
-     "yIndex": 9
+     "yIndex": 9,
+     "_mask": 1,
+     "crackStage": 3
     },
     {
      "tileId": 4,
      "layer": 1,
      "xIndex": 8,
-     "yIndex": 12
+     "yIndex": 12,
+     "_mask": 0
     }
    ]
   }
@@ -144,7 +151,7 @@
  {
   "packet": "UnloadPacket",
   "id": 10,
-  "offset": 235,
+  "offset": 222,
   "frame_size": 73,
   "payload_size": 68,
   "compressed": false,
@@ -170,7 +177,7 @@
  {
   "packet": "PlayerStatePacket",
   "id": 24,
-  "offset": 308,
+  "offset": 295,
   "frame_size": 63,
   "payload_size": 58,
   "compressed": false,
@@ -195,7 +202,7 @@
  {
   "packet": "ObjectMovePacket",
   "id": 3,
-  "offset": 371,
+  "offset": 358,
   "frame_size": 61,
   "payload_size": 56,
   "compressed": false,
@@ -226,7 +233,7 @@
  {
   "packet": "CompactMovePacket",
   "id": 25,
-  "offset": 432,
+  "offset": 419,
   "frame_size": 24,
   "payload_size": 19,
   "compressed": false,
@@ -247,7 +254,7 @@
  {
   "packet": "CommandPacket",
   "id": 7,
-  "offset": 456,
+  "offset": 443,
   "frame_size": 96,
   "payload_size": 91,
   "compressed": false,
@@ -261,7 +268,7 @@
  {
   "packet": "LoadPacket",
   "id": 9,
-  "offset": 552,
+  "offset": 539,
   "frame_size": 194,
   "payload_size": 601,
   "compressed": true,
@@ -451,7 +458,7 @@
  {
   "packet": "LoadPacket",
   "id": 9,
-  "offset": 746,
+  "offset": 733,
   "frame_size": 354,
   "payload_size": 903,
   "compressed": true,

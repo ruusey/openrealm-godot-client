@@ -6,6 +6,7 @@ extends RefCounted
 
 const DEFAULT_TILE_SPRITE_SIZE := SpriteCache.DEFAULT_SPRITE_SIZE
 const TILE_RENDER_SIZE := 32
+const CRACK_CELL_HEIGHT := 16
 
 var library := ContentLibrary.new()
 var sprites := SpriteCache.new()
@@ -146,6 +147,18 @@ func tile_top_face(tile_id: int) -> AtlasTexture:
 	if ready:
 		_top_face_by_id[tile_id] = texture
 	return texture
+
+
+## A breakable wall's crack overlay for `stage` (1-3), the full 8x16 cell.
+func crack_overlay(stage: int) -> AtlasTexture:
+	return sprites.atlas(ContentLibrary.CRACK_SHEET, 0, stage - 1, DEFAULT_TILE_SPRITE_SIZE,
+		DEFAULT_TILE_SPRITE_SIZE, CRACK_CELL_HEIGHT)
+
+
+## The overlay's upper square: for square tiles, and for the wall top face redrawn over entities.
+func crack_top_face(stage: int) -> AtlasTexture:
+	return sprites.top_face(ContentLibrary.CRACK_SHEET, 0, stage - 1, DEFAULT_TILE_SPRITE_SIZE,
+		CRACK_CELL_HEIGHT)
 
 
 func tile_data(tile_id: int) -> Dictionary:
