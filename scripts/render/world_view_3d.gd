@@ -833,6 +833,9 @@ func _place_bullet_lights(centre: Vector2) -> void:
 	var found := []
 	for id in state.projectiles.bullets:
 		var bullet: Dictionary = state.projectiles.bullets[id]
+		# A bullet we don't draw casts no glow either (parity with the 2D path).
+		if BulletRenderer._hidden(state, bullet):
+			continue
 		# Resolved once per group (colour hex parsed there), not per bullet per frame.
 		var light_def := content.projectile_light_resolved(int(bullet.get("group_id", -1)))
 		if light_def.is_empty():

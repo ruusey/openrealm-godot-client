@@ -144,8 +144,11 @@ func advance(delta: float, input: Vector2, latency_ms: float) -> Array:
 	RemoteAnimation.advance(entities.players, delta)
 	RemoteAnimation.advance(entities.enemies, delta)
 	projectiles.advance(delta)
+	# Trails/impacts follow the same visibility rule as the bullet sprite + glow:
+	# a shot we don't draw (another player's/companion's with "show other players'
+	# bullets" off, or one hidden by Blind) spawns no particles either.
 	particles.advance(delta, projectiles.bullets,
-		func(bullet: Dictionary) -> bool: return Blind.hides_bullet(self, bullet))
+		func(bullet: Dictionary) -> bool: return BulletRenderer._hidden(self, bullet))
 	texts.advance(delta)
 	abilities.expire()
 	minimap.expire()

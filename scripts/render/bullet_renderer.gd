@@ -177,9 +177,18 @@ static func _draw_wall(canvas: CanvasItem, texture: Texture2D, centre: Vector2,
 			-angle + offset + turn, false)
 
 
-## Another player's shot with "Show other players' bullets" off, or any
-## not ours out of sight while blind (Blind); ours always draw.
+## Whether a bullet is suppressed entirely — sprite, afterimage, glow, trail and
+## impact all skip when this is true (every projectile system routes through here).
+## Hidden when Blind hides it, or when "Show other players' bullets" is off and the
+## shot isn't ours: another player's bullet, OR an allied shot (a companion's or
+## another player's summon) that carries ALLY_PROJECTILE. Our own shots always draw.
 static func _hidden(state: RealmState, bullet: Dictionary) -> bool:
+	if Blind.hides_bullet(state, bullet):
+		return true
+	if state.settings.is_on("show_other_bullets"):
+		return false
 	var src := int(bullet.get("src_entity_id", 0))
-	return not state.settings.is_on("show_other_bullets") and src != state.local.id \
-		and state.entities.players.has(src) or Blind.hides_bullet(state, bullet)
+	if src == state.local.id:
+		return false
+	return state.entities.players.has(src) \
+		or ProjectileKind.has_flag(bullet, ProjectileKind.ALLY_PROJECTILE)
