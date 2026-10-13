@@ -27,6 +27,9 @@ var shown := false
 
 var _root: PanelContainer
 var _title: Label
+var _header: HBoxContainer
+var _scroll: ScrollContainer
+var _body: VBoxContainer
 var _new_row: HBoxContainer
 var _buy_row: HBoxContainer
 var _picker: OptionButton
@@ -60,17 +63,30 @@ func _ready() -> void:
 	column.add_theme_constant_override("separation", 8)
 	margin.add_child(column)
 
-	var header := HBoxContainer.new()
-	column.add_child(header)
-	_title = _line(header, "Companions", 16, TITLE_COLOUR)
+	# Header is PINNED (outside the scroll) so Close is always reachable, however
+	# many companions push the body past the screen.
+	_header = HBoxContainer.new()
+	column.add_child(_header)
+	_title = _line(_header, "Companions", 16, TITLE_COLOUR)
 	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	# Last-resort unstick: yank every deployed companion to your side.
-	InventoryLayout.button(header, "Summon All", func() -> void: if actions != null: actions.summon_all())
-	InventoryLayout.button(header, "Close", close)
+	InventoryLayout.button(_header, "Summon All", func() -> void: if actions != null: actions.summon_all())
+	InventoryLayout.button(_header, "Close", close)
+
+	# Everything below the header scrolls; its height is capped to the viewport in
+	# _process so the panel adapts to any size/orientation instead of overflowing.
+	_scroll = ScrollContainer.new()
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	column.add_child(_scroll)
+	_body = VBoxContainer.new()
+	_body.add_theme_constant_override("separation", 8)
+	_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_scroll.add_child(_body)
 
 	_new_row = HBoxContainer.new()
 	_new_row.add_theme_constant_override("separation", 6)
-	column.add_child(_new_row)
+	_body.add_child(_new_row)
 	_line(_new_row, "New:", 12, MUTED)
 	# Filled lazily in _process once shown — the class catalog loads from the data
 	# service after login, so it is empty here at build time.
@@ -81,13 +97,13 @@ func _ready() -> void:
 	# Expand the owned/bench capacity with fame (server validates fame + the 20 cap).
 	_buy_row = HBoxContainer.new()
 	_buy_row.add_theme_constant_override("separation", 6)
-	column.add_child(_buy_row)
+	_body.add_child(_buy_row)
 	InventoryLayout.button(_buy_row, "Buy companion slot (20,000 fame)",
 		func() -> void: if actions != null: actions.buy_slot())
 
 	_cards_box = VBoxContainer.new()
 	_cards_box.add_theme_constant_override("separation", 10)
-	column.add_child(_cards_box)
+	_body.add_child(_cards_box)
 
 	# Hover card for companion gear + backpack items (reuses the inventory tooltip).
 	_tooltip = ItemTooltip.of(state, content)
@@ -100,9 +116,20 @@ func _process(_delta: float) -> void:
 		if _tooltip != null:
 			_tooltip.hide_card()
 		return
-	PanelFit.shrink(_root)
+	_fit_to_viewport()
 	if state.companions.version != _drawn:
 		_rebuild()
+
+
+## Keep the panel inside the screen on any size/orientation: cap the width to the
+## viewport (centered), and cap the scrolling body to the room left under the
+## pinned header. Short rosters size to content (no scrollbar); tall ones scroll.
+func _fit_to_viewport() -> void:
+	var vp := get_viewport().get_visible_rect().size
+	var m := 12.0
+	_root.custom_minimum_size.x = clampf(vp.x - 2.0 * m, 200.0, 360.0)
+	var avail := maxf(vp.y - 2.0 * m - _header.size.y - 16.0, 120.0)
+	_scroll.custom_minimum_size.y = minf(_body.get_combined_minimum_size().y, avail)
 
 
 ## Fill the class dropdown from the content catalog, excluding classes already on
