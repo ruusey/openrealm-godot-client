@@ -80,7 +80,9 @@ func _init() -> void:
 	_panels = VBoxContainer.new() if _mobile else HBoxContainer.new()
 	_panels.add_theme_constant_override("separation", 8)
 	_panels.add_child(_panel_button("Bag", bag))
-	_panels.add_child(_panel_button("Menu", menu))
+	# "Menu" is the mobile hamburger's own label; this button opens the panel list
+	# (Character/Skills/Quests/…), so call it "More" to avoid two nested "Menu"s.
+	_panels.add_child(_panel_button("More", menu))
 	_panels.add_child(_panel_button("Chat", chat))
 	# Escape to safety: no portal to stand on on a phone, so it rides the top row.
 	_panels.add_child(_panel_button("Nexus", nexus))
@@ -100,7 +102,9 @@ func _init() -> void:
 		add_child(_backdrop)
 		move_child(_backdrop, 0)   # behind the buttons, over the game
 		_panels.visible = false
-		_hamburger = TouchButtons.flat("☰", BUTTON_SIZE, _toggle_menu)
+		# Plain ASCII, not a ☰ glyph — the web-export font has no hamburger glyph,
+		# so it rendered as a tofu box (missing-glyph codepoint) on mobile.
+		_hamburger = TouchButtons.flat("Menu", BUTTON_SIZE, _toggle_menu)
 		add_child(_hamburger)
 
 

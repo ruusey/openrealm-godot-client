@@ -43,7 +43,7 @@ func _ready() -> void:
 	var title := HudWidgets.label(HowToGuide.TITLE, 20, OptionsPanel.HEADING)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title)
-	close_button = InventoryLayout.button(header, "×", close)
+	close_button = InventoryLayout.button(header, "X", close)
 	close_button.flat = true
 	close_button.tooltip_text = "Close"
 	close_button.add_theme_font_size_override("font_size", 22)
