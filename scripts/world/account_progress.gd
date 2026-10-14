@@ -9,7 +9,7 @@ extends RefCounted
 ##
 ## The quest log is the server's JSON, as the web client reads it:
 ## `{stars, quests: [{id, name, desc, cat, scoped, status, auto, repeatable,
-## stars, objectives: [{label, progress, target}], rewards: [...]}]}`. A
+## stars, objectives: [{label, type, progress, target}], rewards: [...]}]}`. A
 ## payload that does not parse empties the list rather than keeping a stale
 ## one, as the web's catch does.
 
@@ -76,6 +76,18 @@ func sorted_quests() -> Array:
 		if not status_of(quest) in [ACTIVE, AVAILABLE, COMPLETE]:
 			out.append(quest)
 	return out
+
+
+## Whether a quest with an objective of `type` (a QuestObjectiveType name)
+## is complete -- e.g. the vault quest, which retires the vault's hint.
+func objective_complete(type: String) -> bool:
+	for quest in quests:
+		if status_of(quest) != COMPLETE:
+			continue
+		for objective in quest.get("objectives", []):
+			if objective is Dictionary and String(objective.get("type", "")) == type:
+				return true
+	return false
 
 
 ## A quest's status, with the web's default for one that names none.

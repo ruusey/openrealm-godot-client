@@ -83,6 +83,26 @@ func test_standing_on_an_empty_chest_opens_its_slots():
 	assert_true(window._loot_all.disabled, "nothing to take")
 
 
+func test_the_hint_goes_once_the_vault_quest_is_done():
+	_container(1, true, Vector2(64, 64), _empty_slots())
+	state.local.position = Vector2(64, 64)
+	_scan()
+	assert_true(window._hint.visible, "no quest log yet: the hint shows")
+	_quests("ACTIVE")
+	_scan()
+	assert_true(window._hint.visible, "the quest still to do")
+	_quests("COMPLETE")
+	_scan()
+	assert_false(window._hint.visible, "done once, the hint is gone")
+	assert_true(window._chest_slots.visible, "the slots stay")
+
+
+func _quests(status: String) -> void:
+	var log := {"quests": [{"id": 201, "status": status,
+		"objectives": [{"label": "Store an item", "type": "STORE_IN_VAULT", "progress": 0, "target": 1}]}]}
+	state.apply_packet("QuestStatePacket", {"playerId": 1, "stars": 0, "json": JSON.stringify(log)})
+
+
 func test_a_chest_out_of_drop_reach_does_not_open():
 	_container(1, true, Vector2(64, 64), _empty_slots())
 	state.local.position = Vector2(64 + LootWindow.CHEST_REACH + 4.0, 64)

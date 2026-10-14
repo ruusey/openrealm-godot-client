@@ -4,7 +4,8 @@ extends CanvasLayer
 ## The bag at our feet, WoW's way: beside the backpack (`at`), by the left
 ## thumb, a thumb-high row an item and Loot all / Close under them; Close
 ## puts it away until the next bag. Takes are pick_ups. A vault chest opens
-## even empty, as a grid of its slots that a backpack item drags onto.
+## even empty, as a grid of its slots that a backpack item drags onto, with
+## a hint how until the vault quest is done.
 
 const WIDTH := 300.0
 const BUTTON_HEIGHT := 56.0
@@ -12,6 +13,7 @@ const BUTTON_HEIGHT := 56.0
 ## further off a drop makes a new bag, so a chest's slots show only inside it.
 const CHEST_REACH := 32.0
 const CHEST_COLUMNS := 5
+const VAULT_OBJECTIVE := "STORE_IN_VAULT"
 
 var state: RealmState
 var content: GameData
@@ -127,7 +129,8 @@ func _rescan() -> void:
 		_tooltip.hide_card()
 		_drawn = ""
 		return
-	var key := "%d:%s:%d" % [bag_id, str(bag.get("items", [])), state.local.inventory.version]
+	var key := "%d:%s:%d:%d" % [bag_id, str(bag.get("items", [])), state.local.inventory.version,
+		state.progress.version]
 	if key != _drawn:
 		_drawn = key
 		refresh()
@@ -142,7 +145,7 @@ func refresh() -> void:
 	_title.text = "Vault Chest" if _chest else "Loot"
 	_rows_box.visible = not _chest
 	_chest_slots.visible = _chest
-	_hint.visible = _chest
+	_hint.visible = _chest and not state.progress.objective_complete(VAULT_OBJECTIVE)
 	for i in _slots.size():
 		_slots[i].show_from(items[i] if _chest and i < items.size() and items[i] is Dictionary else {}, content)
 	for i in 0 if _chest else items.size():

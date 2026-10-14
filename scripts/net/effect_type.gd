@@ -70,6 +70,7 @@ enum {
 	MELEE_SWING = 62,
 	PURIFY_CIRCLE = 63,
 	BEAM_WARNING = 64,
+	QUEST_COMPLETE = 65,
 }
 
 const NAMES := {
@@ -134,4 +135,5 @@ const NAMES := {
 	62: "MELEE_SWING",
 	63: "PURIFY_CIRCLE",
 	64: "BEAM_WARNING",
+	65: "QUEST_COMPLETE",
 }

@@ -101,6 +101,7 @@ static func _resolve_type(kind: int) -> Callable:
 		EffectType.MELEE_SWING: return FxMeleeSwing.draw
 		EffectType.PURIFY_CIRCLE: return FxPurifyCircle.draw
 		EffectType.BEAM_WARNING: return FxBeamWarning.draw
+		EffectType.QUEST_COMPLETE: return FxQuestComplete.draw
 	return Callable()
 
 

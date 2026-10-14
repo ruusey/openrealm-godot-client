@@ -20,6 +20,8 @@ const RING_COLOUR := Color("66ccff")
 const CAST_BAR := Vector2(28.0, 3.0)
 const CAST_BACK := Color(0.0, 0.0, 0.0, 0.6)
 const CAST_FILL := Color(0.6, 0.85, 1.0)
+## Effects drawn round their owner wherever they move, not where they began.
+const FOLLOWS_OWNER := [EffectType.QUEST_COMPLETE]
 
 var state: RealmState
 var drawn := 0
@@ -54,11 +56,25 @@ static func shown(realm: RealmState, fx: Dictionary) -> bool:
 		or not realm.entities.players.has(owner)
 
 
+## Re-centres `fx` on its owner, the local player included; left where it
+## was when the owner is gone.
+static func follow_owner(realm: RealmState, fx: Dictionary) -> void:
+	var owner := int(fx.get("owner", 0))
+	if owner != 0 and owner == realm.local.id:
+		fx["pos"] = realm.local.centre()
+		return
+	var player: Dictionary = realm.entities.players.get(owner, {})
+	if not player.is_empty():
+		fx["pos"] = realm.entities.render_position(player) + Vector2.ONE * float(player.get("size", 0)) * 0.5
+
+
 func paint(canvas: CanvasItem, realm: RealmState, view: Rect2) -> int:
 	var abilities := realm.abilities
 	var now := abilities.now()
 	var count := 0
 	for fx in abilities.effects:
+		if fx["type"] in FOLLOWS_OWNER:
+			follow_owner(realm, fx)
 		if not view.intersects(bounds(fx)) or not shown(realm, fx):
 			continue
 		var progress := clampf(float(now - fx["started"]) / maxf(float(fx["duration_ms"]), 1.0), 0.0, 1.0)

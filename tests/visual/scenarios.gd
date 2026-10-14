@@ -36,7 +36,7 @@ const SQUARE_WALL_TILE := 184
 
 static func names() -> Array:
 	return ["terrain", "entities", "ysort", "bullets", "collision", "overlap",
-		"walk_left", "walk_right", "walk_up", "walk_down", "walls", "feather", "effects", "walldepth", "shadows", "attack_left", "attack_right", "attack_up", "spin", "portals", "transition", "transition_named", "damage", "damage_fading", "chat", "death", "wading", "inventory", "abilities", "potion_storage", "fame_store", "forge", "minimap", "trails", "login", "exchange_market", "wall_bands", "effects_cast", "effects_generic", "effects_holy", "effects_dark", "effects_arcane", "effects_knight", "effects_rogue", "effects_trapper", "effects_heavy", "trade", "player_hud", "party", "nearby", "item_card", "options", "options_controls", "masteries", "dev_overlay", "blind", "dyes", "quests", "quest_stars", "login_delete", "login_stats", "terms", "how_to", "leaderboard", "loot_preview", "minimap_hop", "billboards", "chunk_seams", "shores", "vault", "touch_phone"]
+		"walk_left", "walk_right", "walk_up", "walk_down", "walls", "feather", "effects", "walldepth", "shadows", "attack_left", "attack_right", "attack_up", "spin", "portals", "transition", "transition_named", "damage", "damage_fading", "chat", "death", "wading", "inventory", "abilities", "potion_storage", "fame_store", "forge", "minimap", "trails", "login", "exchange_market", "wall_bands", "effects_cast", "effects_generic", "effects_holy", "effects_dark", "effects_arcane", "effects_knight", "effects_rogue", "effects_trapper", "effects_heavy", "trade", "player_hud", "party", "nearby", "item_card", "options", "options_controls", "masteries", "dev_overlay", "blind", "dyes", "quests", "quest_stars", "login_delete", "login_stats", "terms", "how_to", "leaderboard", "loot_preview", "minimap_hop", "billboards", "chunk_seams", "shores", "vault", "touch_phone", "quest_complete"]
 
 
 ## A second step, applied after the first rendered frame, for scenarios whose
@@ -112,6 +112,7 @@ static func apply(name: String, state: RealmState) -> void:
 		"loot_preview": _loot_preview(state)
 		"vault": _vault(state)
 		"touch_phone": _inventory(state)
+		"quest_complete": _quest_complete(state)
 		"trails": _trails(state)
 		"billboards": _billboards(state)
 		"chunk_seams": _chunk_seams(state)
@@ -701,6 +702,24 @@ static func _effects_generic(state: RealmState) -> void:
 			"radius": 48.0, "duration": 900, "targetPosX": 0.0, "targetPosY": 0.0, "tier": cast[2], "ownerId": 1})
 	for fx in state.abilities.effects:
 		fx["started"] = -int(fx["duration_ms"] * 0.4)
+
+
+## A quest done, four ways through it: on the player just after the flash,
+## then three more, ownerless so they stay put, as the fountain rises,
+## peaks and falls away.
+static func _quest_complete(state: RealmState) -> void:
+	_terrain(state)
+	state.local.id = 1
+	state.local.position = Vector2(-16, 0)
+	state.apply_packet("LoadPacket", {"players": [_player(1, "Ruu", Vector2(-16, 0), 0)]})
+	var ages := [[1, Vector2(-2, 14), 120], [0, Vector2(-120, 60), 380], [0, Vector2(110, 60), 700],
+		[0, Vector2(0, -70), 1100]]
+	for spec in ages:
+		state.apply_packet("CreateEffectPacket", {"effectType": EffectType.QUEST_COMPLETE, "posX": spec[1].x,
+			"posY": spec[1].y, "radius": 48.0, "duration": 1800, "targetPosX": 0.0, "targetPosY": 0.0,
+			"tier": 0, "ownerId": spec[0]})
+	for i in state.abilities.effects.size():
+		state.abilities.effects[i]["started"] = -int(ages[i][2])
 
 
 ## Each group of ported effects: [type, radius, target offset from the
