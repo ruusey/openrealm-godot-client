@@ -171,6 +171,11 @@ quick_slot_8={
 [rendering]
 
 textures/canvas_textures/default_texture_filter=0
+; Required for the universal/arm64 macOS export (Godot aborts that preset without
+; it). Textures are lossless (compress/mode=0) so no ASTC data is actually packed;
+; this just satisfies the export gate. Comment MUST be ';' not '#' or the parser
+; drops the key below it.
+textures/vram_compression/import_etc2_astc=true
 renderer/rendering_method="gl_compatibility"
 environment/defaults/default_clear_color=Color(0, 0, 0, 1)
 # A float 2D framebuffer so the additive light pools can exceed 1.0; that headroom
