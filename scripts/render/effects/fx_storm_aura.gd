@@ -28,7 +28,7 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, _colour: C
 	var alpha := 1.0 - progress
 	if alpha <= 0.001:
 		return
-	canvas.draw_circle(at, radius, Color(STORM, alpha * 0.25))
+	CircleStamp.disc(canvas, at, radius, Color(STORM, alpha * 0.25))
 	Fx.ring(canvas, at, radius, 2.0, Color(ELEC, alpha * 0.75))
 	for i in BOLTS:
 		canvas.draw_polyline(bolt(at, radius, i, elapsed_ms), Color(ELEC, alpha), 3.0 * Fx.S)

@@ -70,7 +70,7 @@ func paint(canvas: CanvasItem, realm: RealmState, view: Rect2) -> int:
 		count += 1
 	for ring in abilities.rings:
 		var alpha := 1.0 - clampf(float(now - ring["started"]) / float(AbilityState.RING_MS), 0.0, 1.0)
-		canvas.draw_arc(ring["pos"], ring["radius"], 0.0, TAU, 64, Color(RING_COLOUR, alpha * 0.75), 2.0)
+		CircleStamp.ring(canvas, ring["pos"], ring["radius"], 2.0, Color(RING_COLOUR, alpha * 0.75), 64)
 		count += 1
 	for id in abilities.casts:
 		var player: Dictionary = realm.entities.players.get(id, {})

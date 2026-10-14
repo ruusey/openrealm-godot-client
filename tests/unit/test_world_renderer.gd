@@ -617,9 +617,9 @@ func test_terrain_with_no_base_layer_feathers_nothing():
 	assert_eq(renderer.draw_stats["feathers"], 0)
 
 
-func test_the_outline_budget_caps_a_horde():
-	# Eight extra commands per projectile, so a wave of them would pay nine
-	# times over. The bodies all still draw; only the silhouettes stop.
+func test_a_horde_is_outlined_whole():
+	# The silhouette is drawn by the bullet shader in the same instanced draw as
+	# the body, so it costs nothing per shot and no budget stops it.
 	var wanted := BulletRenderer.OUTLINE_BUDGET + 20
 	for i in wanted:
 		state.projectiles.bullets[i] = Projectile.from_wire({
@@ -627,8 +627,7 @@ func test_the_outline_budget_caps_a_horde():
 			"angle": 0.0, "magnitude": 0.0, "range": 500.0, "flags": []}, now)
 	await _render()
 	assert_eq(renderer.draw_stats["bullets"], wanted, "every projectile is drawn")
-	assert_eq(renderer.bullets.outlined, BulletRenderer.OUTLINE_BUDGET,
-		"the silhouettes stop at the budget")
+	assert_eq(renderer.bullets.outlined, wanted, "every one has its silhouette")
 
 
 # --- tall wall depth --------------------------------------------------------

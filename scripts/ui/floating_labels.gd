@@ -22,7 +22,7 @@ var _numbers: ControlPool
 
 func _init(root: Control) -> void:
 	_captions = ControlPool.new(root, func() -> Control: return _label(TagStyles.caption_label()))
-	_numbers = ControlPool.new(root, func() -> Control: return _label(TagStyles.damage_label()))
+	_numbers = ControlPool.new(root, func() -> Control: return _label(TagStyles.damage_label()), true)
 
 
 func show_all(state: RealmState, to_screen: Transform2D, view: Rect2, project_3d := false) -> void:
@@ -54,13 +54,18 @@ func _show_captions(state: RealmState, to_screen: Transform2D, view: Rect2, proj
 		if caption == "" or not view.has_point(position):
 			continue
 		var label: Label = _captions.acquire(id)
-		label.text = caption
+		# Each of these re-lays the label out when set, so only a change is set.
+		if label.text != caption:
+			label.text = caption
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		label.label_settings.font_color = PortalCard.colour(portal)
-		if focused:
-			label.add_theme_stylebox_override("normal", PortalCard.box())
-		else:
-			label.remove_theme_stylebox_override("normal")
+		var colour := PortalCard.colour(portal)
+		if label.label_settings.font_color != colour:
+			label.label_settings.font_color = colour
+		if focused != label.has_theme_stylebox_override("normal"):
+			if focused:
+				label.add_theme_stylebox_override("normal", PortalCard.box())
+			else:
+				label.remove_theme_stylebox_override("normal")
 		label.reset_size()
 		# In 3D the projector rotates, so anchor on the portal's world CENTRE (its
 		# billboard) rather than the top-left, which would swing on orbit.
@@ -76,15 +81,17 @@ func _show_captions(state: RealmState, to_screen: Transform2D, view: Rect2, proj
 func _show_numbers(state: RealmState, to_screen: Transform2D, view: Rect2) -> void:
 	if not state.settings.is_on("show_damage_numbers"):
 		return
-	var slot := 0
 	for text in state.texts.texts:
 		var at := DamageText.render_position(text)
 		if not view.has_point(at):
 			continue
-		var label: Label = _numbers.acquire(slot)
-		slot += 1
-		label.text = text["text"]
-		label.reset_size()
+		# Pooled by the number's own id, so a label keeps its text (and its shaped
+		# glyphs) for its whole rise rather than taking the next one's as others expire.
+		var label: Label = _numbers.acquire(int(text.get("id", 0)))
+		var shown: String = text["text"]
+		if label.text != shown:
+			label.text = shown
+			label.reset_size()
 		var fade := DamageText.alpha_of(text)
 		label.modulate = Color(text["colour"], fade)
 		label.pivot_offset = label.size * 0.5

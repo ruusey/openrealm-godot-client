@@ -48,12 +48,12 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, colour: Co
 	last_form = "generic"
 	var reach := radius_at(radius, progress)
 	var alpha := alpha_at(progress)
-	canvas.draw_circle(at, reach, Color(colour, alpha * 0.20))
-	canvas.draw_arc(at, reach, 0.0, TAU, 64, Color(colour, alpha), 4.0)
+	CircleStamp.disc(canvas, at, reach, Color(colour, alpha * 0.20))
+	CircleStamp.ring(canvas, at, reach, 4.0, Color(colour, alpha), 64)
 	for scale in [0.97, 1.03]:
-		canvas.draw_arc(at, reach * scale, 0.0, TAU, 64, Color(colour, alpha * 0.7), 4.0)
+		CircleStamp.ring(canvas, at, reach * scale, 4.0, Color(colour, alpha * 0.7), 64)
 	var pulse := 0.7 + 0.3 * sin(progress * PI * 8.0)
-	canvas.draw_arc(at, reach * 0.6, 0.0, TAU, 48, Color(colour, alpha * 0.8 * pulse), 2.0)
+	CircleStamp.ring(canvas, at, reach * 0.6, 2.0, Color(colour, alpha * 0.8 * pulse), 48)
 	var bright := Color(minf(colour.r + 0.3, 1.0), minf(colour.g + 0.3, 1.0), minf(colour.b + 0.3, 1.0))
 	for i in 16:
 		var angle := i * TAU / 16.0 + progress * PI * 4.0
@@ -66,7 +66,7 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, colour: Co
 		var distance := reach * 0.2 + reach * 0.6 * progress
 		canvas.draw_rect(Rect2(Fx.polar(at, angle, distance) - Vector2(2.5, 2.5), Vector2(5, 5)), Color(lighter, alpha * 0.9))
 	if progress < 0.3:
-		canvas.draw_circle(at, reach * 0.3 * (1.0 - progress * 2.0), Color(Color.WHITE, (0.3 - progress) * 3.0 * 0.5))
+		CircleStamp.disc(canvas, at, reach * 0.3 * (1.0 - progress * 2.0), Color(Color.WHITE, (0.3 - progress) * 3.0 * 0.5))
 
 
 ## The boss grenade: a loud filled disc with a thick edge that throbs, and
@@ -74,9 +74,9 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, colour: Co
 static func _boss(canvas: CanvasItem, at: Vector2, radius: float, progress: float, tier: int) -> void:
 	var alpha := 1.0 if progress < 0.7 else maxf(0.0, 1.0 - (progress - 0.7) * 3.33)
 	var colours: Array = BOSS.get(tier, BOSS_RED)
-	canvas.draw_circle(at, radius, Color(colours[0], alpha * 0.95))
+	CircleStamp.disc(canvas, at, radius, Color(colours[0], alpha * 0.95))
 	var urgency := 0.85 + 0.15 * sin(progress * PI * 12.0)
 	for scale in [1.0, 0.97, 1.03]:
-		canvas.draw_arc(at, radius * scale, 0.0, TAU, 48, Color(colours[1], alpha * urgency), 8.0)
+		CircleStamp.ring(canvas, at, radius * scale, 8.0, Color(colours[1], alpha * urgency), 48)
 	for scale in [0.9, 1.1]:
-		canvas.draw_arc(at, radius * scale, 0.0, TAU, 48, Color(colours[2], alpha * 0.85), 8.0)
+		CircleStamp.ring(canvas, at, radius * scale, 8.0, Color(colours[2], alpha * 0.85), 48)

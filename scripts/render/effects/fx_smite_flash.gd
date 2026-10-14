@@ -29,8 +29,8 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, _colour: C
 		Fx.line(canvas, at - Vector2(0.0, span.y), at + Vector2(0.0, span.y), layer[0], layer[1])
 		Fx.line(canvas, at + Vector2(-span.x, -span.z), at + Vector2(span.x, -span.z), layer[0], layer[1])
 	if radius > 0.0:
-		canvas.draw_circle(at, radius * 0.35, Color(Color.WHITE, alpha * 0.75))
-		canvas.draw_circle(at, radius * 0.55, Color(gold, alpha * 0.55))
+		CircleStamp.disc(canvas, at, radius * 0.35, Color(Color.WHITE, alpha * 0.75))
+		CircleStamp.disc(canvas, at, radius * 0.55, Color(gold, alpha * 0.55))
 	for i in 4:
 		var ends := crack(at, radius, i)
 		Fx.line(canvas, ends[0], ends[1], 3.0, Color("806020", alpha * 0.85))

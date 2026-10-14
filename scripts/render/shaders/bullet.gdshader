@@ -1,0 +1,57 @@
+shader_type canvas_item;
+render_mode unshaded;
+
+// One projectile per MultiMesh instance, so every shot cut from one sheet is a
+// single draw call. Per instance:
+//   INSTANCE_CUSTOM  the sprite's region of the sheet in PIXELS (x, y, w, h).
+//                    The compatibility renderer packs custom data as half
+//                    floats, exact for whole pixels up to 2048 but not for UVs.
+//   COLOR.r          1 to outline the sprite, 0 not to
+//   the transform    its scale is the quad's size in world units; an outlined
+//                    quad is one unit wider on every side than the sprite, so
+//                    the silhouette has room
+// The silhouette is what SpriteOutline stamps -- four copies of the sprite in
+// black at 0.85 alpha, one unit right, left, down and up -- composited here in
+// one pass: its alpha is what four such layers blend to, and the sprite goes
+// over it.
+
+const float OUTLINE_ALPHA = 0.85;
+
+varying vec4 region;
+varying float margin;
+
+void vertex() {
+	region = INSTANCE_CUSTOM;
+	float quad = length(MODEL_MATRIX[0].xy);
+	margin = COLOR.r > 0.5 && quad > 2.0 ? 1.0 / quad : 0.0;
+	COLOR = vec4(1.0);
+}
+
+vec4 sprite_at(sampler2D sheet, vec4 cut, vec2 local) {
+	if (local.x < 0.0 || local.y < 0.0 || local.x >= 1.0 || local.y >= 1.0) {
+		return vec4(0.0);
+	}
+	return texture(sheet, cut.xy + local * cut.zw);
+}
+
+void fragment() {
+	vec4 cut = region * vec4(TEXTURE_PIXEL_SIZE, TEXTURE_PIXEL_SIZE);
+	float span = 1.0 - 2.0 * margin;
+	vec2 local = (UV - vec2(margin)) / span;
+	vec4 sprite = sprite_at(TEXTURE, cut, local);
+	float outline = 0.0;
+	if (margin > 0.0) {
+		// One outline unit in the sprite's own [0, 1] space.
+		float unit = margin / span;
+		float clear = (1.0 - OUTLINE_ALPHA * sprite_at(TEXTURE, cut, local + vec2(unit, 0.0)).a)
+			* (1.0 - OUTLINE_ALPHA * sprite_at(TEXTURE, cut, local - vec2(unit, 0.0)).a)
+			* (1.0 - OUTLINE_ALPHA * sprite_at(TEXTURE, cut, local + vec2(0.0, unit)).a)
+			* (1.0 - OUTLINE_ALPHA * sprite_at(TEXTURE, cut, local - vec2(0.0, unit)).a);
+		outline = 1.0 - clear;
+	}
+	float alpha = sprite.a + outline * (1.0 - sprite.a);
+	if (alpha <= 0.0) {
+		discard;
+	}
+	COLOR = vec4(sprite.rgb * sprite.a / alpha, alpha);
+}

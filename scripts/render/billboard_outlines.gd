@@ -51,12 +51,19 @@ func paint_bottoms(canvas: CanvasItem, tiles: TileMapState, content: GameData,
 	if props.is_empty():
 		return 0
 	var below := Vector2(0.0, SpriteOutline.OFFSET)
+	var looks: Dictionary = content.tile_looks
 	for tile_y in range(first.y, last.y + 1):
 		for tile_x in range(first.x, last.x + 1):
 			var tile_id: int = props.get(Vector2i(tile_x, tile_y), 0)
-			if not is_billboard(content, tile_id):
+			if tile_id <= 0:
 				continue
-			var texture := content.tile_texture(tile_id)
+			var look: Array = looks.get(tile_id, GameData.NO_LOOK)
+			if look.is_empty():
+				look = content.tile_look(tile_id)
+			# is_billboard, through the cached look.
+			if look[GameData.LOOK_FLAGS] & GameData.LOOK_WALL:
+				continue
+			var texture: Texture2D = look[GameData.LOOK_TEXTURE]
 			if texture == null:
 				continue
 			var rect := content.tile_render_rect(tile_id, Rect2(tile_x * TILE_SIZE, tile_y * TILE_SIZE, TILE_SIZE, TILE_SIZE))

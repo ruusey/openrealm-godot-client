@@ -30,6 +30,26 @@ const HOMING := 34
 const MELEE_SWING := 40
 const CRITICAL := 50
 
+## Everything the per-frame loops ask of a bullet, derived once from its flags and
+## motion parameters (neither changes in flight) and cached on it as "traits".
+const TRAIT_ORBITAL := 1
+const TRAIT_PARAMETRIC := 2
+const TRAIT_SPINS := 4
+const TRAIT_SPEED_CURVE := 8
+const TRAIT_HOMING := 16
+const TRAIT_ANCHORED := 32
+const TRAIT_LINE_SEGMENT := 64
+const TRAIT_STOPS_AT_WALLS := 128
+const TRAIT_PIERCES := 256
+const TRAIT_MELEE_SWING := 512
+const TRAIT_ALLY := 1024
+const TRAIT_PLAYER_SHOT := 2048
+const TRAIT_PREDICTED := 4096
+## Set by ProjectileSystem, which knows who the local player is.
+const TRAIT_OWNER_RESOLVED := 8192
+const TRAIT_OWN := 16384
+const TRAIT_CONSUMED := 32768
+
 
 ## Flags are packed into an int bitmask at construction (flag_bits), so every
 ## motion/ownership predicate is a bit test rather than a linear Array scan --
@@ -39,6 +59,41 @@ static func has_flag(bullet: Dictionary, flag: int) -> bool:
 	if bullet.has("flag_bits"):
 		return (int(bullet["flag_bits"]) & (1 << flag)) != 0
 	return flag in bullet.get("flags", [])
+
+
+static func traits(bullet: Dictionary) -> int:
+	var cached: int = bullet.get("traits", -1)
+	if cached >= 0:
+		return cached
+	var bits := 0
+	if is_orbital(bullet):
+		bits |= TRAIT_ORBITAL
+	elif is_parametric(bullet):
+		bits |= TRAIT_PARAMETRIC
+	if spins(bullet):
+		bits |= TRAIT_SPINS
+	if has_speed_curve(bullet):
+		bits |= TRAIT_SPEED_CURVE
+	if is_homing(bullet):
+		bits |= TRAIT_HOMING
+	if is_anchored(bullet):
+		bits |= TRAIT_ANCHORED
+	if has_flag(bullet, LINE_SEGMENT):
+		bits |= TRAIT_LINE_SEGMENT
+	if not has_flag(bullet, PASS_THROUGH_TERRAIN):
+		bits |= TRAIT_STOPS_AT_WALLS
+	if has_flag(bullet, PASS_THROUGH_ENEMIES):
+		bits |= TRAIT_PIERCES
+	if has_flag(bullet, MELEE_SWING):
+		bits |= TRAIT_MELEE_SWING
+	if has_flag(bullet, ALLY_PROJECTILE):
+		bits |= TRAIT_ALLY
+	if is_player_shot(bullet):
+		bits |= TRAIT_PLAYER_SHOT
+	if bool(bullet.get("predicted", false)):
+		bits |= TRAIT_PREDICTED
+	bullet["traits"] = bits
+	return bits
 
 
 static func is_orbital(bullet: Dictionary) -> bool:

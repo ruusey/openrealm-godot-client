@@ -43,7 +43,7 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, _colour: C
 		_danger_zone(canvas, at, radius, alpha, elapsed_ms, boss_colours(int(fx["tier"])))
 		return
 	var t := elapsed_ms * 0.001
-	canvas.draw_circle(at, radius, Color(VOID, alpha * 0.28))
+	CircleStamp.disc(canvas, at, radius, Color(VOID, alpha * 0.28))
 	Fx.ring(canvas, at, shock_radius(radius, progress), 3.0, Color("9b30ff", alpha * 0.5 * (1.0 - wave(progress) * 0.5)))
 	for ring in 2:
 		var reach := radius * (0.78 if ring == 0 else 0.52)
@@ -59,7 +59,7 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, _colour: C
 			Color("b060ff", alpha * (0.25 + 0.5 * closing)))
 	var pulse := 0.6 + 0.4 * sin(t * 6.0)
 	var core := radius * 0.1 + radius * 0.08 * pulse
-	canvas.draw_circle(at, core, Color("10001a", alpha * 0.6))
+	CircleStamp.disc(canvas, at, core, Color("10001a", alpha * 0.6))
 	Fx.ring(canvas, at, core, 2.0, Color("d080ff", alpha * 0.9 * pulse))
 
 
@@ -67,7 +67,7 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, _colour: C
 ## the edge throbs on the clock, where FxGeneric's form holds to 70%.
 static func _danger_zone(canvas: CanvasItem, at: Vector2, radius: float, alpha: float,
 		elapsed_ms: int, colours: Array) -> void:
-	canvas.draw_circle(at, radius, Color(colours[0], alpha * 0.95))
+	CircleStamp.disc(canvas, at, radius, Color(colours[0], alpha * 0.95))
 	var urgency := 0.85 + 0.15 * sin(elapsed_ms * 0.025)
 	for scale in [1.0, 0.97, 1.03]:
 		Fx.ring(canvas, at, radius * scale, 8.0, Color(colours[1], alpha * urgency))

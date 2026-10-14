@@ -42,7 +42,7 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, _colour: C
 	var alpha := 1.0 - progress
 	if alpha <= 0.001:
 		return
-	canvas.draw_circle(at, radius, Color(DEEP, alpha * 0.30))
+	CircleStamp.disc(canvas, at, radius, Color(DEEP, alpha * 0.30))
 	for i in TENDRILS:
 		var points := tendril(at, radius, i, grow(progress), elapsed_ms)
 		canvas.draw_polyline(points, Color(BARK, alpha * 0.9), 5.0 * Fx.S)

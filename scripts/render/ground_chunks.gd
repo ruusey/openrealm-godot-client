@@ -28,10 +28,16 @@ func drop_all() -> void:
 ## ring of cells around its own, so a change reaches every chunk within two
 ## cells of it.
 func mark(cells: Dictionary) -> void:
+	# GroundChunk.of, inlined: a LoadMap can carry hundreds of cells, and two
+	# cells either side of one fall in at most two chunks along each axis.
 	for cell in cells:
-		for dx in [-2, 0, 2]:
-			for dy in [-2, 0, 2]:
-				var chunk := GroundChunk.of(cell + Vector2i(dx, dy))
+		var low_x := floori((cell.x - 2) / float(GroundChunk.SIZE))
+		var high_x := floori((cell.x + 2) / float(GroundChunk.SIZE))
+		var low_y := floori((cell.y - 2) / float(GroundChunk.SIZE))
+		var high_y := floori((cell.y + 2) / float(GroundChunk.SIZE))
+		for x in range(low_x, high_x + 1):
+			for y in range(low_y, high_y + 1):
+				var chunk := Vector2i(x, y)
 				if chunks.has(chunk):
 					dirty[chunk] = true
 

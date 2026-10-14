@@ -67,6 +67,17 @@ var _bloom_active := false
 var _pool: Array[PointLight2D] = []
 var _bullet_lights: Array[PointLight2D] = []
 var _occluders: Array[LightOccluder2D] = []
+## The rect each occluder last took, so a rescan rebuilds only the ones that moved.
+var _occluder_rects: Array[Rect2i] = []
+## The nearest light-emitting bullets this frame, nearest first.
+var _near_distance := PackedFloat32Array()
+var _near_at := PackedVector2Array()
+var _near_light: Array = []
+var _bullet_lights_shown := 0
+## group id -> its resolved data.light ({} for none).
+var _bullet_light_by_group := {}
+## tile id -> whether it casts a wall shadow; reset with the emitters each rescan.
+var _occludes_by_tile := {}
 var _emitters := {}   # GameData.light_emitters(): tile id -> {color, radius, flickers}
 var _frames := 0
 ## Player position at the last tile-light rescan, so a move past RESCAN_MOVE_SQ re-picks
@@ -115,6 +126,9 @@ func setup(state: RealmState, content: GameData) -> void:
 		light.shadow_enabled = false
 		light.visible = false
 		_bullet_lights.append(light)
+	_near_distance.resize(MAX_BULLET_LIGHTS)
+	_near_at.resize(MAX_BULLET_LIGHTS)
+	_near_light.resize(MAX_BULLET_LIGHTS)
 	# Occluders only matter for shadow-casting lights, which web has none of.
 	if not _web:
 		for i in MAX_OCCLUDERS:
@@ -124,6 +138,7 @@ func setup(state: RealmState, content: GameData) -> void:
 			occluder.occluder = polygon
 			occluder.visible = false
 			_occluders.append(occluder)
+			_occluder_rects.append(Rect2i())
 			add_child(occluder)
 
 
@@ -154,6 +169,7 @@ func _process(delta: float) -> void:
 			light.visible = false
 		for light in _bullet_lights:
 			light.visible = false
+		_bullet_lights_shown = 0
 		for occluder in _occluders:
 			occluder.visible = false
 		_frames = 0
@@ -184,43 +200,69 @@ func _process(delta: float) -> void:
 
 
 ## The nearest light-emitting bullets in flight, one travelling light each,
-## coloured and sized from the projectile group's data.light.
+## coloured and sized from the projectile group's data.light. The nearest
+## MAX_BULLET_LIGHTS are kept in a small sorted insertion list as the bullets
+## are walked, rather than collecting and sorting every glowing bullet.
 func _place_bullet_lights() -> void:
 	# Opt-out sub-toggle of Dynamic lighting: skip the travelling bullet glows (and
 	# their per-frame scan) when the player turns projectile lighting off.
 	if not _state.settings.is_on("projectile_lighting"):
-		for light in _bullet_lights:
-			light.visible = false
+		if _bullet_lights_shown > 0:
+			for light in _bullet_lights:
+				light.visible = false
+			_bullet_lights_shown = 0
 		return
-	var found := []
+	# A bullet we don't draw must not cast light either -- another player's shot
+	# with "show other players' bullets" off, or one hidden by Blind.
+	var visibility := BulletVisibility.of(_state)
 	var centre := _state.local.render_centre()
+	var found := 0
+	var limit := _bullet_lights.size()
 	for id in _state.projectiles.bullets:
 		var bullet: Dictionary = _state.projectiles.bullets[id]
-		# A bullet we don't draw must not cast light either — another player's shot
-		# with "show other players' bullets" off, or one hidden by Blind.
-		if BulletRenderer._hidden(_state, bullet):
+		var group_id := int(bullet.get("group_id", -1))
+		var light_def: Variant = _bullet_light_by_group.get(group_id)
+		if light_def == null:
+			# Resolved once per group (colour hex parsed there), not per bullet per frame.
+			light_def = _content.projectile_light_resolved(group_id)
+			_bullet_light_by_group[group_id] = light_def
+		if light_def.is_empty() or (visibility.any and visibility.hides(bullet)):
 			continue
-		# Resolved once per group (colour hex parsed there), not per bullet per frame.
-		var light_def := _content.projectile_light_resolved(int(bullet.get("group_id", -1)))
-		if light_def.is_empty():
+		var half := float(bullet.get("size", 8)) * 0.5
+		var at: Vector2 = bullet["pos"] + Vector2(half, half)
+		var distance := at.distance_squared_to(centre)
+		if found == limit and distance >= _near_distance[limit - 1]:
 			continue
-		var size := float(bullet.get("size", 8))
-		var at: Vector2 = bullet["pos"] + Vector2(size, size) * 0.5
-		found.append([at.distance_squared_to(centre), at, light_def["color"], light_def["radius"]])
-	found.sort_custom(_nearer)
-	for i in _bullet_lights.size():
+		var slot := mini(found, limit - 1)
+		while slot > 0 and _near_distance[slot - 1] > distance:
+			_near_distance[slot] = _near_distance[slot - 1]
+			_near_at[slot] = _near_at[slot - 1]
+			_near_light[slot] = _near_light[slot - 1]
+			slot -= 1
+		_near_distance[slot] = distance
+		_near_at[slot] = at
+		_near_light[slot] = light_def
+		found = mini(found + 1, limit)
+	for i in limit:
 		var light := _bullet_lights[i]
-		light.visible = i < found.size()
-		if light.visible:
-			light.position = found[i][1]
-			light.color = found[i][2]
-			light.texture_scale = _scale_for(found[i][3])
+		var shown := i < found
+		if light.visible != shown:
+			light.visible = shown
+		if shown:
+			var light_def: Dictionary = _near_light[i]
+			light.position = _near_at[i]
+			light.color = light_def["color"]
+			light.texture_scale = _scale_for(light_def["radius"])
+	_bullet_lights_shown = found
 
 
 ## The glowing tiles in view get a light each (nearest the player first), and the
 ## walls and solid props an occluder each, so those lights throw shadows.
 func _rescan() -> void:
-	_emitters = _content.light_emitters()
+	var emitters := _content.light_emitters()
+	if not is_same(emitters, _emitters):
+		_emitters = emitters
+		_occludes_by_tile.clear()
 	var tile := float(GameConstants.TILE_SIZE)
 	var solid: Dictionary = _state.tiles.layers.get(GameConstants.COLLISION_LAYER, {})
 	var view := ViewRect.of(self)
@@ -260,14 +302,21 @@ func _rescan() -> void:
 	var rects := _merge_wall_rects(walls)
 	for i in _occluders.size():
 		var occluder := _occluders[i]
-		occluder.visible = i < rects.size()
-		if occluder.visible:
-			var rect: Rect2i = rects[i]
-			occluder.position = Vector2(rect.position) * tile
-			var wide := float(rect.size.x) * tile
-			var tall := float(rect.size.y) * tile
-			occluder.occluder.polygon = PackedVector2Array([
-				Vector2(0, 0), Vector2(wide, 0), Vector2(wide, tall), Vector2(0, tall)])
+		var shown := i < rects.size()
+		if occluder.visible != shown:
+			occluder.visible = shown
+		if not shown:
+			continue
+		var rect: Rect2i = rects[i]
+		# A polygon assignment re-uploads the occluder, so only a changed rect pays it.
+		if rect == _occluder_rects[i]:
+			continue
+		_occluder_rects[i] = rect
+		occluder.position = Vector2(rect.position) * tile
+		var wide := float(rect.size.x) * tile
+		var tall := float(rect.size.y) * tile
+		occluder.occluder.polygon = PackedVector2Array([
+			Vector2(0, 0), Vector2(wide, 0), Vector2(wide, tall), Vector2(0, tall)])
 
 
 ## Only WALLS cast shadows. Solid decorations (trees, bushes -- hasCollision but
@@ -276,7 +325,13 @@ func _rescan() -> void:
 ## Now a decoration just gets the soft radial bloom, while walls still block light.
 ## A tile that emits its own light is never made to shadow itself.
 func _occludes(tile_id: int) -> bool:
-	return tile_id > 0 and not _emitters.has(tile_id) and _content.tile_is_wall(tile_id)
+	if tile_id <= 0:
+		return false
+	var occludes: Variant = _occludes_by_tile.get(tile_id)
+	if occludes == null:
+		occludes = not _emitters.has(tile_id) and _content.tile_is_wall(tile_id)
+		_occludes_by_tile[tile_id] = occludes
+	return occludes
 
 
 ## The CanvasModulate colour: the base ambient (a third darker in a dungeon),

@@ -30,7 +30,7 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, _colour: C
 	var at: Vector2 = fx["pos"]
 	var radius: float = fx["radius"]
 	var alpha := 1.0 - progress
-	canvas.draw_circle(at, radius, Color(Color.BLACK, alpha * 0.15))
+	CircleStamp.disc(canvas, at, radius, Color(Color.BLACK, alpha * 0.15))
 	var width := 6.0 * Fx.S
 	var up := grow(progress)
 	for i in SPIKES:

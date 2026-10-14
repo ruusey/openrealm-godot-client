@@ -52,13 +52,24 @@ func draw_ground(canvas: CanvasItem, items: Array) -> Dictionary:
 	var inverse := to_screen.affine_inverse()
 	for item in items:
 		item["pos"] = inverse * (to_screen * item["pos"]).round()
+	# GroundShadow.under_entity, inlined: one ellipse per body.
+	var shadow := Color(0.0, 0.0, 0.0, GroundShadow.ENTITY_ALPHA)
+	var flatten := Vector2(1.0, GroundShadow.FLATTEN)
 	for item in items:
-		if GroundShadow.under_entity(canvas, item["pos"], item["size"]):
+		var size: float = item["size"]
+		if size > 0.0:
+			var origin: Vector2 = item["pos"]
+			canvas.draw_set_transform(origin + Vector2(size * 0.5, size * GroundShadow.ENTITY_CENTRE),
+				0.0, flatten)
+			CircleStamp.disc(canvas, Vector2.ZERO, size * GroundShadow.HALF_WIDTH, shadow)
 			counts["shadows"] += 1
 		if item.get("lock", false):
-			LockOnRing.draw(canvas, item["pos"], item["size"])
+			canvas.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+			LockOnRing.draw(canvas, item["pos"], size)
+	canvas.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	var outlines := SpriteOutline.enabled
 	for item in items:
-		_draw_entity(canvas, item)
+		_draw_entity(canvas, item, outlines)
 		counts[item["kind"]] += 1
 	return counts
 
@@ -105,12 +116,17 @@ static func body_draw(item: Dictionary) -> Dictionary:
 	return {"rect": shown, "slice": Wading.slice(texture, sunk, shown)}
 
 
-func _draw_entity(canvas: CanvasItem, item: Dictionary) -> void:
+func _draw_entity(canvas: CanvasItem, item: Dictionary, outlines: bool) -> void:
 	var flip: bool = item["flip"]
 	var texture: Texture2D = item["texture"]
-	var body := body_draw(item)
-	var rect: Rect2 = body["rect"]
-	var slice: Rect2 = body["slice"]
+	var rect: Rect2
+	var slice := Rect2()
+	if item.get("wading", false) and texture != null:
+		var body := body_draw(item)
+		rect = body["rect"]
+		slice = body["slice"]
+	else:
+		rect = frame_rect(item["pos"], float(item["size"]), item["draw"], flip)
 	if flip:
 		# Origin at the sprite's right edge with x negated, so local x in
 		# [0, size] covers the same cell right-to-left.
@@ -122,18 +138,24 @@ func _draw_entity(canvas: CanvasItem, item: Dictionary) -> void:
 		# Static props (loot/portals) outline only up to the per-frame budget; players
 		# and enemies always do. Keeps a loot pile from spending 4 draw calls per bag.
 		var kind: String = item["kind"]
-		var outline := true
-		if kind == "containers" or kind == "portals":
+		var outline := outlines
+		if outline and (kind == "containers" or kind == "portals"):
 			if _static_outlined >= STATIC_OUTLINE_BUDGET:
 				outline = false
 			else:
 				_static_outlined += 1
-		if outline:
-			SpriteOutline.stamp(canvas, texture, rect, slice)
+		var modulate: Color = item["modulate"]
 		if slice.size == Vector2.ZERO:
-			canvas.draw_texture_rect(texture, rect, false, item["modulate"])
+			if outline:
+				# SpriteOutline.stamp, inlined.
+				for offset in SpriteOutline.OFFSETS:
+					canvas.draw_texture_rect(texture, Rect2(rect.position + offset, rect.size), false,
+						SpriteOutline.TINT)
+			canvas.draw_texture_rect(texture, rect, false, modulate)
 		else:
-			canvas.draw_texture_rect_region(texture, rect, slice, item["modulate"])
+			if outline:
+				SpriteOutline.stamp(canvas, texture, rect, slice)
+			canvas.draw_texture_rect_region(texture, rect, slice, modulate)
 	else:
 		canvas.draw_rect(rect, item["tint"])
 

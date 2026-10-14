@@ -27,6 +27,7 @@ const MARKER_STALE_MS := 8000
 ## What the server answers a bare /hop with, then "ON" or "OFF". Both
 ## references read the same prefix off a SYSTEM line.
 const HOP_REPLY := "Hop mode: "
+const NO_CELLS := {}
 
 ## Null until a map with a size has been sent.
 var image: Image
@@ -49,6 +50,8 @@ var hop := false
 
 var _content: GameData
 var _clock: Callable
+## Vector2i(base tile id, collision tile id) -> its colour.
+var _colours := {}
 
 
 func _init(content: GameData = null,
@@ -89,14 +92,24 @@ func apply_load_map(data: Dictionary, tiles: TileMapState, changed: bool) -> voi
 		height = incoming_height
 		image = Image.create(width, height, false, Image.FORMAT_RGBA8)
 		image.fill(MinimapPalette.VOID)
+	var base: Dictionary = tiles.layers.get(0, NO_CELLS)
+	var solid: Dictionary = tiles.layers.get(COLLISION_LAYER, NO_CELLS)
 	for tile in data.get("tiles", []):
 		# xIndex is the row and yIndex the column, as TileMapState reads them.
 		var column := int(tile.get("yIndex", 0))
 		var row := int(tile.get("xIndex", 0))
 		if column < 0 or row < 0 or column >= width or row >= height:
 			continue
-		image.set_pixel(column, row, MinimapPalette.for_cell(_content,
-			tiles.tile_at(0, column, row), tiles.tile_at(COLLISION_LAYER, column, row)))
+		var cell := Vector2i(column, row)
+		# A cell's colour depends only on its two tile ids, and resolving one
+		# reads names and flags, so each pair is resolved once.
+		var pair := Vector2i(base.get(cell, -1), solid.get(cell, -1))
+		var colour: Variant = _colours.get(pair)
+		if colour == null:
+			colour = MinimapPalette.for_cell(_content, pair.x, pair.y)
+			if _content != null and _content.ready:
+				_colours[pair] = colour
+		image.set_pixel(column, row, colour)
 	version += 1
 
 

@@ -26,7 +26,7 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, _colour: C
 	var at: Vector2 = fx["pos"]
 	var radius: float = fx["radius"]
 	var alpha := 1.0 - progress
-	canvas.draw_circle(at, radius, Color(BLOOD, alpha * 0.20))
+	CircleStamp.disc(canvas, at, radius, Color(BLOOD, alpha * 0.20))
 	Fx.ring(canvas, at, radius, 2.0, Color("500010", alpha * 0.95))
 	for arm in 3:
 		# The web stops a segment short of the centre: nineteen of twenty.

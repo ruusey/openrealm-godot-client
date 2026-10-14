@@ -104,5 +104,5 @@ func _predict(ability_id: int, centre: Vector2, target: Vector2) -> void:
 		var origin := state.local.position if at_caster else target - half
 		var angle := float(definition.get("angle", 0.0)) + (aimed if at_caster else 0.0)
 		var local_id := -(shot * 100 + i)
-		state.projectiles.bullets[local_id] = Projectile.predicted(local_id, group_id, origin,
-			angle, definition, now)
+		state.projectiles.add_prediction(local_id, Projectile.predicted(local_id, group_id, origin,
+			angle, definition, now))

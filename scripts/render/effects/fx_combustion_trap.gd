@@ -26,11 +26,11 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, _colour: C
 	var at: Vector2 = fx["pos"]
 	var alpha := 1.0 - progress
 	var ring := ring_radius(fx["radius"], progress)
-	canvas.draw_circle(at, ring, Color(FIRE, alpha * 0.45))
+	CircleStamp.disc(canvas, at, ring, Color(FIRE, alpha * 0.45))
 	Fx.ring(canvas, at, ring, 8.0, Color(DARK, alpha * 0.9))
 	Fx.ring(canvas, at, ring - 4.0 * Fx.S, 5.0, Color(FIRE, alpha))
 	Fx.ring(canvas, at, ring - 9.0 * Fx.S, 2.0, Color(HOT, alpha))
 	for i in EMBERS:
 		var angle := i * 0.491 * TAU + elapsed_ms * 0.002
 		Fx.dot(canvas, Fx.polar(at, angle, ring * ember_reach(i)), 3.0, Color(HOT, alpha))
-	canvas.draw_circle(at, ring * 0.2, Color(HOT, alpha * 0.85))
+	CircleStamp.disc(canvas, at, ring * 0.2, Color(HOT, alpha * 0.85))

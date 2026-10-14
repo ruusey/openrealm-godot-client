@@ -38,7 +38,7 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, _colour: C
 	if radius > 0.0:
 		for i in range(BANDS, 0, -1):
 			var f := float(i) / BANDS
-			canvas.draw_circle(at, radius * f, Color(band_colour(f), alpha * 0.16))
+			CircleStamp.disc(canvas, at, radius * f, Color(band_colour(f), alpha * 0.16))
 	for i in 3:
 		var phase := ring_phase(i, elapsed_ms)
 		var ring_alpha := (1.0 - phase) * alpha
@@ -47,5 +47,5 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, _colour: C
 		Fx.ring(canvas, at, radius * (0.18 + phase * 0.85), 3.0, Color(ring_colour(phase), ring_alpha * 0.9))
 	Fx.ring(canvas, at, radius, 2.0, Color("4d99ff", alpha * 0.7))
 	if radius > 0.0:
-		canvas.draw_circle(at, radius * 0.16, Color("59ff8c", alpha * 0.5))
-		canvas.draw_circle(at, radius * 0.07, Color("d9ffe6", alpha * 0.7))
+		CircleStamp.disc(canvas, at, radius * 0.16, Color("59ff8c", alpha * 0.5))
+		CircleStamp.disc(canvas, at, radius * 0.07, Color("d9ffe6", alpha * 0.7))

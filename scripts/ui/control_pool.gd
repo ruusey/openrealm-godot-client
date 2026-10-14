@@ -10,22 +10,33 @@ extends RefCounted
 ## whatever a frame did not acquire is freed at the sweep, so a horde that
 ## walked off does not leave its nodes behind.
 
+## Only up to this many swept Controls are kept hidden for reuse.
+const SPARE_CAP := 64
+
 var _parent: Node
 var _make: Callable
 var _live := {}
 var _touched := {}
+## A recycling pool hides what the sweep drops and hands it to the next new key,
+## for keys that come and go by the dozen a second (damage numbers).
+var _recycle := false
+var _spare: Array[Control] = []
 
 
-func _init(parent: Node, make: Callable) -> void:
+func _init(parent: Node, make: Callable, recycle := false) -> void:
 	_parent = parent
 	_make = make
+	_recycle = recycle
 
 
 func acquire(key: Variant) -> Control:
 	var control: Control = _live.get(key)
 	if control == null:
-		control = _make.call()
-		_parent.add_child(control)
+		if not _spare.is_empty():
+			control = _spare.pop_back()
+		else:
+			control = _make.call()
+			_parent.add_child(control)
 		_live[key] = control
 	control.visible = true
 	_touched[key] = true
@@ -36,7 +47,12 @@ func acquire(key: Variant) -> Control:
 func sweep() -> void:
 	for key in _live.keys():
 		if not _touched.has(key):
-			_live[key].queue_free()
+			var control: Control = _live[key]
+			if _recycle and _spare.size() < SPARE_CAP:
+				control.visible = false
+				_spare.append(control)
+			else:
+				control.queue_free()
 			_live.erase(key)
 	_touched.clear()
 

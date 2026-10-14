@@ -42,11 +42,10 @@ func _draw() -> void:
 		var phase := fmod(time / PERIOD + float(i) / float(RINGS), 1.0)
 		var colour := RING_COLOUR
 		colour.a = (1.0 - phase) * 0.6
-		draw_arc(Vector2.ZERO, base * (0.35 + phase * 0.9), 0.0, TAU, 40, colour,
-			maxf(1.0, _zoom), true)
+		CircleStamp.ring(self, Vector2.ZERO, base * (0.35 + phase * 0.9), maxf(1.0, _zoom), colour, 40)
 	var centre := CENTRE_COLOUR
 	centre.a = 0.7
-	draw_circle(Vector2.ZERO, CENTRE_RADIUS * _zoom, centre)
+	CircleStamp.disc(self, Vector2.ZERO, CENTRE_RADIUS * _zoom, centre)
 
 
 ## Places the marker at the melee reach in the aim direction, or hides it when the

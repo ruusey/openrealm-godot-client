@@ -21,7 +21,7 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, _colour: C
 	var at: Vector2 = fx["pos"]
 	var radius: float = fx["radius"]
 	var alpha := 1.0 - progress
-	canvas.draw_circle(at, radius, Color("300810", alpha * 0.5))
+	CircleStamp.disc(canvas, at, radius, Color("300810", alpha * 0.5))
 	Fx.ring(canvas, at, radius, 2.0, Color(BLOOD, alpha * 0.9))
 	for i in 8:
 		var angle := i * TAU / 8.0

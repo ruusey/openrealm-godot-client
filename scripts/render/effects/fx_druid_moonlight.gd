@@ -39,8 +39,8 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, _colour: C
 	if alpha <= 0.001:
 		return
 	var ring := ring_radius(radius, progress)
-	canvas.draw_circle(at, radius, Color(NIGHT, alpha * 0.30))
-	canvas.draw_circle(at, ring * 0.9, Color("2e3a73", alpha * 0.18))
+	CircleStamp.disc(canvas, at, radius, Color(NIGHT, alpha * 0.30))
+	CircleStamp.disc(canvas, at, ring * 0.9, Color("2e3a73", alpha * 0.18))
 	Fx.ring(canvas, at, ring, 5.0, Color(SILVER, alpha * 0.9))
 	Fx.ring(canvas, at, ring * 0.9, 2.0, Color(SOFT, alpha * 0.7))
 	for i in 6:

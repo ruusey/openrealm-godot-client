@@ -46,9 +46,19 @@ func paint_over(canvas: CanvasItem, tiles: TileMapState, content: GameData,
 static func _square_walls(tiles: TileMapState, content: GameData, first: Vector2i, last: Vector2i) -> Array:
 	var out: Array = []
 	var walls: Dictionary = tiles.layers.get(GameConstants.COLLISION_LAYER, {})
+	if walls.is_empty():
+		return out
+	var looks: Dictionary = content.tile_looks
 	for tile_x in range(first.x, last.x + 1):
 		for tile_y in range(first.y, last.y + 1):
 			var cell := Vector2i(tile_x, tile_y)
-			if WallBands.is_square_wall(content, int(walls.get(cell, 0))):
+			var tile_id: int = walls.get(cell, 0)
+			if tile_id <= 0:
+				continue
+			var look: Array = looks.get(tile_id, GameData.NO_LOOK)
+			if look.is_empty():
+				look = content.tile_look(tile_id)
+			# WallBands.is_square_wall, through the cached look.
+			if look[GameData.LOOK_FLAGS] & GameData.LOOK_WALL and look[GameData.LOOK_HEIGHT] <= WallBands.TILE:
 				out.append(cell)
 	return out

@@ -16,28 +16,32 @@ const TICK_RATE := 64.0
 const MAX_LIFETIME_MS := 10_000
 ## Cap on how far a freshly received bullet is fast-forwarded to cover latency.
 const MAX_CATCHUP_SECONDS := 0.25
+const NOT_STRAIGHT := ProjectileKind.TRAIT_ORBITAL | ProjectileKind.TRAIT_PARAMETRIC \
+	| ProjectileKind.TRAIT_SPINS | ProjectileKind.TRAIT_HOMING | ProjectileKind.TRAIT_SPEED_CURVE
 
 
 static func step(bullet: Dictionary, bullet_scale: float, now_ms := -1) -> void:
-	if ProjectileKind.is_orbital(bullet):
+	var traits := ProjectileKind.traits(bullet)
+	if traits & ProjectileKind.TRAIT_ORBITAL:
 		_orbital(bullet, bullet_scale)
-	elif ProjectileKind.is_parametric(bullet):
+	elif traits & ProjectileKind.TRAIT_PARAMETRIC:
 		_parametric(bullet, bullet_scale)
 	else:
 		# A LINE_SEGMENT wall with a frequency sweeps around its anchor: the
 		# facing angle advances first, then it moves along the new heading.
-		if ProjectileKind.spins(bullet):
+		if traits & ProjectileKind.TRAIT_SPINS:
 			bullet["angle"] += deg_to_rad(bullet["frequency"] * bullet_scale)
 		straight(bullet, bullet_scale, now_ms)
 
 
 static func straight(bullet: Dictionary, bullet_scale: float, now_ms := -1) -> void:
 	var speed: float = bullet["magnitude"]
-	if ProjectileKind.has_speed_curve(bullet):
+	if ProjectileKind.traits(bullet) & ProjectileKind.TRAIT_SPEED_CURVE:
 		speed *= ProjectileSpeed.multiplier(bullet,
 			now_ms if now_ms >= 0 else Time.get_ticks_msec())
 	var step_size: float = speed * bullet_scale
-	bullet["pos"] += ProjectileAngle.direction(bullet["angle"]) * step_size
+	var angle: float = bullet["angle"]
+	bullet["pos"] += Vector2(sin(angle), cos(angle)) * step_size
 	# |(sin, cos)| == 1, so distance travelled is exactly the step size.
 	bullet["traveled"] += absf(step_size)
 
@@ -78,9 +82,7 @@ static func is_expired(bullet: Dictionary, now_ms: int) -> bool:
 ## spinning motion depend on accumulated phase, homing on a target position and
 ## speed curves on elapsed lifetime, so guessing puts any of them out of step.
 static func catch_up(bullet: Dictionary, one_way_latency_ms: float) -> void:
-	if bullet["magnitude"] <= 0.0 or ProjectileKind.is_orbital(bullet) \
-			or ProjectileKind.is_parametric(bullet) or ProjectileKind.spins(bullet) \
-			or ProjectileKind.is_homing(bullet) or ProjectileKind.has_speed_curve(bullet):
+	if bullet["magnitude"] <= 0.0 or ProjectileKind.traits(bullet) & NOT_STRAIGHT:
 		return
 	var scale := minf(one_way_latency_ms / 1000.0, MAX_CATCHUP_SECONDS) * TICK_RATE
 	if scale <= 0.5:

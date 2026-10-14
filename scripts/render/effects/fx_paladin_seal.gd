@@ -25,7 +25,7 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, colour: Co
 	canvas.draw_rect(Rect2(at.x - pillar_w * 0.20, at.y - pillar_h * 0.92, pillar_w * 0.4, pillar_h * 0.92), Color(Color.WHITE, alpha * 0.45))
 	var halo := base * 0.78
 	var centre := at - Vector2(0.0, base * 0.15)
-	canvas.draw_circle(centre, halo, Color(colour, alpha * 0.22))
+	CircleStamp.disc(canvas, centre, halo, Color(colour, alpha * 0.22))
 	Fx.ring(canvas, centre, halo, 3.0, Color("ffe070", alpha * 0.85))
 	Fx.ring(canvas, centre, halo * 0.92, 2.0, Color(Color.WHITE, alpha * 0.6))
 	var pulse := 0.8 + 0.2 * sin(elapsed_ms * 0.012)
@@ -62,5 +62,5 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, colour: Co
 		Fx.dot(canvas, mote, 2.5, Color(Color.WHITE, minf(1.0, mote_alpha)))
 	if progress < 0.18:
 		var flash := 1.0 - progress / 0.18
-		canvas.draw_circle(at, base * 0.55, Color(Color.WHITE, flash * 0.95))
-		canvas.draw_circle(at, base * 0.85, Color("ffe070", flash * 0.7))
+		CircleStamp.disc(canvas, at, base * 0.55, Color(Color.WHITE, flash * 0.95))
+		CircleStamp.disc(canvas, at, base * 0.85, Color("ffe070", flash * 0.7))

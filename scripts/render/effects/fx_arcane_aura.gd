@@ -25,7 +25,7 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, _colour: C
 	var alpha := 1.0 - progress
 	if alpha <= 0.001:
 		return
-	canvas.draw_circle(at, radius, Color(ARC, alpha * 0.20))
+	CircleStamp.disc(canvas, at, radius, Color(ARC, alpha * 0.20))
 	Fx.ring(canvas, at, radius, 3.0, Color(HOT, alpha * 0.9))
 	for i in SPARKS:
 		var spark := Fx.polar(at, spark_angle(i, elapsed_ms), orbit_radius(radius, i, elapsed_ms))

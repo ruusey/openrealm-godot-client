@@ -17,7 +17,7 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, _colour: C
 	var at: Vector2 = fx["pos"]
 	var radius: float = fx["radius"]
 	var alpha := 1.0 - progress
-	canvas.draw_circle(at, radius, Color("300010", alpha * 0.40))
+	CircleStamp.disc(canvas, at, radius, Color("300010", alpha * 0.40))
 	Fx.ring(canvas, at, radius, 2.0, Color(BLOOD, alpha * 0.85))
 	for i in 10:
 		var wisp := Fx.polar(at, i * 0.671 * TAU + elapsed_ms * 0.004, wisp_orbit(radius, i))

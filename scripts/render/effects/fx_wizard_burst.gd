@@ -15,7 +15,7 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, colour: Co
 	var at: Vector2 = fx["pos"]
 	var alpha := 1.0 - progress
 	var radius := burst_radius(fx["radius"], progress)
-	canvas.draw_circle(at, radius, Color(colour, alpha * 0.18))
+	CircleStamp.disc(canvas, at, radius, Color(colour, alpha * 0.18))
 	for w in 2:
 		var t := Fx.wave(progress, w * 0.20)
 		if t < 0.0:
@@ -52,6 +52,6 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, colour: Co
 			Fx.dot(canvas, mote, 5.0 + (1.0 - eased) * 3.0, Color(colour, alpha * 0.55))
 	if progress < 0.25:
 		var flash := 1.0 - progress / 0.25
-		canvas.draw_circle(at, radius * 0.5, Color(Color.WHITE, flash * 0.85))
-		canvas.draw_circle(at, radius * 0.75, Color(colour, flash * 0.65))
-	canvas.draw_circle(at, radius * 0.18, Color(colour, alpha * 0.75))
+		CircleStamp.disc(canvas, at, radius * 0.5, Color(Color.WHITE, flash * 0.85))
+		CircleStamp.disc(canvas, at, radius * 0.75, Color(colour, flash * 0.65))
+	CircleStamp.disc(canvas, at, radius * 0.18, Color(colour, alpha * 0.75))

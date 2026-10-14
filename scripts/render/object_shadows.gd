@@ -20,6 +20,7 @@ extends RefCounted
 
 const TILE_SIZE := GameConstants.TILE_SIZE
 const BASE_LAYER := 0
+const NO_CELLS := {}
 
 ## Stamped by the last pass.
 var drawn := 0
@@ -28,14 +29,25 @@ var drawn := 0
 func paint(canvas: CanvasItem, tiles: TileMapState, content: GameData,
 		first: Vector2i, last: Vector2i, own := Rect2i()) -> int:
 	drawn = 0
-	var props: Dictionary = tiles.layers.get(GameConstants.COLLISION_LAYER, {})
-	var ground: Dictionary = tiles.layers.get(BASE_LAYER, {})
+	var props: Dictionary = tiles.layers.get(GameConstants.COLLISION_LAYER, NO_CELLS)
+	if props.is_empty():
+		return 0
+	var ground: Dictionary = tiles.layers.get(BASE_LAYER, NO_CELLS)
+	var looks: Dictionary = content.tile_looks
+	var count_all := not own.has_area()
 
 	for tile_x in range(first.x, last.x + 1):
 		for tile_y in range(first.y, last.y + 1):
 			var key := Vector2i(tile_x, tile_y)
 			var tile_id: int = props.get(key, 0)
-			if not _casts(content, tile_id) or _is_liquid(content, ground.get(key, 0)):
+			if tile_id <= 0:
+				continue
+			var look: Array = looks.get(tile_id, GameData.NO_LOOK)
+			if look.is_empty():
+				look = content.tile_look(tile_id)
+			var flags: int = look[GameData.LOOK_FLAGS]
+			if not flags & GameData.LOOK_COLLISION or flags & GameData.LOOK_WALL \
+					or _is_liquid(content, ground.get(key, 0)):
 				continue
 			# The shadow matches the sprite's drawn footprint: a cell-sized prop gets a
 			# cell-sized shadow; a large decoration (rendered bigger than the cell, centred
@@ -44,7 +56,7 @@ func paint(canvas: CanvasItem, tiles: TileMapState, content: GameData,
 			var draw_rect := content.tile_render_rect(tile_id,
 				Rect2(tile_x * TILE_SIZE, tile_y * TILE_SIZE, TILE_SIZE, TILE_SIZE))
 			if GroundShadow.under_object(canvas, draw_rect.position, draw_rect.size.x) \
-					and GroundChunk.counts(own, tile_x, tile_y):
+					and (count_all or own.has_point(key)):
 				drawn += 1
 	return drawn
 

@@ -30,7 +30,7 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, _colour: C
 	var alpha := 1.0 - progress
 	if alpha <= 0.001 or radius <= 0.0:
 		return
-	canvas.draw_circle(at, radius, Color(ICE_BLUE, alpha * 0.18))
+	CircleStamp.disc(canvas, at, radius, Color(ICE_BLUE, alpha * 0.18))
 	Fx.ring(canvas, at, radius, 2.0, Color(ICE_BLUE, alpha * 0.85))
 	var reach := spike_reach(radius, progress)
 	for i in SPIKES:
@@ -39,4 +39,4 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, _colour: C
 		Fx.polygon(canvas, points, Color(ICE_BLUE, alpha * 0.6))
 		canvas.draw_polyline(PackedVector2Array(points + [points[0]]), Color(ICE_DEEP, alpha * 0.95), 2.0 * Fx.S)
 		Fx.line(canvas, Fx.polar(at, angle, reach * 0.08), points[0], 2.0, Color(Color.WHITE, alpha))
-	canvas.draw_circle(at, radius * 0.12, Color(Color.WHITE, alpha * 0.55))
+	CircleStamp.disc(canvas, at, radius * 0.12, Color(Color.WHITE, alpha * 0.55))

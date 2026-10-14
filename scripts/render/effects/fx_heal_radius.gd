@@ -36,8 +36,8 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, _colour: C
 	var alpha := 1.0 - progress
 	var burst := burst_radius(radius, progress)
 	if burst > 0.0:
-		canvas.draw_circle(at, burst, Color("d8ffb0", alpha * 0.16))
-		canvas.draw_circle(at, burst * 0.6, Color("80ff80", alpha * 0.12))
+		CircleStamp.disc(canvas, at, burst, Color("d8ffb0", alpha * 0.16))
+		CircleStamp.disc(canvas, at, burst * 0.6, Color("80ff80", alpha * 0.12))
 	var pulse := 0.8 + 0.2 * sin(elapsed_ms * 0.006)
 	var segments := 24 if web else 40
 	Fx.ring(canvas, at, radius, 5.0, Color("ffe64d", alpha * 0.9 * pulse), segments)
@@ -58,4 +58,4 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, _colour: C
 		Fx.dot(canvas, Vector2(m.x, m.y), 2.4, Color("ccffcc", mote_alpha * 0.9))
 	if progress < 0.3:
 		var flash := (0.3 - progress) / 0.3
-		canvas.draw_circle(at, radius * 0.22 * (1.0 - progress), Color(Color.WHITE, flash * 0.8))
+		CircleStamp.disc(canvas, at, radius * 0.22 * (1.0 - progress), Color(Color.WHITE, flash * 0.8))

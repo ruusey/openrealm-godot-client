@@ -27,8 +27,8 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, _colour: C
 	var at: Vector2 = fx["pos"]
 	var radius: float = fx["radius"]
 	var alpha := 1.0 - progress
-	canvas.draw_circle(at, radius, Color(DEEP, alpha * 0.35))
-	canvas.draw_circle(at, radius * 0.85, Color(TOXIC, alpha * 0.4))
+	CircleStamp.disc(canvas, at, radius, Color(DEEP, alpha * 0.35))
+	CircleStamp.disc(canvas, at, radius * 0.85, Color(TOXIC, alpha * 0.4))
 	Fx.ring(canvas, at, radius, 4.0, Color(DEEP, alpha * 0.6))
 	Fx.ring(canvas, at, radius, 2.0, Color(GLOW, alpha * 0.85))
 	Fx.ring(canvas, at, radius * 0.6, 1.5, Color(GLOW, alpha * 0.4))

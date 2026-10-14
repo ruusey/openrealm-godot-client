@@ -15,7 +15,7 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, _colour: C
 	var at: Vector2 = fx["pos"]
 	var alpha := 1.0 - progress
 	var radius := taunt_radius(fx["radius"], progress)
-	canvas.draw_circle(at, radius, Color("ff2030", alpha * 0.55))
+	CircleStamp.disc(canvas, at, radius, Color("ff2030", alpha * 0.55))
 	Fx.ring(canvas, at, radius, 4.0, Color("ff5060", alpha))
 	Fx.ring(canvas, at, radius - 3.0 * Fx.S, 2.0, Color(Color.WHITE, alpha * 0.7))
-	canvas.draw_circle(at, radius * 0.18, Color(Color.WHITE, alpha * 0.6))
+	CircleStamp.disc(canvas, at, radius * 0.18, Color(Color.WHITE, alpha * 0.6))

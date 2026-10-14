@@ -78,14 +78,14 @@ static func _hammer(canvas: CanvasItem, origin: Vector2, angle: float, reach: fl
 		var p := progress / 0.45
 		var head := Fx.polar(origin, angle - 1.9 * (1.0 - p), reach * 0.8)
 		Fx.line(canvas, origin, head, 5.0, Color("caa878", alpha))
-		canvas.draw_circle(head, reach * 0.28, Color("9a6a38", alpha))
-		canvas.draw_circle(head, reach * 0.18, Color("5a3a1e", alpha))
-		canvas.draw_circle(head - Vector2(cos(angle), sin(angle)) * reach * 0.08, reach * 0.06, Color(Color.WHITE, alpha * 0.5))
+		CircleStamp.disc(canvas, head, reach * 0.28, Color("9a6a38", alpha))
+		CircleStamp.disc(canvas, head, reach * 0.18, Color("5a3a1e", alpha))
+		CircleStamp.disc(canvas, head - Vector2(cos(angle), sin(angle)) * reach * 0.08, reach * 0.06, Color(Color.WHITE, alpha * 0.5))
 		return
 	var p := (progress - 0.45) / 0.55
 	var ring := reach * 0.15 + p * reach * 0.9
 	Fx.ring(canvas, strike, ring, 5.0 - 4.0 * p, Color("ffe0a0", alpha))
-	canvas.draw_circle(strike, ring * 0.5, Color("fff6d0", alpha * (1.0 - p) * 0.4))
+	CircleStamp.disc(canvas, strike, ring * 0.5, Color("fff6d0", alpha * (1.0 - p) * 0.4))
 	for k in 6:
 		var a := angle + k * PI / 3.0 + p * 0.3
 		Fx.polygon(canvas, [Fx.polar(strike, a, reach * (0.5 + p * 0.5)), Fx.polar(strike, a + 0.22, reach * 0.13),

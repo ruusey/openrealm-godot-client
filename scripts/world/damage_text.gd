@@ -46,6 +46,7 @@ const COLORS := [
 ]
 
 var texts: Array = []
+var _next_id := 0
 
 
 static func colour_of(effect_id: int) -> Color:
@@ -78,7 +79,8 @@ func apply_text_effect(data: Dictionary, entities: EntityRegistry,
 	var colour := colour_of(effect_id)
 	if _merged_into_a_neighbour(label, at, colour):
 		return
-	texts.append({"base": label, "text": label, "pos": at - Vector2(0.0, _lane(at, info)),
+	_next_id += 1
+	texts.append({"id": _next_id, "base": label, "text": label, "pos": at - Vector2(0.0, _lane(at, info)),
 		"colour": colour, "life": LIFE, "count": 1, "info": info, "rise": 0.0})
 
 

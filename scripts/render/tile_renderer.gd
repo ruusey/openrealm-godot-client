@@ -84,6 +84,9 @@ func paint_cells(canvas: CanvasItem, own: Rect2i) -> Dictionary:
 	var drawn := 0
 	billboards.ringed = 0
 
+	var looks: Dictionary = content.tile_looks
+	var cracks: Dictionary = tiles.cracks
+	var count_all := not own.has_area()
 	var layers := tiles.layers.keys()
 	layers.sort()
 	for layer in layers:
@@ -97,25 +100,45 @@ func paint_cells(canvas: CanvasItem, own: Rect2i) -> Dictionary:
 		if layer == GameConstants.COLLISION_LAYER:
 			shadows.paint(canvas, tiles, content, first, last, own)
 			bands.paint_under(canvas, tiles, content, first, last, own)
+		var collision: bool = layer == GameConstants.COLLISION_LAYER
+		var liquids_elsewhere: bool = layer == BASE_LAYER and skip_liquids
+		# Everything per cell reads the cached tile_look, not GameData's getters:
+		# a call into another script per cell cost more than drawing the cell.
 		for tile_x in range(first.x, last.x + 1):
 			for tile_y in range(first.y, last.y + 1):
 				var key := Vector2i(tile_x, tile_y)
-				if not cells.has(key):
-					continue
-				var tile_id: int = cells[key]
+				var tile_id: int = cells.get(key, VOID_TILE)
 				if tile_id <= VOID_TILE:
 					continue
+				var look: Array = looks.get(tile_id, GameData.NO_LOOK)
+				if look.is_empty():
+					look = content.tile_look(tile_id)
+				var flags: int = look[GameData.LOOK_FLAGS]
 				# The animated liquid layer owns these cells; leave them transparent.
-				if layer == BASE_LAYER and skip_liquids and content.tile_is_liquid(tile_id):
+				if liquids_elsewhere and flags & GameData.LOOK_LIQUID:
 					continue
 				var rect := Rect2(tile_x * TILE_SIZE, tile_y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
-				if layer == GameConstants.COLLISION_LAYER and BillboardOutlines.is_billboard(content, tile_id):
-					billboards.ring(canvas, content.tile_texture(tile_id),
-						content.tile_render_rect(tile_id, rect), own)
-				_draw_tile(canvas, content, tile_id, rect)
-				if layer == GameConstants.COLLISION_LAYER:
-					_draw_crack(canvas, content, tile_id, tiles.crack_at(key), rect)
-				if GroundChunk.counts(own, tile_x, tile_y):
+				var texture: Texture2D = look[GameData.LOOK_TEXTURE]
+				var size: float = look[GameData.LOOK_SIZE]
+				# Oversized decorations (large trees/bushes) draw at their `size`, centred
+				# on the cell (GameData.tile_render_rect).
+				var draw_rect := rect if size <= TILE_SIZE \
+					else Rect2(rect.position - Vector2.ONE * ((size - TILE_SIZE) * 0.5), Vector2(size, size))
+				if collision and not flags & GameData.LOOK_WALL:
+					billboards.ring(canvas, texture, draw_rect, own)
+				if texture == null:
+					_draw_tile(canvas, content, tile_id, rect)
+				elif draw_rect != rect:
+					canvas.draw_texture_rect(texture, draw_rect, false)
+				else:
+					# Wall art is 8x16 -- top face above, front face below -- so it draws
+					# cell-wide and aspect-scaled tall, anchored at the cell top, spilling
+					# one cell south over the floor (see _draw_tile).
+					canvas.draw_texture_rect(texture,
+						Rect2(rect.position, Vector2(TILE_SIZE, look[GameData.LOOK_HEIGHT])), false)
+				if collision and not cracks.is_empty():
+					_draw_crack(canvas, content, tile_id, int(cracks.get(key, 0)), rect)
+				if count_all or own.has_point(key):
 					drawn += 1
 		# Fringes blend the base layer's seams, so they go on after it and
 		# before the walls that sit on top; the walls' edge light goes over.

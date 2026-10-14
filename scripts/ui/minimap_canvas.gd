@@ -59,7 +59,7 @@ func _draw() -> void:
 		var at := MinimapView.to_panel(player["position"], window, SIDE)
 		if not Rect2(-5, -5, SIDE + 10, SIDE + 10).has_point(at):
 			continue
-		draw_circle(at, DOT_RADIUS, OTHER if player["teleportable"] else OTHER_HIDDEN)
+		CircleStamp.disc(self, at, DOT_RADIUS, OTHER if player["teleportable"] else OTHER_HIDDEN)
 		draw_stats["dots"] += 1
 	for marker in state.minimap.markers.values():
 		_draw_pin(marker)
@@ -105,8 +105,8 @@ func _draw_pin(marker: Dictionary) -> void:
 		draw_colored_polygon(tip, Color(1.0, 0.31, 0.31, 0.7 + 0.3 * pulse))
 		draw_stats["arrows"] += 1
 		return
-	draw_circle(at, 8.0 + pulse * 3.0, Color(0.7, 0.12, 0.12, 0.25 + 0.2 * pulse))
-	draw_circle(at, PIN_RADIUS, PIN)
+	CircleStamp.disc(self, at, 8.0 + pulse * 3.0, Color(0.7, 0.12, 0.12, 0.25 + 0.2 * pulse))
+	CircleStamp.disc(self, at, PIN_RADIUS, PIN)
 	var font := get_theme_default_font()
 	var width := font.get_string_size(marker["name"], HORIZONTAL_ALIGNMENT_LEFT, -1, 9).x
 	draw_rect(Rect2(Vector2(at.x - width * 0.5 - 3.0, at.y + 8.0).round(), Vector2(width + 6.0, 12.0).round()),

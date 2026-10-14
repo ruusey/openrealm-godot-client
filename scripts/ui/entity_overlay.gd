@@ -18,6 +18,8 @@ extends CanvasLayer
 ## PIXI.Text.
 
 const LOCAL_NAME := Color(0.6, 1.0, 0.6)
+const NO_EFFECTS: Array = []
+const NO_BUBBLE := {}
 
 var state: RealmState
 var content: GameData
@@ -33,6 +35,7 @@ var texts: int:
 
 var _root: Control
 var _tags: ControlPool
+var _bars: EnemyBars
 var _labels: FloatingLabels
 var _loot: LootPreviews
 var _vignette: BlindVignette
@@ -63,6 +66,9 @@ func _ready() -> void:
 	_root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_root)
+	# Under every tag, as each tag's own bar was under its name and chips.
+	_bars = EnemyBars.new()
+	_root.add_child(_bars)
 	_tags = ControlPool.new(_root, func() -> Control: return EntityTag.new())
 	_labels = FloatingLabels.new(_root)
 	_melee = MeleeReticle.new()
@@ -88,10 +94,12 @@ func refresh() -> void:
 	bubbles = 0
 	var to_screen := world_projector if project_3d else get_viewport().get_canvas_transform()
 	var view := world_view if project_3d else ViewRect.of(_root)
+	_bars.begin()
 	if state != null:
 		_show_players(to_screen, view)
 		_show_enemies(to_screen, view)
 	_tags.sweep()
+	_bars.finish()
 	_melee.place(state, content, to_screen, world_aim.call())
 	_labels.show_all(state, to_screen, view, project_3d)
 	_loot.show_all(state, content, to_screen, _root.size)
@@ -120,21 +128,32 @@ func tag_count() -> int:
 	return _tags.size()
 
 
+## Hurt enemies' health bars drawn last frame.
+func bar_count() -> int:
+	return _bars.count()
+
+
 func _show_players(to_screen: Transform2D, view: Rect2) -> void:
 	var scale := to_screen.get_scale().x
 	var local := state.local
 	var on: GameSettings = state.settings
+	# Settings read once a frame, not once a player.
+	var others_on := on.is_on("show_other_players")
+	var chips_on := on.is_on("show_status_chips")
+	var names_on := on.is_on("show_names")
+	var bubbles_on := on.is_on("show_chat_bubbles")
 	for id in state.entities.players:
 		var player: Dictionary = state.entities.players[id]
 		var is_local: bool = id == local.id
+		if not is_local and not others_on:
+			continue
 		var position: Vector2 = local.render_position() if is_local \
 			else state.entities.render_position(player)
-		if not is_local and (not view.has_point(position) or not on.is_on("show_other_players")):
+		if not is_local and not view.has_point(position):
 			continue
 		var label: String = player.get("name", "")
 		if is_local and label == "":
 			label = local.name
-		var chips_on := on.is_on("show_status_chips")
 		# Scale the tag to the player's body (/size), matching EntityQueue's render
 		# size, so the name/bars stay pinned below a resized player.
 		var body_size: float = local.size if is_local else float(player.get("size", GameConstants.PLAYER_SIZE))
@@ -142,7 +161,7 @@ func _show_players(to_screen: Transform2D, view: Rect2) -> void:
 		var size := render_world * scale
 		var tag: EntityTag = _tags.acquire(["player", id])
 		tag.show_player(_anchor(to_screen, position, render_world, size),
-			size, label if on.is_on("show_names") else "",
+			size, label if names_on else "",
 			NameColours.over_head(String(player.get("chat_role", "")), is_local, LOCAL_NAME),
 			local.health if is_local else int(player.get("health", 0)),
 			int(local.stats.get("hp", 0)) if is_local else int(player.get("max_health", 0)),
@@ -150,7 +169,7 @@ func _show_players(to_screen: Transform2D, view: Rect2) -> void:
 			int(local.stats.get("mp", 0)) if is_local else int(player.get("max_mana", 0)),
 			(local.effects if is_local else player.get("effects", [])) if chips_on else [],
 			(local.effect_stacks if is_local else player.get("effect_stacks", [])) if chips_on else [],
-			state.bubbles.over(label) if on.is_on("show_chat_bubbles") else {}, int(player.get("stars", 0)))
+			state.bubbles.over(label) if bubbles_on else NO_BUBBLE, int(player.get("stars", 0)))
 		chips += tag.chip_count()
 		if tag.has_bubble():
 			bubbles += 1
@@ -158,15 +177,26 @@ func _show_players(to_screen: Transform2D, view: Rect2) -> void:
 
 func _show_enemies(to_screen: Transform2D, view: Rect2) -> void:
 	var zoom := to_screen.get_scale().x
+	var chips_on := state.settings.is_on("show_status_chips")
+	var blind := Blind.active(state)
 	for id in state.entities.enemies:
 		var enemy: Dictionary = state.entities.enemies[id]
 		var position := state.entities.render_position(enemy)
-		if not view.has_point(position) or Blind.hides(state, position, float(enemy.get("size", 16))):
+		if not view.has_point(position) or (blind and Blind.hides(state, position, float(enemy.get("size", 16)))):
 			continue
 		var maximum: int = maxi(enemy.get("max_health", 1), 1)
-		var tag: EntityTag = _tags.acquire(["enemy", id])
+		var health: int = enemy.get("health", maximum)
+		var effects: Array = enemy.get("effects", NO_EFFECTS) if chips_on else NO_EFFECTS
+		if health >= maximum and effects.is_empty():
+			continue
 		var enemy_size := float(enemy.get("size", 16))
-		tag.show_enemy(_anchor(to_screen, position, enemy_size, enemy_size * zoom), enemy_size * zoom,
-			enemy.get("health", maximum), maximum,
-			enemy.get("effects", []) if state.settings.is_on("show_status_chips") else [], enemy.get("effect_stacks", []))
-		chips += tag.chip_count()
+		var width := enemy_size * zoom
+		var at := _anchor(to_screen, position, enemy_size, width)
+		# The bar is the wound, not the creature: only a hurt enemy has one.
+		if health < maximum:
+			_bars.add(at, width, EntityTag.fraction(health, maximum))
+		# A tag only for the chips; it draws no bar of its own (full health passed).
+		if not effects.is_empty():
+			var tag: EntityTag = _tags.acquire(["enemy", id])
+			tag.show_enemy(at, width, maximum, maximum, effects, enemy.get("effect_stacks", NO_EFFECTS))
+			chips += tag.chip_count()

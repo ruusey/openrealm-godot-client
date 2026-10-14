@@ -27,7 +27,7 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, _colour: C
 	var a := strength(progress)
 	var ring := ring_radius(radius, progress)
 	if ring > 0.0:
-		canvas.draw_circle(at, ring * 0.92, Color("9a948a", a * 0.18))
+		CircleStamp.disc(canvas, at, ring * 0.92, Color("9a948a", a * 0.18))
 	Fx.ring(canvas, at, ring, 6.0, Color("dbca7a", a))
 	Fx.ring(canvas, at, ring * 0.85, 3.0, Color("e6eeff", a * 0.9))
 	for i in CRACKS:
@@ -35,5 +35,5 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, _colour: C
 		Fx.line(canvas, Fx.polar(at, angle, ring * 0.14), Fx.polar(at, angle, ring * 0.95), 3.0,
 			Color("ccd2e6", a * 0.8))
 	if progress < 0.3:
-		canvas.draw_circle(at, radius * 0.30 * (1.0 - progress), Color(Color.WHITE, (0.3 - progress) / 0.3 * 0.85))
-	canvas.draw_circle(at, radius * 0.12, Color("f2d973", a * 0.5))
+		CircleStamp.disc(canvas, at, radius * 0.30 * (1.0 - progress), Color(Color.WHITE, (0.3 - progress) / 0.3 * 0.85))
+	CircleStamp.disc(canvas, at, radius * 0.12, Color("f2d973", a * 0.5))

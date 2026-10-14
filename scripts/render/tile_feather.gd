@@ -36,7 +36,7 @@ var _variants := {}     # "id:direction" -> ImageTexture, or null when unbakeabl
 
 ## The fringe to draw along an edge shared with `tile_id`, or null.
 func texture(content: GameData, tile_id: int, direction: int) -> Texture2D:
-	var key := "%d:%d" % [tile_id, direction]
+	var key := tile_id * 4 + direction
 	if not _variants.has(key):
 		_variants[key] = _bake(content, tile_id, direction)
 	return _variants[key]

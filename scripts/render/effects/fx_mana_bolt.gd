@@ -20,7 +20,7 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, _colour: C
 	var alpha := 1.0 - progress
 	if alpha <= 0.001:
 		return
-	canvas.draw_circle(at, radius, Color(ARC, alpha * 0.25))
+	CircleStamp.disc(canvas, at, radius, Color(ARC, alpha * 0.25))
 	for i in ARMS:
 		Fx.line(canvas, at, Fx.polar(at, arm_angle(i, elapsed_ms), radius), 4.0, Color(HOT, alpha))
 	for i in ARMS:

@@ -21,6 +21,7 @@ const CAP := 4096
 ## step at 48ms.
 const MAX_STEP := 0.048
 const DRAG_PER_SECOND := 3.0
+const NO_FX := {}
 
 var count := 0
 var x := PackedFloat32Array()
@@ -36,8 +37,11 @@ var tint := PackedColorArray()
 var rng := RandomNumberGenerator.new()
 
 var _art: ProjectileArt
-## Bullets with a burst seen last frame: id -> {centre, impact}.
+## Bullets with a burst seen last frame: id -> the bullet itself.
 var _seen := {}
+## group id -> its fx entry, so the per-bullet read is one dictionary hit.
+var _fx_by_group := {}
+var _gone: Array = []
 
 
 func _init(art: ProjectileArt = null) -> void:
@@ -54,39 +58,67 @@ func clear() -> void:
 
 ## One frame: trails from the live bullets, bursts for the ones that
 ## vanished since last frame, then every particle stepped.
-## `hidden` names the bullets nobody can see (Blind): they emit nothing, and
-## are remembered without an impact, so neither leaving sight nor landing
-## out of sight bursts where it went -- the web emits from its draw pass,
-## after the cull, to the same effect.
-func advance(delta: float, bullets: Dictionary, hidden := Callable()) -> void:
+## `hidden` names the bullets nobody can see -- a BulletVisibility, or any
+## Callable(bullet) -> bool: they emit nothing, and are remembered without an
+## impact, so neither leaving sight nor landing out of sight bursts where it
+## went -- the web emits from its draw pass, after the cull, to the same effect.
+func advance(delta: float, bullets: Dictionary, hidden: Variant = null) -> void:
 	delta = minf(delta, MAX_STEP)
 	if _art != null:
 		_emit(delta, bullets, hidden)
 	_step(delta)
 
 
-func _emit(delta: float, bullets: Dictionary, hidden: Callable) -> void:
-	var next := {}
+## Only bullets whose group has an fx entry are looked at past the first read.
+## The ones with a burst are remembered by reference (the bullet's own last
+## position is where an impact lands), so a frame allocates nothing per bullet.
+func _emit(delta: float, bullets: Dictionary, hidden: Variant) -> void:
+	var visibility: BulletVisibility = hidden if hidden is BulletVisibility else null
+	var test: Callable = hidden if hidden is Callable else Callable()
+	var any_hidden := (visibility != null and visibility.any) or test.is_valid()
 	for id in bullets:
 		var bullet: Dictionary = bullets[id]
-		var centre := Projectile.centre(bullet)
-		if hidden.is_valid() and hidden.call(bullet):
-			next[id] = {"centre": centre, "impact": {}}
+		var group_id := int(bullet.get("group_id", -1))
+		var fx: Dictionary = _fx_by_group.get(group_id, NO_FX)
+		if fx.is_empty():
+			fx = _art.fx(group_id)
+			_fx_by_group[group_id] = fx
+		var trail: Dictionary = fx["trail"]
+		var muzzle: Dictionary = fx["muzzle"]
+		var bursts: bool = not muzzle.is_empty() or not fx["impact"].is_empty()
+		if trail.is_empty() and not bursts:
 			continue
-		var fx := _art.fx(int(bullet.get("group_id", -1)))
-		if not fx["trail"].is_empty():
-			ParticleEmitter.trail(self, centre, bullet, fx["trail"], delta)
-		if not fx["muzzle"].is_empty() and not _seen.has(id):
-			ParticleEmitter.burst(self, centre, fx["muzzle"])
+		var out_of_sight: bool = any_hidden and (visibility.hides(bullet) if visibility != null else test.call(bullet))
+		bullet["fx_hidden"] = out_of_sight
+		if out_of_sight:
+			_seen[id] = bullet
+			continue
+		var half := float(bullet.get("size", 8)) * 0.5
+		var centre: Vector2 = bullet["pos"] + Vector2(half, half)
+		if not trail.is_empty():
+			ParticleEmitter.trail(self, centre, bullet, trail, delta)
+		if not muzzle.is_empty() and not _seen.has(id):
+			ParticleEmitter.burst(self, centre, muzzle)
 		# A muzzle-only bullet is remembered too, or it would flash every
 		# frame -- which is what both references' diff, keyed on the impact
 		# alone, would do with one; no shipped group has a muzzle to show it.
-		if not fx["impact"].is_empty() or not fx["muzzle"].is_empty():
-			next[id] = {"centre": centre, "impact": fx["impact"]}
+		if bursts:
+			_seen[id] = bullet
+	if _seen.is_empty():
+		return
+	_gone.clear()
 	for id in _seen:
-		if not next.has(id) and not _seen[id]["impact"].is_empty():
-			ParticleEmitter.burst(self, _seen[id]["centre"], _seen[id]["impact"])
-	_seen = next
+		if not bullets.has(id):
+			_gone.append(id)
+	for id in _gone:
+		var bullet: Dictionary = _seen[id]
+		_seen.erase(id)
+		if bullet.get("fx_hidden", false):
+			continue
+		var impact: Dictionary = _fx_by_group.get(int(bullet.get("group_id", -1)), NO_FX).get("impact", {})
+		if not impact.is_empty():
+			var half := float(bullet.get("size", 8)) * 0.5
+			ParticleEmitter.burst(self, bullet["pos"] + Vector2(half, half), impact)
 
 
 ## False when the pool is full: the budget drops what it cannot hold.

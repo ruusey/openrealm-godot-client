@@ -154,21 +154,24 @@ func test_a_bubble_sits_over_the_chips_when_there_are_any():
 func test_an_enemy_gets_a_bar_only_while_hurt_and_chips_the_moment_effects_arrive():
 	state.apply_packet("LoadPacket", {"enemies": [WireHelper.enemy(3, 1, Vector2.ZERO, 0, 100)]})
 	overlay.refresh()
-	var tag := _tag("enemy", 3)
-	assert_not_null(tag)
-	assert_false(tag._hp.visible, "the bar is the wound, not the creature")
-	assert_false(tag._name.visible)
+	assert_null(_tag("enemy", 3), "nothing over a whole enemy with no status")
+	assert_eq(overlay.bar_count(), 0, "the bar is the wound, not the creature")
 	state.entities.enemies[3]["health"] = 40
 	state.entities.enemies[3]["effects"] = [6]
 	overlay.refresh()
-	assert_true(tag._hp.visible)
-	assert_almost_eq(tag._hp.size.x, tag._hp_back.size.x * 0.4, 0.001)
-	assert_eq(tag._hp.position.y, -EntityTag.ENEMY_BAR_LIFT)
+	assert_eq(overlay.bar_count(), 1)
+	assert_almost_eq(overlay._bars._filled[0], 0.4, 0.001)
+	var tag := _tag("enemy", 3)
+	assert_not_null(tag, "a tag for the chips")
+	assert_false(tag._hp.visible, "its bar is EnemyBars', not the tag's")
+	assert_false(tag._name.visible)
+	assert_eq(overlay._bars._at[0], tag.position, "the bar sits on the tag's anchor")
 	assert_eq(overlay.chips, 1)
 
 
 func test_a_tag_is_freed_with_its_entity():
 	state.apply_packet("LoadPacket", {"enemies": [WireHelper.enemy(3, 1, Vector2.ZERO, 0, 100)]})
+	state.entities.enemies[3]["effects"] = [6]
 	overlay.refresh()
 	assert_eq(overlay.tag_count(), 1)
 	state.apply_packet("UnloadPacket", {"enemies": [3]})
@@ -223,7 +226,7 @@ func test_combat_numbers_are_centred_fade_and_shrink_and_are_culled():
 		"targetEntityId": 0, "text": "7", "posX": 9000.0, "posY": 9000.0})
 	overlay.refresh()
 	assert_eq(overlay.texts, 1, "the one in view")
-	var label: Label = overlay._labels._numbers._live[0]
+	var label: Label = overlay._labels._numbers._live.values()[0]
 	assert_eq(label.text, "42")
 	assert_eq(label.label_settings.font_size, 24)
 	assert_almost_eq(label.scale.x, 1.2, 0.0001, "fresh: a fifth bigger")

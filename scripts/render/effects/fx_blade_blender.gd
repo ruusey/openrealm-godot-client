@@ -34,7 +34,7 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, colour: Co
 	var alpha := 1.0 - progress
 	var radius: float = fx["radius"]
 	var now := FxBladeOrbit.clock(fx, elapsed_ms)
-	canvas.draw_circle(at, radius, Color("100808", alpha * 0.45))
+	CircleStamp.disc(canvas, at, radius, Color("100808", alpha * 0.45))
 	Fx.ring(canvas, at, radius, 2.0, Color("c02030", alpha * 0.6))
 	for i in BLADES:
 		FxBladeShapes.shuriken(canvas, at + blade_offset(i, radius, now), spin(i, now), SIZE, colour, 1.0)

@@ -17,9 +17,9 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, colour: Co
 	for i in 12:
 		var centre := Fx.polar(at, i * TAU / 12.0 + elapsed_ms * 0.002, puff * (0.30 + 0.20 * (i % 2)))
 		var size := puff * (0.55 + 0.12 * sin(elapsed_ms * 0.01 + i))
-		canvas.draw_circle(centre, size, Color(colour, alpha * 0.18))
-		canvas.draw_circle(centre, size * 0.78, Color("808080", alpha * 0.32))
-		canvas.draw_circle(centre, size * 0.45, Color("404040", alpha * 0.4))
+		CircleStamp.disc(canvas, centre, size, Color(colour, alpha * 0.18))
+		CircleStamp.disc(canvas, centre, size * 0.78, Color("808080", alpha * 0.32))
+		CircleStamp.disc(canvas, centre, size * 0.45, Color("404040", alpha * 0.4))
 	if progress < 0.35:
 		var dagger_alpha := (1.0 - progress / 0.35) * alpha
 		for i in 4:
@@ -34,8 +34,8 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, colour: Co
 	if progress < 0.30:
 		var flash := 1.0 - progress / 0.30
 		Fx.ring(canvas, at, puff * 0.7 * (1.0 + progress * 1.2), 4.0, Color(colour, flash * 0.75))
-		canvas.draw_circle(at, puff * 0.55 * (1.0 + progress), Color(colour, flash * 0.55))
-		canvas.draw_circle(at, puff * 0.35 * (1.0 + progress), Color(Color.WHITE, flash * 0.85))
+		CircleStamp.disc(canvas, at, puff * 0.55 * (1.0 + progress), Color(colour, flash * 0.55))
+		CircleStamp.disc(canvas, at, puff * 0.35 * (1.0 + progress), Color(Color.WHITE, flash * 0.85))
 	for i in 10:
 		var seed := i * 0.439
 		var phase := fmod(progress * 1.6 + seed, 1.0)

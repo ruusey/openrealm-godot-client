@@ -27,7 +27,7 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, _colour: C
 	var alpha := 1.0 - progress
 	if alpha <= 0.001:
 		return
-	canvas.draw_circle(at, radius, Color(DEEP, alpha * 0.20))
+	CircleStamp.disc(canvas, at, radius, Color(DEEP, alpha * 0.20))
 	Fx.ring(canvas, at, radius, 5.0, Color(SILVER, alpha * 0.95))
 	Fx.ring(canvas, at, radius - 3.0 * Fx.S, 2.0, Color(Color.WHITE, alpha))
 	for i in 12:

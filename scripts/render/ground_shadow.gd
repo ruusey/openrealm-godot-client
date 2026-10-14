@@ -47,6 +47,6 @@ static func stamp(canvas: CanvasItem, origin: Vector2, size: float,
 		return false
 	canvas.draw_set_transform(origin + Vector2(size * 0.5, size * centre), 0.0,
 		Vector2(1.0, FLATTEN))
-	canvas.draw_circle(Vector2.ZERO, size * HALF_WIDTH, Color(0.0, 0.0, 0.0, alpha))
+	CircleStamp.disc(canvas, Vector2.ZERO, size * HALF_WIDTH, Color(0.0, 0.0, 0.0, alpha))
 	canvas.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	return true

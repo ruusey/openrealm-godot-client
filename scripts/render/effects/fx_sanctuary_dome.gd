@@ -24,7 +24,7 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, _colour: C
 	var gold := Color("ffd060")
 	var gold_hi := Color("fff0a0")
 	if radius > 0.0:
-		canvas.draw_circle(at, radius, Color(gold, alpha * 0.18))
+		CircleStamp.disc(canvas, at, radius, Color(gold, alpha * 0.18))
 	Fx.ring(canvas, at, radius, 4.0, Color(gold, alpha * 0.95))
 	Fx.ring(canvas, at, radius * 0.97, 2.0, Color(gold_hi, alpha * 0.8))
 	Fx.ring(canvas, at, radius * 1.03, 2.0, Color(gold_hi, alpha * 0.8))

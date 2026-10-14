@@ -32,7 +32,7 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, colour: Co
 	var at: Vector2 = fx["pos"]
 	var alpha := 1.0 - progress
 	var buff := buff_radius(fx["radius"], progress)
-	canvas.draw_circle(at, buff * 1.1, Color("553322", alpha * 0.22))
+	CircleStamp.disc(canvas, at, buff * 1.1, Color("553322", alpha * 0.22))
 	for i in JAGS:
 		Fx.line(canvas, Fx.polar(at, i * TAU / JAGS, jag_radius(buff, i, elapsed_ms)),
 			Fx.polar(at, (i + 1) * TAU / JAGS, jag_radius(buff, i + 1, elapsed_ms)), 5.0, Color(colour, alpha * 0.85))
@@ -60,10 +60,10 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, colour: Co
 		canvas.draw_rect(Rect2(ember - Vector2.ONE * cool, Vector2.ONE * cool * 2.0), Color("884400", alpha * 0.55))
 	if progress < 0.18:
 		var flash := 1.0 - progress / 0.18
-		canvas.draw_circle(at, buff * 0.28, Color("ffe0c0", flash * 0.95))
-		canvas.draw_circle(at, buff * 0.5, Color("ff8030", flash * 0.7))
+		CircleStamp.disc(canvas, at, buff * 0.28, Color("ffe0c0", flash * 0.95))
+		CircleStamp.disc(canvas, at, buff * 0.5, Color("ff8030", flash * 0.7))
 	var pulse := 0.6 + 0.4 * sin(elapsed_ms * 0.022)
-	canvas.draw_circle(at, buff * 0.22, Color(colour, early_alpha(progress) * 0.65 * pulse))
+	CircleStamp.disc(canvas, at, buff * 0.22, Color(colour, early_alpha(progress) * 0.65 * pulse))
 
 
 ## A stretched diamond pointing along `angle`: a warm glow round a white

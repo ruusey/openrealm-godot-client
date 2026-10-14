@@ -58,8 +58,8 @@ static func _throw(canvas: CanvasItem, from: Vector2, to: Vector2, head: float, 
 
 
 static func _splash(canvas: CanvasItem, at: Vector2, cloud: float, alpha: float, colour: Color, elapsed_ms: int) -> void:
-	canvas.draw_circle(at, cloud * 1.1, Color(colour, alpha * 0.25))
-	canvas.draw_circle(at, cloud, Color("4cc530", alpha * 0.4))
+	CircleStamp.disc(canvas, at, cloud * 1.1, Color(colour, alpha * 0.25))
+	CircleStamp.disc(canvas, at, cloud, Color("4cc530", alpha * 0.4))
 	Fx.ring(canvas, at, cloud, 4.0, Color(colour, alpha * 0.9))
 	Fx.ring(canvas, at, cloud * 0.85, 2.0, Color("a0ff70", alpha * 0.7))
 	for i in BUBBLES:
@@ -69,4 +69,4 @@ static func _splash(canvas: CanvasItem, at: Vector2, cloud: float, alpha: float,
 		Fx.dot(canvas, bubble, 7.0, Color("80e060", alpha * 0.4))
 		Fx.dot(canvas, bubble, 4.0, Color("c0ff80", alpha * 0.85))
 	var fume := 0.5 + 0.5 * sin(elapsed_ms * 0.012)
-	canvas.draw_circle(at, cloud * 0.25, Color("60ff40", alpha * 0.7 * fume))
+	CircleStamp.disc(canvas, at, cloud * 0.25, Color("60ff40", alpha * 0.7 * fume))

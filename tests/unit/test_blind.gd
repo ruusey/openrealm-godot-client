@@ -76,12 +76,14 @@ func test_the_overlay_drops_far_bars_and_darkens_the_screen():
 	await wait_process_frames(1)
 	state.apply_packet("LoadPacket", {"players": [WireHelper.player(1, "me", Vector2(100, 100))],
 		"enemies": [WireHelper.enemy(10, 1, Vector2(140, 110)), WireHelper.enemy(11, 1, Vector2(400, 110))]})
+	state.entities.enemies[10]["health"] = 50
+	state.entities.enemies[11]["health"] = 50
 	overlay.refresh()
-	assert_eq(overlay.tag_count(), 3, "me and two enemies")
+	assert_eq(overlay.bar_count(), 2, "both enemies' bars")
 	assert_false(overlay._vignette.visible, "no dark while sighted")
 	_blind()
 	overlay.refresh()
-	assert_eq(overlay.tag_count(), 2, "the far enemy's bar would give it away")
+	assert_eq(overlay.bar_count(), 1, "the far enemy's bar would give it away")
 	assert_true(overlay._vignette.visible)
 	var middle: Vector2 = overlay._vignette.position + overlay._vignette.size * 0.5
 	var to_screen := overlay.get_viewport().get_canvas_transform()

@@ -7,6 +7,17 @@ extends RefCounted
 const DEFAULT_TILE_SPRITE_SIZE := SpriteCache.DEFAULT_SPRITE_SIZE
 const TILE_RENDER_SIZE := 32
 const CRACK_CELL_HEIGHT := 16
+## A tile_look entry: what the ground passes ask of a tile id, by index.
+const LOOK_TEXTURE := 0
+const LOOK_SIZE := 1
+const LOOK_HEIGHT := 2
+const LOOK_FLAGS := 3
+const LOOK_WALL := 1
+const LOOK_COLLISION := 2
+const LOOK_SLOWS := 4
+const LOOK_LIQUID := 8
+const LOOK_NO_BLEND := 16
+const NO_LOOK: Array = []
 
 var library := ContentLibrary.new()
 var sprites := SpriteCache.new()
@@ -45,6 +56,9 @@ var _data_by_id := {}
 ## group id -> {color: Color, radius, flickers}, the resolved projectile light the
 ## 2D/3D lighting scans read per bullet; the hex is parsed once here, not per frame.
 var _proj_light_by_group := {}
+## tile id -> tile_look(), read directly by the ground passes (a call per cell into
+## another script costs more than the cell's draw).
+var tile_looks := {}
 
 
 ## Content first, then every sheet it refers to. Awaited, because over HTTP
@@ -86,6 +100,30 @@ func realm_price_for(item: Dictionary) -> int:
 
 
 # --- tiles -----------------------------------------------------------------
+
+## Everything the ground passes ask of a tile, resolved once: its texture, the
+## square it draws into, its draw height and its LOOK_* flags.
+func tile_look(tile_id: int) -> Array:
+	var look: Array = tile_looks.get(tile_id, NO_LOOK)
+	if not look.is_empty():
+		return look
+	var data := tile_data(tile_id)
+	var flags := 0
+	if int(data.get("isWall", 0)) != 0:
+		flags |= LOOK_WALL
+	if int(data.get("hasCollision", 0)) != 0:
+		flags |= LOOK_COLLISION
+	if int(data.get("slows", 0)) != 0:
+		flags |= LOOK_SLOWS
+	if tile_is_liquid(tile_id):
+		flags |= LOOK_LIQUID
+	if int(data.get("noBlend", 0)) != 0:
+		flags |= LOOK_NO_BLEND
+	look = [tile_texture(tile_id), tile_render_size(tile_id), tile_render_height(tile_id), flags]
+	if ready:
+		tile_looks[tile_id] = look
+	return look
+
 
 func tile_texture(tile_id: int) -> AtlasTexture:
 	if _tex_by_id.has(tile_id):

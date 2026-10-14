@@ -42,7 +42,7 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, _colour: C
 	var alpha := 1.0 - progress
 	if alpha <= 0.001:
 		return
-	canvas.draw_circle(at, floor_radius(radius, progress), Color(DEEP_GREEN, alpha * 0.25))
+	CircleStamp.disc(canvas, at, floor_radius(radius, progress), Color(DEEP_GREEN, alpha * 0.25))
 	for arm in ARMS:
 		canvas.draw_polyline(vine(at, radius, arm, elapsed_ms), Color(VINE, alpha * 0.9), 4.0 * Fx.S)
 	for i in LEAVES:

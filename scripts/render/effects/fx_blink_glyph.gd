@@ -23,7 +23,7 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, _colour: C
 	if alpha <= 0.001:
 		return
 	var ring := ring_radius(fx["radius"], progress)
-	canvas.draw_circle(at, ring, Color(VOID, alpha * 0.55))
+	CircleStamp.disc(canvas, at, ring, Color(VOID, alpha * 0.55))
 	Fx.ring(canvas, at, ring, 4.0, Color(BRIGHT, alpha))
 	Fx.ring(canvas, at, ring - 4.0 * Fx.S, 2.0, Color(VIOLET, alpha * 0.85))
 	for i in RUNES:

@@ -71,24 +71,31 @@ func apply_load_map(data: Dictionary) -> bool:
 	width = int(data.get("mapWidth", 0))
 	height = int(data.get("mapHeight", 0))
 
+	# A realm's first packet carries every tile in view, so this loop stays to
+	# dictionary reads: the layer's table is looked up only when the layer changes.
+	var current_layer := -1
+	var cells: Dictionary = {}
 	for tile in data.get("tiles", []):
 		var layer := int(tile.get("layer", 0))
-		if not layers.has(layer):
-			layers[layer] = {}
+		if layer != current_layer:
+			current_layer = layer
+			if not layers.has(layer):
+				layers[layer] = {}
+			cells = layers[layer]
 		# NetTile's field names lie: TileManager reads blocks()[y][x] and then
 		# builds `new NetTile(id, layer, y, x)`, so xIndex carries the ROW and
 		# yIndex the COLUMN. Reading them at face value transposes the map --
 		# invisible at a spawn on the diagonal, and progressively wrong the
 		# further you walk from it. The web client swaps them the same way.
-		var column := int(tile.get("yIndex", 0))
-		var row := int(tile.get("xIndex", 0))
+		var cell := Vector2i(int(tile.get("yIndex", 0)), int(tile.get("xIndex", 0)))
 		var tile_id := int(tile.get("tileId", -1))
-		var cell := Vector2i(column, row)
-		if layers[layer].get(cell) != tile_id:
-			layers[layer][cell] = tile_id
+		if cells.get(cell) != tile_id:
+			cells[cell] = tile_id
 			changed_cells[cell] = true
 		if layer == COLLISION_LAYER:
-			_apply_crack(cell, int(tile.get("crackStage", 0)))
+			var stage := int(tile.get("crackStage", 0))
+			if stage != int(cracks.get(cell, 0)):
+				_apply_crack(cell, stage)
 	return changed
 
 

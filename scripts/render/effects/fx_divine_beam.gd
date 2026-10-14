@@ -42,7 +42,7 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, _colour: C
 	Fx.ring(canvas, at, radius, 5.0, Color(gold, alpha * 0.9))
 	Fx.ring(canvas, at, radius * 0.85, 3.0, Color(Color.WHITE, alpha))
 	if radius > 0.0:
-		canvas.draw_circle(at, radius * 0.7, Color(pale, alpha * 0.45))
+		CircleStamp.disc(canvas, at, radius * 0.7, Color(pale, alpha * 0.45))
 	for i in 8:
 		var s := sparkle(at, radius, i, progress)
 		var point := Vector2(s.x, s.y)

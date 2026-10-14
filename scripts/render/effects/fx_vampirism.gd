@@ -32,11 +32,11 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, colour: Co
 	var at: Vector2 = fx["pos"]
 	var radius: float = fx["radius"]
 	var alpha := 1.0 - progress
-	canvas.draw_circle(at, radius, Color("4a0a4a", alpha * 0.18))
+	CircleStamp.disc(canvas, at, radius, Color("4a0a4a", alpha * 0.18))
 	Fx.ring(canvas, at, radius, 3.0, Color(colour, alpha * 0.9))
 	var inner := 0.55 + 0.45 * sin(elapsed_ms * 0.014)
 	Fx.ring(canvas, at, radius * 0.65, 2.0, Color(MAGENTA, alpha * 0.5 * inner))
-	canvas.draw_circle(at, radius * 0.55, Color("1a0008", alpha * 0.25 * inner))
+	CircleStamp.disc(canvas, at, radius * 0.55, Color("1a0008", alpha * 0.25 * inner))
 	for i in 32:
 		var mote := Fx.polar(at, i * TAU / 32.0 + elapsed_ms * 0.005, mote_distance(radius, progress, i))
 		Fx.dot(canvas, mote, 4.0 + (1.0 - progress) * 3.0, Color(MAGENTA, alpha * 0.85))
@@ -55,10 +55,10 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, colour: Co
 	var skull := skull_size(radius, elapsed_ms)
 	if skull > SKULL_MIN:
 		var bone := Color("e0c0e8", alpha * 0.85)
-		canvas.draw_circle(at + Vector2(0.0, -skull * 0.25), skull, bone)
+		CircleStamp.disc(canvas, at + Vector2(0.0, -skull * 0.25), skull, bone)
 		canvas.draw_rect(Rect2(at.x - skull * 0.7, at.y + skull * 0.35, skull * 1.4, skull * 0.55), bone)
 		for x in [-0.4, 0.4]:
-			canvas.draw_circle(at + Vector2(skull * x, -skull * 0.2), skull * 0.22, Color("100008", alpha * 0.95))
+			CircleStamp.disc(canvas, at + Vector2(skull * x, -skull * 0.2), skull * 0.22, Color("100008", alpha * 0.95))
 	var core := 0.6 + 0.4 * sin(elapsed_ms * 0.02)
-	canvas.draw_circle(at, radius * 0.35 * (1.0 - progress * 0.6), Color("ff2030", alpha * 0.5 * core))
-	canvas.draw_circle(at, radius * 0.18 * (1.0 - progress * 0.5), Color("ffa0a0", alpha * 0.7))
+	CircleStamp.disc(canvas, at, radius * 0.35 * (1.0 - progress * 0.6), Color("ff2030", alpha * 0.5 * core))
+	CircleStamp.disc(canvas, at, radius * 0.18 * (1.0 - progress * 0.5), Color("ffa0a0", alpha * 0.7))

@@ -23,9 +23,9 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, _colour: C
 	if extent > 0.0:
 		for i in 6:
 			var centre := petal(at, extent, i, progress)
-			canvas.draw_circle(centre, extent * 0.32, Color("a07020", alpha * 0.75))
-			canvas.draw_circle(centre, extent * 0.26, Color("ffd060", alpha * 0.95))
-			canvas.draw_circle(centre, extent * 0.12, Color(Color.WHITE, alpha * 0.6))
+			CircleStamp.disc(canvas, centre, extent * 0.32, Color("a07020", alpha * 0.75))
+			CircleStamp.disc(canvas, centre, extent * 0.26, Color("ffd060", alpha * 0.95))
+			CircleStamp.disc(canvas, centre, extent * 0.12, Color(Color.WHITE, alpha * 0.6))
 	# The web paints the white centre first and the larger gold disc over
 	# it, so the white only shows through the gold; the order is kept.
 	Fx.dot(canvas, at, 6.0, Color(Color.WHITE, alpha))

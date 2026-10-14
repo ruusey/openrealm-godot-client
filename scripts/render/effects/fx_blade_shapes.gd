@@ -53,4 +53,4 @@ static func shuriken(canvas: CanvasItem, at: Vector2, angle: float, size: float,
 	Fx.polygon(canvas, points, Color(colour, alpha))
 	for k in 4:
 		Fx.line(canvas, at, points[k * 2], 1.5, Color(Color.WHITE, alpha * 0.8))
-	canvas.draw_circle(at, size * 0.09, Color("202028", alpha))
+	CircleStamp.disc(canvas, at, size * 0.09, Color("202028", alpha))

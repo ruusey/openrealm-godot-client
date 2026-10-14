@@ -23,7 +23,7 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, _colour: C
 	var alpha := 1.0 - progress
 	var radius := brace_radius(fx["radius"], progress)
 	var accent := Color("c8c8d4")
-	canvas.draw_circle(at, radius, Color("101012", alpha * 0.70))
+	CircleStamp.disc(canvas, at, radius, Color("101012", alpha * 0.70))
 	Fx.ring(canvas, at, radius, 5.0, Color(accent, alpha))
 	Fx.ring(canvas, at, radius - 4.0 * Fx.S, 2.0, Color(Color.WHITE, alpha * 0.8))
 	for i in SPOKES:

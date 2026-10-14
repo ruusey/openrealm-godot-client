@@ -65,8 +65,8 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, _colour: C
 	if alpha <= 0.001:
 		return
 	if flash(progress) > 0.0:
-		canvas.draw_circle(at, radius * 1.15, Color(Color.WHITE, flash(progress) * alpha * 0.6))
-	canvas.draw_circle(at, radius, Color(FROST, alpha * 0.22))
+		CircleStamp.disc(canvas, at, radius * 1.15, Color(Color.WHITE, flash(progress) * alpha * 0.6))
+	CircleStamp.disc(canvas, at, radius, Color(FROST, alpha * 0.22))
 	Fx.ring(canvas, at, radius, 6.0, Color("60a0ff", alpha * 0.55))
 	Fx.ring(canvas, at, radius, 4.0, Color("b0e0ff", alpha * 0.95))
 	Fx.ring(canvas, at, radius * 0.92, 2.0, Color(Color.WHITE, alpha * 0.7))

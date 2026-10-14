@@ -29,11 +29,16 @@ static func plan(centre: Vector2, size: float, angle: float, tint: Color) -> Arr
 	return copies
 
 
+## What plan() lays out, drawn straight from the same numbers: up to 64 bullets
+## stamp every frame, and building the plan's dictionaries was most of the cost.
 static func stamp(canvas: CanvasItem, texture: Texture2D, centre: Vector2, size: float,
 		angle: float, rotation: float, tint: Color) -> void:
-	for copy in plan(centre, size, angle, tint):
-		var half: float = copy["size"] * 0.5
-		canvas.draw_set_transform(copy["at"], rotation, Vector2.ONE)
-		canvas.draw_texture_rect(texture, Rect2(-half, -half, copy["size"], copy["size"]),
-			false, copy["colour"])
+	var back := -Vector2(sin(angle), cos(angle)) * size * SPACING
+	var colour := tint
+	for i in range(SEGMENTS, 0, -1):
+		colour.a = ALPHA * (1.0 - float(i) / SEGMENTS)
+		var copy_size := size * (1.0 - SHRINK * i)
+		var half := copy_size * 0.5
+		canvas.draw_set_transform(centre + back * i, rotation, Vector2.ONE)
+		canvas.draw_texture_rect(texture, Rect2(-half, -half, copy_size, copy_size), false, colour)
 	canvas.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)

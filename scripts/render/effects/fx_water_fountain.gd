@@ -42,7 +42,7 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, _colour: C
 		Fx.ring(canvas, at, base * (1.0 + t * 0.6) * 0.96, 1.0, Color(CYAN, ripple_alpha * 0.85))
 	Fx.ring(canvas, at, base, 3.0, Color(AQUA, alpha * 0.95))
 	if base > 0.0:
-		canvas.draw_circle(at, base, Color(AQUA, alpha * 0.10))
+		CircleStamp.disc(canvas, at, base, Color(AQUA, alpha * 0.10))
 	Fx.ring(canvas, at, base * 0.62, 2.0, Color(CYAN, alpha * 0.85))
 	for s in 6:
 		var angle := s * TAU / 6.0 + elapsed_ms * 0.0008
@@ -68,8 +68,8 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, _colour: C
 	if progress < 0.25:
 		var flash := 1.0 - progress / 0.25
 		Fx.ring(canvas, at, base * 0.75 * (1.0 + progress), 4.0, Color("1080d0", flash * 0.8))
-		canvas.draw_circle(at, base * 0.50, Color(CYAN, flash * 0.9))
-		canvas.draw_circle(at, base * 0.25, Color(Color.WHITE, flash * 0.7))
+		CircleStamp.disc(canvas, at, base * 0.50, Color(CYAN, flash * 0.9))
+		CircleStamp.disc(canvas, at, base * 0.25, Color(Color.WHITE, flash * 0.7))
 	var star := sin(progress * PI) * alpha
 	if star > 0.05:
 		for i in 8:

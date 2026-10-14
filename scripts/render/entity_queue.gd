@@ -16,6 +16,9 @@ extends RefCounted
 
 const PLAYER_RENDER_SIZE := GameConstants.PLAYER_RENDER_SIZE
 const SIMPLE_SIZE := 16
+## Keeps a feet key positive for bodies standing just off the top of the map.
+const FEET_BIAS := 1 << 24
+const NO_EFFECTS: Array = []
 
 
 ## Everything the ground pass would draw this frame, in draw order.
@@ -26,13 +29,33 @@ func build(state: RealmState, content: GameData, view: Rect2) -> Array:
 	_queue_containers(queue, state, content, view)
 	_queue_portals(queue, state, content, view)
 
-	queue.sort_custom(_by_feet)
-	return queue
+	return by_feet(queue)
 
 
-## Feet-depth comparator, hoisted so no closure is allocated per frame.
-static func _by_feet(a: Dictionary, b: Dictionary) -> bool:
-	return a["pos"].y + a["size"] < b["pos"].y + b["size"]
+## The queue in feet order. Sorted as packed integers -- feet depth to a
+## sixteenth of a pixel over the entry's index -- because a scripted comparator
+## is one script call per comparison, the bulk of this pass in a crowd.
+static func by_feet(queue: Array) -> Array:
+	var count := queue.size()
+	if count < 2:
+		return queue
+	var keys := PackedInt64Array()
+	keys.resize(count)
+	for i in count:
+		var item: Dictionary = queue[i]
+		var feet: float = item["pos"].y + float(item["size"])
+		keys[i] = ((int(roundf(feet * 16.0)) + FEET_BIAS) << 16) | i
+	keys.sort()
+	var sorted := []
+	sorted.resize(count)
+	for i in count:
+		sorted[i] = queue[keys[i] & 0xFFFF]
+	return sorted
+
+
+## Most bodies carry no effect, and those skip the call into StatusTint.
+static func _tint(effects: Array) -> Color:
+	return StatusTint.CLEAR if effects.is_empty() else StatusTint.of(effects)
 
 
 ## How big to draw a frame, in world pixels.
@@ -49,12 +72,15 @@ static func frame_size(texture: Texture2D, cell: int, body: float) -> Vector2:
 
 func _queue_players(queue: Array, state: RealmState, content: GameData,
 		view: Rect2) -> void:
+	var show_others := state.settings.is_on("show_other_players")
 	for id in state.entities.players:
 		var player: Dictionary = state.entities.players[id]
 		var is_local: bool = id == state.local.id
+		if not is_local and not show_others:
+			continue
 		var position: Vector2 = state.local.render_position() if is_local \
 			else state.entities.render_position(player)
-		if not is_local and (not view.has_point(position) or not state.settings.is_on("show_other_players")):
+		if not is_local and not view.has_point(position):
 			continue
 
 		var class_id: int = state.local.class_id if is_local else player.get("class_id", 0)
@@ -85,8 +111,7 @@ func _queue_players(queue: Array, state: RealmState, content: GameData,
 				render_size),
 			"texture": texture,
 			"tint": Color(0.4, 1.0, 0.5) if is_local else Color(0.3, 0.6, 1.0),
-			"modulate": StatusTint.of(state.local.effects if is_local
-				else player.get("effects", [])),
+			"modulate": _tint(state.local.effects if is_local else player.get("effects", NO_EFFECTS)),
 			# The sheet only has a right-facing side clip, so leftward
 			# movement is that clip mirrored.
 			"flip": facing == "side" and mirrored,
@@ -134,7 +159,7 @@ func _queue_enemies(queue: Array, state: RealmState, content: GameData, view: Re
 			"draw": draw,
 			"texture": texture,
 			"tint": Color(0.8, 0.25, 0.25),
-			"modulate": StatusTint.of(enemy.get("effects", [])),
+			"modulate": _tint(enemy.get("effects", NO_EFFECTS)),
 			"flip": flip,
 			"lock": id == state.entities.lock_on,
 		})

@@ -42,8 +42,8 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, colour: Co
 	var held := flash_alpha(progress)
 	if progress < 0.25:
 		var snap := 1.0 - progress / 0.25
-		canvas.draw_circle(at, radius * 0.5, Color(Color.WHITE, snap * 0.85))
-		canvas.draw_circle(at, radius * 0.85, Color("ffaa00", snap * 0.7))
+		CircleStamp.disc(canvas, at, radius * 0.5, Color(Color.WHITE, snap * 0.85))
+		CircleStamp.disc(canvas, at, radius * 0.85, Color("ffaa00", snap * 0.7))
 	Fx.ring(canvas, at, closing, 4.0, Color(colour, held * 0.95))
 	Fx.ring(canvas, at, closing * 0.7, 2.0, Color("ffcc44", held * 0.6))
 	for i in TEETH:

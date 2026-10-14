@@ -15,6 +15,7 @@ const CHIP_SIZE := Vector2(40.0, 14.0)
 const CHIP_GAP := 2.0
 const BUBBLE_GAP := 4.0
 const BUBBLE_WRAP := 180.0
+const RELAYOUT_FRAMES := 3
 
 static var chip_style: LabelSettings = TagStyles.chip_label()
 static var bubble_style: LabelSettings = TagStyles.bubble_label()
@@ -23,7 +24,10 @@ var _chips: VBoxContainer
 var _chips_key := ""
 ## Raw-input gate so the per-entity 38-status scan + chip rebuild only runs when
 ## the effect/stack arrays actually change, not every frame for every entity.
-var _raw_key := ""
+var _raw_effects: Array = []
+var _raw_stacks: Array = []
+var _raw_known := false
+var _relayout_frames := 0
 var _chips_empty := true
 var _bubble: PanelContainer
 var _bubble_text: Label
@@ -63,10 +67,12 @@ func has_bubble() -> bool:
 ## Returns the top of the stack, or 0 with nothing on it.
 func _show_chips(effects: Array, stacks: Array) -> float:
 	# Cheap gate: the active-set scan (38 statuses x effects) and chip rebuild run per
-	# entity EVERY frame otherwise. Skip both unless the raw effect/stack arrays changed.
-	var raw_key := str(effects) + "|" + str(stacks)
-	if raw_key != _raw_key:
-		_raw_key = raw_key
+	# entity EVERY frame otherwise. Skip both unless the raw effect/stack arrays changed,
+	# compared by value (the old string key formatted both arrays every frame).
+	if not _raw_known or effects != _raw_effects or stacks != _raw_stacks:
+		_raw_known = true
+		_raw_effects = effects.duplicate()
+		_raw_stacks = stacks.duplicate()
 		var active := StatusChips.active(effects, stacks)
 		var key := str(active)
 		if key != _chips_key:
@@ -75,12 +81,17 @@ func _show_chips(effects: Array, stacks: Array) -> float:
 				child.free()
 			for chip in active:
 				_chips.add_child(TagStyles.chip(chip[0], chip[1], CHIP_SIZE, chip_style))
+			_relayout_frames = RELAYOUT_FRAMES
 		_chips_empty = active.is_empty()
 	_chips.visible = not _chips_empty
 	if _chips_empty:
 		return 0.0
-	_chips.reset_size()
-	_chips.position = Vector2(-CHIP_SIZE.x * 0.5, -_chips.size.y).round()
+	# Re-measured for a few frames after the set changes, until the new chips'
+	# labels have their sizes, rather than every frame for every tag.
+	if _relayout_frames > 0:
+		_relayout_frames -= 1
+		_chips.reset_size()
+		_chips.position = Vector2(-CHIP_SIZE.x * 0.5, -_chips.size.y).round()
 	return _chips.position.y
 
 

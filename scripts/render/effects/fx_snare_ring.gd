@@ -35,8 +35,8 @@ static func paint(canvas: CanvasItem, at: Vector2, radius: float, progress: floa
 	var fading := fade(progress)
 	var a := fading * (0.7 + 0.3 * sin(elapsed_ms * 0.004)) * alpha
 	var inner := radius * 0.7
-	canvas.draw_circle(at, radius, Color(colour, fading * 0.22))
-	canvas.draw_circle(at, inner, Color(Color.BLACK, fading * 0.18))
+	CircleStamp.disc(canvas, at, radius, Color(colour, fading * 0.22))
+	CircleStamp.disc(canvas, at, inner, Color(Color.BLACK, fading * 0.18))
 	Fx.ring(canvas, at, radius, 6.0, Color(colour, a * 0.95))
 	Fx.ring(canvas, at, radius * 0.97, 3.0, Color(Color.WHITE, a * 0.9))
 	Fx.ring(canvas, at, inner, 2.0, Color(AMBER, a * 0.85))

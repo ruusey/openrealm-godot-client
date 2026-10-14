@@ -107,12 +107,12 @@ static func _resolve_type(kind: int) -> Callable:
 static func ring(canvas: CanvasItem, at: Vector2, radius: float, width_px: float, colour: Color,
 		segments := 48) -> void:
 	if radius > 0.0 and colour.a > 0.001:
-		canvas.draw_arc(at, radius, 0.0, TAU, segments, colour, width_px * S)
+		CircleStamp.ring(canvas, at, radius, width_px * S, colour, segments)
 
 
 static func dot(canvas: CanvasItem, at: Vector2, radius_px: float, colour: Color) -> void:
 	if colour.a > 0.001:
-		canvas.draw_circle(at, radius_px * S, colour)
+		CircleStamp.disc(canvas, at, radius_px * S, colour)
 
 
 static func line(canvas: CanvasItem, from: Vector2, to: Vector2, width_px: float, colour: Color) -> void:
