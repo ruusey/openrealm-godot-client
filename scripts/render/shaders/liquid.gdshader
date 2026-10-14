@@ -13,15 +13,19 @@ shader_type canvas_item;
 // A cell beside land arrives with its shore in the vertex colour (LiquidRenderer):
 // red = the cardinal sides that are land, green = the corners, as 4-bit masks over
 // 15; blue and alpha = the colour of the ground's lip, RGB565, with blue zero
-// for none (red is never zero in a real one). The lip pokes a
-// ragged pixel or two into the liquid so the coastline leaves the tile grid.
-// Shore effects are worked on the art's own pixel grid so they stay crisp.
+// for none (red is never zero in a real one). Where land wraps two sides of a
+// cell its corner is rounded off, and along a straight run the lip wanders a
+// pixel in and out in long smooth runs, so the coastline leaves the tile grid
+// without teeth. Shore effects are worked on the art's own pixel grid so they
+// stay crisp.
 
 uniform float water_speed : hint_range(0.0, 6.0) = 1.5;
 uniform float lava_speed : hint_range(0.0, 6.0) = 1.0;
 uniform float shore_reach : hint_range(4.0, 32.0) = 15.0;
 uniform float shore_pixel : hint_range(1.0, 8.0) = 4.0;
-uniform float lip_depth : hint_range(0.0, 16.0) = 7.0;
+uniform float lip_depth : hint_range(0.0, 16.0) = 3.0;
+uniform float corner_radius : hint_range(0.0, 32.0) = 14.0;
+uniform float foam_strength : hint_range(0.0, 1.0) = 0.38;
 uniform vec3 foam_colour : source_color = vec3(0.86, 0.95, 1.0);
 
 const float CELL = 32.0;
@@ -57,20 +61,40 @@ float bit(float mask, float value) {
 	return mod(floor(mask / value), 2.0);
 }
 
-// World pixels from `local` (within the cell) to the nearest land: a land side
-// is an edge, a land corner is a point, so inner corners come out round.
-float shore_distance(vec2 local) {
+// World pixels from `local` (within the cell) to the nearest land side. Where
+// a land side meets a land side the corner is rounded, which comes out below
+// zero: land filling the corner.
+float side_distance(vec2 local) {
 	float far = CELL * 2.0;
-	float d = far;
 	vec2 back = CELL - local;
-	d = min(d, mix(far, local.y, bit(shore_mask.r, 1.0)));
-	d = min(d, mix(far, back.y, bit(shore_mask.r, 2.0)));
-	d = min(d, mix(far, local.x, bit(shore_mask.r, 4.0)));
-	d = min(d, mix(far, back.x, bit(shore_mask.r, 8.0)));
-	d = min(d, mix(far, length(local), bit(shore_mask.g, 1.0)));
-	d = min(d, mix(far, length(vec2(back.x, local.y)), bit(shore_mask.g, 2.0)));
-	d = min(d, mix(far, length(vec2(local.x, back.y)), bit(shore_mask.g, 4.0)));
-	d = min(d, mix(far, length(back), bit(shore_mask.g, 8.0)));
+	float dy = min(mix(far, local.y, bit(shore_mask.r, 1.0)), mix(far, back.y, bit(shore_mask.r, 2.0)));
+	float dx = min(mix(far, local.x, bit(shore_mask.r, 4.0)), mix(far, back.x, bit(shore_mask.r, 8.0)));
+	vec2 into = vec2(corner_radius) - vec2(dx, dy);
+	if (into.x > 0.0 && into.y > 0.0) {
+		return corner_radius - length(into);
+	}
+	return min(dx, dy);
+}
+
+// 1 when exactly one of a corner's three neighbours is land: the land there is
+// a tip poking into the liquid, not a run of coast.
+float tip(float side, float other_side, float diagonal) {
+	return step(abs(side + other_side + diagonal - 1.0), 0.5);
+}
+
+// World pixels to the nearest tip of land among this cell's corners.
+float tip_distance(vec2 local) {
+	float far = CELL * 2.0;
+	vec2 back = CELL - local;
+	float north = bit(shore_mask.r, 1.0);
+	float south = bit(shore_mask.r, 2.0);
+	float west = bit(shore_mask.r, 4.0);
+	float east = bit(shore_mask.r, 8.0);
+	float d = far;
+	d = min(d, mix(far, length(local), tip(north, west, bit(shore_mask.g, 1.0))));
+	d = min(d, mix(far, length(vec2(back.x, local.y)), tip(north, east, bit(shore_mask.g, 2.0))));
+	d = min(d, mix(far, length(vec2(local.x, back.y)), tip(south, west, bit(shore_mask.g, 4.0))));
+	d = min(d, mix(far, length(back), tip(south, east, bit(shore_mask.g, 8.0))));
 	return d;
 }
 
@@ -102,9 +126,19 @@ void fragment() {
 	vec3 colour = mix(water, lava, warm);
 	if (shore_mask.r + shore_mask.g > 0.5) {
 		vec2 snapped = (floor(world_pos / shore_pixel) + 0.5) * shore_pixel;
-		float d = shore_distance(snapped - floor(world_pos / CELL) * CELL);
-		// The coast itself is still: the lip is cut from noise with no TIME in it.
-		float coast = d - has_lip * lip_depth * smoothstep(0.3, 0.85, noise(snapped * 0.14 + 5.3));
+		vec2 local = snapped - floor(world_pos / CELL) * CELL;
+		float sides = side_distance(local);
+		float tips = tip_distance(local);
+		// The coast itself is still: the lip is cut from noise with no TIME in it,
+		// and slow noise, so it steps a pixel out in long runs rather than teeth.
+		// It never runs out past a tip of land, which would lengthen the tip.
+		float lip_reach = has_lip * lip_depth * smoothstep(0.4, 0.6, noise(snapped * 0.03 + 5.3))
+			* smoothstep(shore_pixel, shore_pixel * 3.0, tips);
+		// A cell between two kinds of ground has no lip colour, so its rounded
+		// corners stay water.
+		float coast = mix(max(sides, 0.001), sides - lip_reach, has_lip);
+		// A tip in the diagonal cell is the nearest land there.
+		coast = min(coast, max(tips, 0.001));
 		// Two moving noises: one frays the foam, one staggers the waves along the
 		// shore so no two stretches of beach move together.
 		float fray = noise(snapped * 0.11 + vec2(TIME * 0.2, -TIME * 0.13));
@@ -120,7 +154,7 @@ void fragment() {
 		float swell_at = mix(shore_reach, lap, swell_t);
 		float swell = step(abs(coast - swell_at), shore_pixel * 0.5) * step(0.45, fray)
 			* sin(swell_t * 3.14159);
-		water = mix(water, foam_colour, max(foam * 0.7, swell * 0.5));
+		water = mix(water, foam_colour, max(foam, swell * 0.6) * foam_strength);
 
 		// Lava: a molten rim glowing along the crust and darker crust drifting off it.
 		float rim = step(coast, 2.0 + 2.5 * pulse);
@@ -129,7 +163,7 @@ void fragment() {
 		lava = mix(lava, vec3(0.28, 0.06, 0.03), crust * 0.7);
 		lava = mix(lava, vec3(1.0, 0.86, 0.38), rim * 0.75);
 
-		vec3 lip = lip_colour * (0.88 + 0.24 * hash(snapped));
+		vec3 lip = lip_colour * (0.96 + 0.08 * hash(snapped));
 		colour = mix(mix(water, lava, warm), lip, step(coast, 0.0));
 	}
 
