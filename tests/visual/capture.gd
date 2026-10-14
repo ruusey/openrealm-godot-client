@@ -1,4 +1,4 @@
-extends SceneTree
+extends Node
 
 ## Renders scenarios and writes a PNG of each.
 ##
@@ -6,8 +6,10 @@ extends SceneTree
 ## device, so the viewport texture comes back null. A real window is required
 ## even though nothing interactive happens in it.
 ##
-##   godot --path . --script tests/visual/capture.gd -- <scenario> <out.png>
-##   godot --path . --script tests/visual/capture.gd -- --all <out_dir> <scenario>...
+##   godot --path . res://tests/visual/capture.tscn -- <scenario> <out.png>
+##   godot --path . res://tests/visual/capture.tscn -- --all <out_dir> <scenario>...
+##
+## Run as a scene, not with --script, so the autoloads (Sfx) exist.
 ##
 ## The second form is what capture-visuals.sh uses: one process and one window
 ## for the whole run, so the desktop is interrupted once rather than once a
@@ -20,7 +22,7 @@ const SETTLE_FRAMES := 6
 const CAPTURE_TIME_MS := 250
 
 
-func _init() -> void:
+func _ready() -> void:
 	var args := OS.get_cmdline_user_args()
 	var jobs: Array = []
 	if args.size() > 0 and args[0] == "--all":
@@ -31,23 +33,26 @@ func _init() -> void:
 		jobs.append([scenario, args[1] if args.size() > 1 else "reports/visual/%s.png" % scenario])
 
 	var config := ClientConfig.new()
+	# A checkout laid out differently from the default names its data here.
+	if OS.has_environment("OPENREALM_DATA_ROOT"):
+		config.data_root = OS.get_environment("OPENREALM_DATA_ROOT")
 	var content := GameData.new()
 	if not await content.load_from(FileContentSource.new(config.resolved_data_root())):
 		push_error("content load failed: %s" % "\n".join(content.errors))
-		quit(1)
+		get_tree().quit(1)
 		return
 
 	var failed := 0
 	for job in jobs:
 		if not await capture(job[0], job[1], content):
 			failed += 1
-	quit(1 if failed > 0 else 0)
+	get_tree().quit(1 if failed > 0 else 0)
 
 
 ## One scenario, built under a stage of its own so the next starts clean.
 func capture(scenario: String, output: String, content: GameData) -> bool:
 	var stage := Node.new()
-	root.add_child(stage)
+	get_tree().root.add_child(stage)
 	var state := RealmState.new(content, func() -> int: return 0)
 	state.party.wall_clock = func() -> int: return VisualScenarios.PARTY_WALL_MS
 	VisualScenarios.apply(scenario, state)
@@ -112,7 +117,7 @@ func capture(scenario: String, output: String, content: GameData) -> bool:
 	forge.setup(state, content, ForgeActions.new(state, null, content))
 	stage.add_child(forge)
 	var market := ExchangeMarketPanel.new()
-	market.setup(state, content, shop)
+	market.setup(state, content, shop, InventoryActions.new(state, null, content))
 	stage.add_child(market)
 	var trade := TradePanel.new()
 	trade.setup(state, content, TradeActions.new(state, null))
@@ -176,7 +181,7 @@ func capture(scenario: String, output: String, content: GameData) -> bool:
 	# Nothing added above has run _ready yet -- a node added from here is
 	# initialised when the tree next processes it, and driving one before that
 	# writes to controls that do not exist. One frame is the whole fix.
-	await process_frame
+	await get_tree().process_frame
 	chat.refresh()
 	# The pin pulses on the clock; pinned like the bullet layer's.
 	map._canvas.clock = func() -> int: return CAPTURE_TIME_MS
@@ -267,12 +272,12 @@ func capture(scenario: String, output: String, content: GameData) -> bool:
 	camera.position = state.local.centre() if state.local.is_present() else Vector2.ZERO
 
 	for i in SETTLE_FRAMES:
-		await process_frame
+		await get_tree().process_frame
 		camera.make_current()
 
-	var image := root.get_texture().get_image()
+	var image := get_tree().root.get_texture().get_image()
 	stage.queue_free()
-	await process_frame
+	await get_tree().process_frame
 	if image == null:
 		push_error("viewport capture returned null -- this must run windowed, not --headless")
 		return false

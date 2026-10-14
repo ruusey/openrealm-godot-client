@@ -34,7 +34,7 @@ echo "== capturing =="
 # imported yet, every class_name fails to resolve and each scenario errors.
 "$GODOT" --headless --path . --import >/dev/null 2>&1 || true
 "$GODOT" --path . --resolution 1280x960 \
-	--script tests/visual/capture.gd -- --all "$OUT_DIR" "${SCENARIOS[@]}" \
+	res://tests/visual/capture.tscn -- --all "$OUT_DIR" "${SCENARIOS[@]}" \
 	>"$LOG" 2>&1 || true
 grep -E "captured|ERROR" "$LOG" || true
 

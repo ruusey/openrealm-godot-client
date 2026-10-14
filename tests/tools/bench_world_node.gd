@@ -1,0 +1,385 @@
+class_name BenchWorldNode
+extends Node
+
+## Frame-cost benchmark: a synthetic bullet-hell realm driven through the real
+## renderer, lighting and overlay, with no server.
+##
+##   godot --path . res://tests/tools/bench_world.tscn -- --bullets=1500 --enemies=150
+##       --players=30 --seconds=10 [--data=<openrealm-data resources dir>]
+##       [--hide=bullets,entities,lighting,overlay,chunk,...] [--out=<report file>]
+##
+## --headless measures the script (CPU) cost alone; windowed adds the GPU. --hide
+## leaves world layers out to attribute draw cost; "chunk" instead turns on a probe
+## that repaints one ground chunk every frame and reports what that costs.
+
+const MAP_SIZE := 96
+const MOVE_INTERVAL_MS := 62.5
+const UNLOAD_INTERVAL_MS := 125.0
+
+var bullets_target := 1500
+var enemy_count := 150
+var player_count := 30
+var seconds := 10.0
+var data_root := ""
+## World layers (WorldRenderer member names) left invisible, to attribute draw cost.
+var hidden_layers: PackedStringArray = []
+## Also writes the report here: a release build has no console to print to.
+var out_path := ""
+var _lines: PackedStringArray = []
+
+var content: GameData
+var state: RealmState
+var world: WorldRenderer
+var lighting: SceneLighting
+var overlay: EntityOverlay
+var camera: Camera2D
+
+var _groups: Array[int] = []
+var _next_bullet_id := 1_000_000
+var _since_move := 0.0
+var _since_unload := 0.0
+var _clock := 0.0
+var _running := false
+var _frames: Array[float] = []
+var _advance_us: Array[float] = []
+var _overlay_us: Array[float] = []
+var _draw_us: Array[float] = []
+var _process_end_us := 0
+var _last_frame_us := 0
+var _started_us := 0
+var _bullet_samples := 0
+var _rng := RandomNumberGenerator.new()
+var _sections := {}
+var _chunk_probe: Node2D
+var _frame_start_us := 0
+
+
+func _ready() -> void:
+	_rng.seed = 7
+	_parse_args()
+	Engine.max_fps = 0
+	if DisplayServer.get_name() != "headless":
+		DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
+	content = GameData.new()
+	if not await content.load_from(FileContentSource.new(data_root)):
+		push_error("content failed to load from %s" % data_root)
+		get_tree().quit(1)
+		return
+	state = RealmState.new(content)
+	state.settings.set_on("show_other_bullets", true)
+	if "lighting" in hidden_layers:
+		state.settings.set_on("lighting", false)
+	state.settings.set_on("vsync", false)
+	_build_world()
+	_pick_groups()
+	_populate()
+	RenderingServer.frame_pre_draw.connect(_on_pre_draw)
+	_started_us = Time.get_ticks_usec()
+	_last_frame_us = _started_us
+	_running = true
+
+
+func _parse_args() -> void:
+	data_root = ProjectSettings.globalize_path("res://").path_join("../openrealm-data/src/main/resources").simplify_path()
+	for arg in OS.get_cmdline_user_args():
+		var parts := arg.trim_prefix("--").split("=")
+		if parts.size() != 2:
+			continue
+		match parts[0]:
+			"bullets": bullets_target = int(parts[1])
+			"enemies": enemy_count = int(parts[1])
+			"players": player_count = int(parts[1])
+			"seconds": seconds = float(parts[1])
+			"data": data_root = parts[1]
+			"hide": hidden_layers = parts[1].split(",")
+			"out": out_path = parts[1]
+
+
+func _build_world() -> void:
+	world = WorldRenderer.new()
+	world.setup(state, content)
+	add_child(world)
+	for layer in hidden_layers:
+		if world.get(layer) is CanvasItem:
+			(world.get(layer) as CanvasItem).visible = false
+	lighting = SceneLighting.new()
+	lighting.setup(state, content)
+	add_child(lighting)
+	world.set_process(false)
+	lighting.set_process(false)
+	camera = Camera2D.new()
+	camera.zoom = Vector2(DisplayScale.WORLD_ZOOM, DisplayScale.WORLD_ZOOM)
+	add_child(camera)
+	camera.make_current()
+	overlay = EntityOverlay.new()
+	overlay.setup(state, content)
+	add_child(overlay)
+	overlay.set_process(false)
+	_chunk_probe = Node2D.new()
+	_chunk_probe.set_script(load("res://tests/tools/bench_chunk_probe.gd"))
+	_chunk_probe.set("ground", world.tiles)
+	_chunk_probe.visible = "chunk" in hidden_layers
+	add_child(_chunk_probe)
+	# Last in the tree, so its _process marks the end of every other node's.
+	var marker := Node.new()
+	marker.set_script(load("res://tests/tools/bench_process_marker.gd"))
+	marker.set("bench", self)
+	add_child(marker)
+
+
+func _pick_groups() -> void:
+	for group_id in content.library.projectile_groups:
+		if content.projectile_texture(int(group_id)) != null:
+			_groups.append(int(group_id))
+	_groups.sort()
+
+
+func _populate() -> void:
+	var floor_id := -1
+	var wall_id := -1
+	for tile_id in content.library.tiles:
+		var data := content.tile_data(int(tile_id))
+		if floor_id < 0 and int(tile_id) > 0 and int(data.get("hasCollision", 0)) == 0 \
+				and not content.tile_is_liquid(int(tile_id)):
+			floor_id = int(tile_id)
+		if wall_id < 0 and content.tile_is_wall(int(tile_id)):
+			wall_id = int(tile_id)
+	var tiles := []
+	for y in MAP_SIZE:
+		for x in MAP_SIZE:
+			# A crystal accent every few cells, so the lighting has emitters to light.
+			var lit := (x * 7 + y * 3) % 23 == 0
+			tiles.append({"tileId": 124 if lit else floor_id, "layer": 0, "xIndex": y, "yIndex": x})
+			var edge := x == 0 or y == 0 or x == MAP_SIZE - 1 or y == MAP_SIZE - 1
+			if edge or (x % 12 == 0 and y % 12 < 3):
+				tiles.append({"tileId": wall_id, "layer": GameConstants.COLLISION_LAYER, "xIndex": y, "yIndex": x})
+	var started := Time.get_ticks_usec()
+	state.apply_packet("LoadMapPacket", {"realmId": 1, "mapId": 1, "mapWidth": MAP_SIZE,
+		"mapHeight": MAP_SIZE, "tiles": tiles})
+	var first_ms := (Time.get_ticks_usec() - started) / 1000.0
+	# The same packet again, the way the server re-sends a tile chunk the client holds.
+	started = Time.get_ticks_usec()
+	state.apply_packet("LoadMapPacket", {"realmId": 1, "mapId": 1, "mapWidth": MAP_SIZE,
+		"mapHeight": MAP_SIZE, "tiles": tiles})
+	_say("BENCH load_map tiles=%d first=%.1fms again=%.1fms" % [tiles.size(), first_ms,
+		(Time.get_ticks_usec() - started) / 1000.0])
+
+	var centre := Vector2(MAP_SIZE, MAP_SIZE) * GameConstants.TILE_SIZE * 0.5
+	state.local.id = 1
+	state.local.name = "bench"
+	state.local.position = centre
+	state.local.previous_position = centre
+	var players := [_player_wire(1, centre)]
+	for i in player_count:
+		players.append(_player_wire(100 + i, centre + _scatter(220.0)))
+	var enemies := []
+	var enemy_ids := content.library.enemies.keys()
+	for i in enemy_count:
+		enemies.append({"id": 10_000 + i, "enemyId": int(enemy_ids[i % enemy_ids.size()]),
+			"weaponId": 0, "size": 32, "pos": _vec(centre + _scatter(300.0)), "dX": 0.0, "dY": 0.0,
+			"difficulty": 1.0, "health": 800, "maxHealth": 1000, "shortId": 0})
+	state.apply_packet("LoadPacket", {"players": players, "enemies": enemies})
+
+
+func _player_wire(id: int, at: Vector2) -> Dictionary:
+	return {"id": id, "name": "p%d" % id, "accountUuid": "", "characterUuid": "",
+		"classId": id % 8, "size": 28, "pos": _vec(at), "dX": 0.0, "dY": 0.0,
+		"shortId": 0, "chatRole": "", "dyeId": 0}
+
+
+func _scatter(radius: float) -> Vector2:
+	return Vector2.from_angle(_rng.randf() * TAU) * _rng.randf() * radius
+
+
+static func _vec(at: Vector2) -> Dictionary:
+	return {"x": at.x, "y": at.y}
+
+
+func _process(delta: float) -> void:
+	if not _running:
+		return
+	var now_us := Time.get_ticks_usec()
+	_frames.append((now_us - _last_frame_us) / 1000.0)
+	_last_frame_us = now_us
+	_clock += delta * 1000.0
+	_since_move += delta * 1000.0
+	_since_unload += delta * 1000.0
+	_frame_start_us = now_us
+	var net_started := Time.get_ticks_usec()
+	if _since_move >= MOVE_INTERVAL_MS:
+		_since_move = fmod(_since_move, MOVE_INTERVAL_MS)
+		_send_moves()
+	if _since_unload >= UNLOAD_INTERVAL_MS:
+		_since_unload = 0.0
+		_send_unloads()
+	_spawn_bullets()
+	_section("net", net_started)
+
+	var started := Time.get_ticks_usec()
+	_advance_sections(delta)
+	_advance_us.append(Time.get_ticks_usec() - started)
+	_bullet_samples += state.projectiles.bullets.size()
+
+	PixelSnap.camera(camera, state.local.render_centre(), state.local.render_position())
+	var t := Time.get_ticks_usec()
+	world._process(delta)
+	t = _section("world_process", t)
+	lighting._process(delta)
+	_section("lighting_process", t)
+	if (now_us - _started_us) > int(seconds * 1_000_000.0):
+		_report()
+
+
+## RealmState.advance, step by step, so each part's cost is reported.
+func _advance_sections(delta: float) -> void:
+	var t := Time.get_ticks_usec()
+	state.projectiles.latency_ms = 60.0
+	state.transition.expire()
+	state.local.decay_smoothing(delta)
+	state.movement.predict(delta, Vector2.ZERO)
+	state.local.walk.advance(state.movement.pace_px, delta)
+	state.local.attack.tick(delta)
+	RemoteAnimation.advance(state.entities.players, delta)
+	RemoteAnimation.advance(state.entities.enemies, delta)
+	t = _section("entities", t)
+	state.projectiles.advance(delta)
+	t = _section("projectiles", t)
+	state.particles.advance(delta, state.projectiles.bullets, BulletVisibility.of(state))
+	t = _section("particles", t)
+	state.texts.advance(delta)
+	state.abilities.expire()
+	state.minimap.expire()
+	state.trade.expire()
+	state.party.expire()
+	state.pvp.expire()
+	_section("rest", t)
+
+
+func _section(name: String, since_us: int) -> int:
+	var now := Time.get_ticks_usec()
+	_sections[name] = float(_sections.get(name, 0.0)) + (now - since_us)
+	return now
+
+
+func mark_process_end() -> void:
+	if not _running:
+		return
+	var started := Time.get_ticks_usec()
+	if not "overlay" in hidden_layers:
+		overlay.refresh()
+	_overlay_us.append(Time.get_ticks_usec() - started)
+	_process_end_us = Time.get_ticks_usec()
+	_section("all_process", _frame_start_us)
+
+
+func _on_pre_draw() -> void:
+	if _running and _process_end_us > 0:
+		_draw_us.append(Time.get_ticks_usec() - _process_end_us)
+
+
+func _send_moves() -> void:
+	var movements := []
+	var t := _clock / 1000.0
+	var centre := Vector2(MAP_SIZE, MAP_SIZE) * GameConstants.TILE_SIZE * 0.5
+	for i in enemy_count:
+		var phase := float(i) * 0.37
+		var at := centre + Vector2(cos(t * 0.6 + phase), sin(t * 0.8 + phase)) * (120.0 + (i % 9) * 22.0)
+		var velocity := Vector2(-sin(t * 0.6 + phase) * 0.6, cos(t * 0.8 + phase) * 0.8) \
+			* (120.0 + (i % 9) * 22.0) / GameConstants.TICK_RATE
+		movements.append({"entityType": GameConstants.ENTITY_ENEMY, "entityId": 10_000 + i,
+			"posX": at.x, "posY": at.y, "velX": velocity.x, "velY": velocity.y, "flags": 0})
+	for i in player_count:
+		var at := centre + Vector2(cos(t + i), sin(t * 1.3 + i)) * 200.0
+		movements.append({"entityType": GameConstants.ENTITY_PLAYER, "entityId": 100 + i,
+			"posX": at.x, "posY": at.y, "velX": 0.0, "velY": 0.0, "flags": 0})
+	state.apply_packet("ObjectMovePacket", {"movements": movements})
+
+
+func _send_unloads() -> void:
+	var gone := []
+	for id in state.projectiles.bullets:
+		var bullet: Dictionary = state.projectiles.bullets[id]
+		if bullet["traveled"] > bullet["range"]:
+			gone.append(id)
+	if not gone.is_empty():
+		state.apply_packet("UnloadPacket", {"bullets": gone})
+
+
+func _spawn_bullets() -> void:
+	var missing := bullets_target - state.projectiles.bullets.size()
+	if missing <= 0:
+		return
+	var wires := []
+	var enemies := state.entities.enemies.keys()
+	var shooters := enemies + state.entities.players.keys()
+	while missing > 0:
+		var source: int = shooters[_rng.randi() % shooters.size()]
+		var entity := state.entities.find_any(source)
+		var origin := state.entities.render_position(entity) + Vector2(16, 16)
+		var group_id: int = _groups[_rng.randi() % _groups.size()]
+		var burst := mini(missing, 8)
+		var base := _rng.randf() * TAU
+		for k in burst:
+			_next_bullet_id += 1
+			wires.append({"id": _next_bullet_id, "projectileId": group_id, "pos": _vec(origin),
+				"size": 12, "angle": base + k * TAU / burst, "magnitude": 3.0 + _rng.randf() * 2.0,
+				"range": 300.0 + _rng.randf() * 200.0, "damage": 10,
+				"flags": [] if (k % 5) else [ProjectileKind.PARAMETRIC],
+				"amplitude": 8.0 if (k % 5) == 0 else 0.0, "frequency": 12.0 if (k % 5) == 0 else 0.0,
+				"srcEntityId": source})
+		missing -= burst
+	state.apply_packet("LoadPacket", {"bullets": wires})
+
+
+func _report() -> void:
+	_running = false
+	var frames := _frames.slice(10)
+	var sorted := frames.duplicate()
+	sorted.sort()
+	var total := 0.0
+	for ms in frames:
+		total += ms
+	var mean := total / maxf(frames.size(), 1.0)
+	_say("BENCH bullets=%d enemies=%d players=%d renderer=%s" % [bullets_target, enemy_count,
+		player_count, DisplayServer.get_name()])
+	_say("BENCH frames=%d fps=%.1f mean=%.2fms p50=%.2fms p95=%.2fms p99=%.2fms max=%.2fms" % [
+		frames.size(), 1000.0 / mean, mean, _pct(sorted, 0.5), _pct(sorted, 0.95), _pct(sorted, 0.99),
+		sorted[-1]])
+	_say("BENCH advance=%.2fms overlay=%.2fms draw=%.2fms avg_bullets=%d" % [
+		_mean(_advance_us) / 1000.0, _mean(_overlay_us) / 1000.0, _mean(_draw_us) / 1000.0,
+		_bullet_samples / maxi(_frames.size(), 1)])
+	var parts := []
+	for name in _sections:
+		parts.append("%s=%.2fms" % [name, _sections[name] / 1000.0 / maxf(_frames.size(), 1.0)])
+	_say("BENCH sections %s" % " ".join(parts))
+	_say("BENCH drawn=%s" % world.draw_stats)
+	if _chunk_probe.visible:
+		var samples: Array[float] = _chunk_probe.get("samples")
+		_say("BENCH chunk_paint=%.2fms" % (_mean(samples) / 1000.0))
+	_say("BENCH draw_calls=%d objects_drawn=%d primitives=%d video_mem=%.1fMB" % [
+		Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
+		Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME),
+		Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME),
+		Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0])
+	_say("BENCH static_mem=%.1fMB objects=%d" % [Performance.get_monitor(Performance.MEMORY_STATIC) / 1048576.0,
+		Performance.get_monitor(Performance.OBJECT_COUNT)])
+	if out_path != "":
+		var file := FileAccess.open(out_path, FileAccess.WRITE)
+		file.store_string("\n".join(_lines))
+	get_tree().quit(0)
+
+
+func _say(line: String) -> void:
+	print(line)
+	_lines.append(line)
+
+
+static func _pct(sorted: Array, fraction: float) -> float:
+	return sorted[clampi(int(sorted.size() * fraction), 0, sorted.size() - 1)]
+
+
+static func _mean(values: Array[float]) -> float:
+	var total := 0.0
+	for value in values:
+		total += value
+	return total / maxf(values.size(), 1.0)
