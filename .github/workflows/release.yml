@@ -129,15 +129,7 @@ jobs:
           # .dmg would need a macOS host). Non-fatal: a mac-export hiccup must never
           # block the proven Web/Windows/Linux release — it's packaged only if present.
           echo "== export macOS -> build/macos/OpenRealm.zip"
-          echo "---- macOS preset as the runner sees it ----"
-          sed -n '/^\[preset.3\]/,/^\[preset.4\]/p' export_presets.cfg | grep -E 'name=|architecture|distribution_type|etc2|s3tc|texture_format' || true
-          echo "---- import_etc2_astc project setting ----"
-          grep -nE 'import_etc2_astc|import_s3tc' project.godot || echo "(none in project.godot)"
-          echo "--------------------------------------------"
-          ~/godot/godot --headless --path "$PROJECT_DIR" --export-release "macOS" build/macos/OpenRealm.zip --verbose > /tmp/mac.log 2>&1 || true
-          echo "---- macOS export diagnostic (filtered) ----"
-          grep -niE 'arch|universal|x86_64|arm64|etc2|astc|texture format|configuration error|cannot export|project export' /tmp/mac.log | head -40 || true
-          echo "--------------------------------------------"
+          ~/godot/godot --headless --path "$PROJECT_DIR" --export-release "macOS" build/macos/OpenRealm.zip || true
           if [ -f build/macos/OpenRealm.zip ]; then echo "macOS export OK"; else echo "WARNING: macOS export produced nothing — continuing without it"; fi
 
           chmod +x build/linux/OpenRealm.x86_64
