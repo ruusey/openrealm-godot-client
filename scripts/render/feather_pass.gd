@@ -42,6 +42,7 @@ func paint(canvas: CanvasItem, tiles: TileMapState, content: GameData,
 	var fringe := maxf(2.0, roundf(TILE_SIZE * TileFeather.FRACTION))
 	var count_all := not own.has_area()
 	var by_texture := {}
+	feathers.deferred = true
 
 	for tile_x in range(first.x, last.x + 1):
 		for tile_y in range(first.y, last.y + 1):
@@ -86,6 +87,8 @@ func paint(canvas: CanvasItem, tiles: TileMapState, content: GameData,
 	# Drawn grouped by texture, so a chunk's fringes cost a draw call per fringe
 	# texture rather than one per fringe; only where two fringes overlap at a
 	# corner does the order show, and only as a sliver.
+	feathers.deferred = false
+	TileFeather.flush()
 	for texture in by_texture:
 		for rect in by_texture[texture]:
 			canvas.draw_texture_rect(texture, rect, false)

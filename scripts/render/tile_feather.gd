@@ -31,7 +31,23 @@ const UPSAMPLE := 4
 const PEAK_ALPHA := 0.5
 enum { NORTH, SOUTH, WEST, EAST }
 
-var _variants := {}     # "id:direction" -> ImageTexture, or null when unbakeable
+## Baked fringes are packed onto shared pages, so every fringe a chunk draws
+## comes from one texture and batches into one draw call, not one per fringe
+## texture. A page is re-uploaded when fringes land on it; during a paint that
+## waits for flush(), once, rather than once a fringe.
+const PAGE_SIZE := 256
+const PAGE_PAD := 1
+
+## Texture2D sheet -> its Image, shared by every tile cut from it.
+static var _sheet_images := {}
+static var _pages: Array[ImageTexture] = []
+static var _page_images: Array[Image] = []
+static var _dirty_pages := {}
+static var _shelf := Vector2i.ZERO
+static var _shelf_height := 0
+var _variants := {}     # id * 4 + direction -> AtlasTexture, or null when unbakeable
+## Set by a pass that will flush() when it is done drawing.
+var deferred := false
 
 
 ## The fringe to draw along an edge shared with `tile_id`, or null.
@@ -39,10 +55,27 @@ func texture(content: GameData, tile_id: int, direction: int) -> Texture2D:
 	var key := tile_id * 4 + direction
 	if not _variants.has(key):
 		_variants[key] = _bake(content, tile_id, direction)
+		if not deferred:
+			flush()
 	return _variants[key]
 
 
-func _bake(content: GameData, tile_id: int, direction: int) -> ImageTexture:
+## A baked fringe's pixels, read from its page's own copy rather than back off the GPU.
+static func pixels(fringe: AtlasTexture) -> Image:
+	var page := _pages.find(fringe.atlas)
+	if page < 0:
+		return fringe.get_image()
+	return _page_images[page].get_region(Rect2i(fringe.region))
+
+
+## Uploads the pages fringes have been packed onto since the last flush.
+static func flush() -> void:
+	for page in _dirty_pages:
+		_pages[page].update(_page_images[page])
+	_dirty_pages.clear()
+
+
+func _bake(content: GameData, tile_id: int, direction: int) -> AtlasTexture:
 	var cell: Variant = cell_image(content, tile_id)
 	if cell == null:
 		return null
@@ -68,7 +101,37 @@ func _bake(content: GameData, tile_id: int, direction: int) -> ImageTexture:
 	fringe.resize(fringe.get_width() * UPSAMPLE, fringe.get_height() * UPSAMPLE,
 		Image.INTERPOLATE_NEAREST)
 	_fade(fringe, direction)
-	return ImageTexture.create_from_image(fringe)
+	return _pack(fringe)
+
+
+## A shelf packer: left to right along a shelf, a new shelf under the tallest
+## fringe on it, a new page when the page is full.
+static func _pack(fringe: Image) -> AtlasTexture:
+	var size := fringe.get_size()
+	if size.x > PAGE_SIZE or size.y > PAGE_SIZE:
+		var alone := AtlasTexture.new()
+		alone.atlas = ImageTexture.create_from_image(fringe)
+		alone.region = Rect2(Vector2.ZERO, size)
+		return alone
+	if _shelf.x + size.x > PAGE_SIZE:
+		_shelf = Vector2i(0, _shelf.y + _shelf_height + PAGE_PAD)
+		_shelf_height = 0
+	if _pages.is_empty() or _shelf.y + size.y > PAGE_SIZE:
+		var image := Image.create(PAGE_SIZE, PAGE_SIZE, false, Image.FORMAT_RGBA8)
+		_page_images.append(image)
+		_pages.append(ImageTexture.create_from_image(image))
+		_shelf = Vector2i.ZERO
+		_shelf_height = 0
+	var page := _pages.size() - 1
+	_page_images[page].blit_rect(fringe, Rect2i(Vector2i.ZERO, size), _shelf)
+	_dirty_pages[page] = true
+	var texture := AtlasTexture.new()
+	texture.atlas = _pages[page]
+	texture.region = Rect2(_shelf, size)
+	texture.filter_clip = true
+	_shelf.x += size.x + PAGE_PAD
+	_shelf_height = maxi(_shelf_height, size.y)
+	return texture
 
 
 ## Alpha ramp: PEAK_ALPHA at the seam edge falling to nothing at the far edge.
@@ -97,9 +160,15 @@ static func cell_image(content: GameData, tile_id: int) -> Variant:
 	# No null or zero-size guards here: atlas() refuses a sprite key it cannot
 	# load and any size at or below zero, so a non-null AtlasTexture always
 	# carries a real sheet and a real region.
-	var cell := atlas.atlas.get_image().get_region(Rect2i(atlas.region))
-	cell.convert(Image.FORMAT_RGBA8)
-	return cell
+	# get_image() reads the whole sheet back off the GPU, so each sheet is read
+	# once and its pixels kept: fringes are baked the first time a pair of tiles
+	# meets, which is mid-walk, as new ground streams in.
+	var sheet: Image = _sheet_images.get(atlas.atlas)
+	if sheet == null:
+		sheet = atlas.atlas.get_image()
+		sheet.convert(Image.FORMAT_RGBA8)
+		_sheet_images[atlas.atlas] = sheet
+	return sheet.get_region(Rect2i(atlas.region))
 
 
 ## Where a fringe sits within a cell: a shallow band hugging the shared edge.

@@ -36,7 +36,7 @@ func test_the_fringe_fades_away_from_the_seam():
 	# A north fringe is drawn along the cell's top edge, so it must be
 	# strongest at the top and vanish at the bottom. Inverted, the blend
 	# reads as a hard line with a halo behind it.
-	var image := feathers.texture(content, 1, TileFeather.NORTH).get_image()
+	var image := TileFeather.pixels(feathers.texture(content, 1, TileFeather.NORTH))
 	var seam := image.get_pixel(image.get_width() / 2, 0).a
 	var away := image.get_pixel(image.get_width() / 2, image.get_height() - 1).a
 	assert_gt(seam, away, "opaque at the seam, clear at the inner edge")
@@ -46,7 +46,7 @@ func test_the_fringe_fades_away_from_the_seam():
 func test_the_fringe_never_fully_hides_the_tile_beneath():
 	# Peak alpha is half, so both sides show a mix at the seam rather than one
 	# replacing the other.
-	var image := feathers.texture(content, 1, TileFeather.SOUTH).get_image()
+	var image := TileFeather.pixels(feathers.texture(content, 1, TileFeather.SOUTH))
 	var peak := 0.0
 	for y in image.get_height():
 		peak = maxf(peak, image.get_pixel(image.get_width() / 2, y).a)
