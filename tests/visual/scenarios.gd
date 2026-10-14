@@ -281,7 +281,7 @@ static func _walls(state: RealmState) -> void:
 		"flags": [ProjectileKind.MELEE_SWING]})
 
 
-static func _bullet(id: int, angle: float, position: Vector2, overrides: Dictionary) -> Dictionary:
+static func _bullet(id: int, angle: float, position: Vector2, overrides: Dictionary) -> Projectile:
 	var wire := {
 		"id": id, "projectileId": 87, "size": 16,
 		"pos": {"x": position.x, "y": position.y},

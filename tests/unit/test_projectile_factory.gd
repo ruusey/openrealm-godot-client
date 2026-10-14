@@ -69,7 +69,7 @@ func test_non_orbital_bullets_keep_a_zero_orbit():
 
 func test_predicted_bullets_read_the_group_definition():
 	var definition := {"size": 6, "magnitude": 7.0, "range": 200.0, "damage": 9, "flags": [10]}
-	var bullet := Projectile.predicted(-101, 5, Vector2(4, 4), 0.8, definition, 900)
+	var bullet := Projectile.predicted_shot(-101, 5, Vector2(4, 4), 0.8, definition, 900)
 	assert_eq(bullet["id"], -101)
 	assert_eq(bullet["group_id"], 5)
 	assert_eq(bullet["pos"], Vector2(4, 4))
@@ -81,19 +81,19 @@ func test_predicted_bullets_read_the_group_definition():
 
 func test_predicted_range_can_be_scaled_by_the_archetype():
 	var definition := {"range": 200.0, "magnitude": 1.0}
-	var bullet := Projectile.predicted(-1, 0, Vector2.ZERO, 0.0, definition, 0, 1.6)
+	var bullet := Projectile.predicted_shot(-1, 0, Vector2.ZERO, 0.0, definition, 0, 1.6)
 	assert_almost_eq(bullet["range"], 320.0, 0.0001)
 
 
 func test_predicted_bullets_take_extra_flags():
-	var bullet := Projectile.predicted(-1, 0, Vector2.ZERO, 0.0, {"flags": [10]}, 0, 1.0,
+	var bullet := Projectile.predicted_shot(-1, 0, Vector2.ZERO, 0.0, {"flags": [10]}, 0, 1.0,
 		[ProjectileKind.PASS_THROUGH_ENEMIES])
 	assert_true(ProjectileKind.has_flag(bullet, ProjectileKind.PASS_THROUGH_ENEMIES))
 	assert_true(ProjectileKind.has_flag(bullet, ProjectileKind.PLAYER_PROJECTILE))
 
 
 func test_extra_flags_are_not_duplicated():
-	var bullet := Projectile.predicted(-1, 0, Vector2.ZERO, 0.0,
+	var bullet := Projectile.predicted_shot(-1, 0, Vector2.ZERO, 0.0,
 		{"flags": [ProjectileKind.PASS_THROUGH_ENEMIES]}, 0, 1.0,
 		[ProjectileKind.PASS_THROUGH_ENEMIES])
 	assert_eq(bullet["flags"].count(ProjectileKind.PASS_THROUGH_ENEMIES), 1)
@@ -101,15 +101,15 @@ func test_extra_flags_are_not_duplicated():
 
 func test_predicted_flags_do_not_mutate_the_definition():
 	var definition := {"flags": [10]}
-	Projectile.predicted(-1, 0, Vector2.ZERO, 0.0, definition, 0, 1.0, [25])
+	Projectile.predicted_shot(-1, 0, Vector2.ZERO, 0.0, definition, 0, 1.0, [25])
 	assert_eq(definition["flags"], [10], "the shared content definition is left alone")
 
 
 func test_predicted_inverted_parametric_sets_invert():
-	var bullet := Projectile.predicted(-1, 0, Vector2.ZERO, 0.0,
+	var bullet := Projectile.predicted_shot(-1, 0, Vector2.ZERO, 0.0,
 		{"flags": [ProjectileKind.INVERTED_PARAMETRIC]}, 0)
 	assert_true(bullet["invert"])
 
 
 func test_centre_accounts_for_sprite_size():
-	assert_eq(Projectile.centre({"pos": Vector2(10, 10), "size": 8}), Vector2(14, 14))
+	assert_eq(Projectile.centre(Projectile.from_fields({"pos": Vector2(10, 10), "size": 8})), Vector2(14, 14))

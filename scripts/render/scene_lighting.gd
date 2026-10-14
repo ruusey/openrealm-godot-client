@@ -29,7 +29,6 @@ const MAX_BULLET_LIGHTS := 20
 ## Which bullets carry the travelling lights is re-picked every this many frames;
 ## in between, the picked ones' lights only follow them.
 const BULLET_LIGHT_RESELECT := 4
-const NO_BULLET := {}
 const BULLET_LIGHT_ENERGY := 1.6
 const MAX_TILE_LIGHTS := 24
 ## Lava/water glow reaches farther but dimmer. The pooled tile light sat right on the
@@ -229,9 +228,8 @@ func _place_bullet_lights() -> void:
 	var centre := _state.local.render_centre()
 	var found := 0
 	var limit := _bullet_lights.size()
-	for id in _state.projectiles.bullets:
-		var bullet: Dictionary = _state.projectiles.bullets[id]
-		var group_id := int(bullet.get("group_id", -1))
+	for bullet: Projectile in _state.projectiles.bullets.values():
+		var group_id := bullet.group_id
 		var light_def: Variant = _bullet_light_by_group.get(group_id)
 		if light_def == null:
 			# Resolved once per group (colour hex parsed there), not per bullet per frame.
@@ -239,8 +237,8 @@ func _place_bullet_lights() -> void:
 			_bullet_light_by_group[group_id] = light_def
 		if light_def.is_empty() or (visibility.any and visibility.hides(bullet)):
 			continue
-		var half := float(bullet.get("size", 8)) * 0.5
-		var at: Vector2 = bullet["pos"] + Vector2(half, half)
+		var half := bullet.size * 0.5
+		var at := bullet.pos + Vector2(half, half)
 		var distance := at.distance_squared_to(centre)
 		if found == limit and distance >= _near_distance[limit - 1]:
 			continue
@@ -254,7 +252,7 @@ func _place_bullet_lights() -> void:
 		_near_distance[slot] = distance
 		_near_at[slot] = at
 		_near_light[slot] = light_def
-		_near_id[slot] = id
+		_near_id[slot] = bullet.id
 		found = mini(found + 1, limit)
 	for i in limit:
 		var light := _bullet_lights[i]
@@ -275,13 +273,13 @@ func _follow_bullet_lights() -> void:
 	var bullets: Dictionary = _state.projectiles.bullets
 	for i in _bullet_lights_shown:
 		var light := _bullet_lights[i]
-		var bullet: Dictionary = bullets.get(_near_id[i], NO_BULLET)
-		if bullet.is_empty():
+		var bullet: Projectile = bullets.get(_near_id[i])
+		if bullet == null:
 			if light.visible:
 				light.visible = false
 			continue
-		var half := float(bullet.get("size", 8)) * 0.5
-		light.position = bullet["pos"] + Vector2(half, half)
+		var half := bullet.size * 0.5
+		light.position = bullet.pos + Vector2(half, half)
 
 
 ## The glowing tiles in view get a light each (nearest the player first), and the

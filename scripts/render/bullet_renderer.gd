@@ -41,6 +41,8 @@ const ART_SHEET := 6
 const ART_REGION := 7
 ## Whether its sheet goes through the MultiMesh path.
 const ART_INSTANCED := 8
+## The group's spin entry, which ART_TURN is worked out from each frame.
+const ART_SPIN := 9
 var _outline_budget := OUTLINE_BUDGET
 var _afterimage_budget := 0 if OS.has_feature("web") else AFTERIMAGE_BUDGET
 
@@ -61,6 +63,9 @@ static var _quad: ArrayMesh
 var _bodies := RID()
 var _material: ShaderMaterial
 var _meshes := {}   # sheet -> MultiMesh
+## Resolved art by group id, kept across frames for the content it came from.
+var _art := {}
+var _art_content: GameData
 
 
 func _ready() -> void:
@@ -101,14 +106,13 @@ func paint(canvas: CanvasItem, state: RealmState, content: GameData,
 	var now_ms: int = clock.call()
 	var visibility := BulletVisibility.of(state)
 	var any_hidden := visibility.any
+	# What survives the cull, bucketed by group and then the groups by sprite
+	# sheet: bullets need no order among themselves, and drawn sheet by sheet
+	# they batch into a draw call per sheet instead of one each time two
+	# neighbours' sheets differ.
 	var groups := {}
-	# What survives the cull, bucketed by sprite sheet: bullets need no order
-	# among themselves, and drawn sheet by sheet they batch into a draw call
-	# per sheet instead of one each time two neighbours' sheets differ.
-	var sheets := {}
-	for id in state.projectiles.bullets:
-		var bullet: Dictionary = state.projectiles.bullets[id]
-		var traits: int = bullet.get("traits", -1)
+	for bullet: Projectile in state.projectiles.bullets.values():
+		var traits := bullet.traits
 		if traits < 0:
 			traits = ProjectileKind.traits(bullet)
 		# The swing animation stands in for a melee arc; both references
@@ -118,34 +122,50 @@ func paint(canvas: CanvasItem, state: RealmState, content: GameData,
 		# Off-screen first: it is most of a bullet hell, and the cheapest test.
 		# A wall anchored off-screen can still have its body on-screen.
 		if traits & ProjectileKind.TRAIT_LINE_SEGMENT:
-			if not view.grow(float(bullet.get("length", 0.0))).has_point(bullet["pos"]):
+			if not view.grow(bullet.length).has_point(bullet.pos):
 				continue
-		elif not view.has_point(bullet["pos"]):
+		elif not view.has_point(bullet.pos):
 			continue
 		if any_hidden and visibility.hides(bullet):
 			continue
 		drawn += 1
-		var group_id := int(bullet.get("group_id", -1))
-		var art: Array = groups.get(group_id, NO_ART)
-		if art.is_empty():
-			art = _resolve_group(content, group_id, now_ms)
-			groups[group_id] = art
-		var batch: Array = sheets.get(art[ART_SHEET], NO_ART)
+		var batch: Array = groups.get(bullet.group_id, NO_ART)
 		if batch.is_empty():
 			batch = []
-			sheets[art[ART_SHEET]] = batch
+			groups[bullet.group_id] = batch
 		batch.append(bullet)
-		batch.append(art)
+	# [art, bullets, art, bullets...] per sheet.
+	var sheets := {}
+	if _art_content != content:
+		_art_content = content
+		_art.clear()
+	for group_id in groups:
+		var art: Array = _art.get(group_id, NO_ART)
+		if art.is_empty():
+			art = _resolve_group(content, group_id, now_ms)
+			# A sheet still loading resolves to no texture: asked again next frame.
+			if art[ART_TEXTURE] != null:
+				_art[group_id] = art
+		elif not art[ART_SPIN].is_empty():
+			art[ART_TURN] = ProjectileArt.spun(art[ART_SPIN], now_ms)
+		var sheet_groups: Array = sheets.get(art[ART_SHEET], NO_ART)
+		if sheet_groups.is_empty():
+			sheet_groups = []
+			sheets[art[ART_SHEET]] = sheet_groups
+		sheet_groups.append(art)
+		sheet_groups.append(groups[group_id])
 	var outlines := SpriteOutline.enabled
 	if _bodies.is_valid():
 		RenderingServer.canvas_item_clear(_bodies)
 	for sheet in sheets:
-		var batch: Array = sheets[sheet]
-		if _bodies.is_valid() and canvas == self and batch[1][ART_INSTANCED]:
-			_draw_instanced(sheet, batch, outlines)
+		var sheet_groups: Array = sheets[sheet]
+		if _bodies.is_valid() and canvas == self and sheet_groups[0][ART_INSTANCED]:
+			_draw_instanced(sheet, sheet_groups, outlines)
 			continue
-		for i in range(0, batch.size(), 2):
-			_draw_bullet(canvas, batch[i], batch[i + 1], outlines)
+		for i in range(0, sheet_groups.size(), 2):
+			var art: Array = sheet_groups[i]
+			for bullet in sheet_groups[i + 1]:
+				_draw_bullet(canvas, bullet, art, outlines)
 	canvas.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	return drawn
 
@@ -153,61 +173,66 @@ func paint(canvas: CanvasItem, state: RealmState, content: GameData,
 ## One sheet's shots into its MultiMesh: a transform and a region per sprite, a
 ## wall's tiles each a sprite of their own. Afterimages still stamp on this canvas
 ## item, which draws under the instanced bodies.
-func _draw_instanced(sheet: Texture2D, batch: Array, outlines: bool) -> void:
+func _draw_instanced(sheet: Texture2D, sheet_groups: Array, outlines: bool) -> void:
 	var needed := 0
-	for i in range(0, batch.size(), 2):
-		needed += _sprites_in(batch[i])
+	for i in range(1, sheet_groups.size(), 2):
+		for bullet: Projectile in sheet_groups[i]:
+			needed += 1 if bullet.length <= 0.0 else _sprites_in(bullet)
 	var mesh := _mesh_for(sheet, needed)
 	var outline_flag := Color(1.0 if outlines else 0.0, 1.0, 1.0, 1.0)
 	var flat := Color(0.0, 1.0, 1.0, 1.0)
+	var grow := 2.0 * SpriteOutline.OFFSET if outlines else 0.0
 	var at := 0
-	for i in range(0, batch.size(), 2):
-		var bullet: Dictionary = batch[i]
-		var art: Array = batch[i + 1]
-		var size: float = maxf(float(bullet.get("size", 8)), 4.0)
-		var half := size * 0.5
-		var centre: Vector2 = bullet["pos"] + Vector2(half, half)
+	for i in range(0, sheet_groups.size(), 2):
+		var art: Array = sheet_groups[i]
+		var bullets: Array = sheet_groups[i + 1]
 		var region: Color = art[ART_REGION]
-		var angle: float = bullet["angle"]
 		var offset: float = art[ART_OFFSET]
 		var turn: float = art[ART_TURN]
 		var additive: bool = art[ART_ADDITIVE]
-		var length := float(bullet.get("length", 0.0))
-		if length > 0.0 and ProjectileKind.traits(bullet) & ProjectileKind.TRAIT_LINE_SEGMENT:
-			# _draw_wall's row of tiles, unoutlined (they overlap each other).
-			var axis := Vector2(cos(angle), -sin(angle))
-			var tiles := maxi(1, int(round(length / size)))
-			var tile_rotation := -angle + offset + (turn if additive else 0.0)
-			for k in tiles + 1:
-				var along := -length * 0.5 + (float(k) / float(tiles)) * length
-				mesh.set_instance_transform_2d(at, Transform2D(tile_rotation, Vector2(size, size), 0.0,
-					centre + axis * along))
-				mesh.set_instance_color(at, flat)
-				mesh.set_instance_custom_data(at, region)
-				at += 1
-			continue
-		var rotation: float = offset if art[ART_NO_ROTATE] \
-			else ((-angle + PI * 0.5 + offset + turn) if additive else turn)
+		var no_rotate: bool = art[ART_NO_ROTATE]
 		var afterimage: Color = art[ART_AFTERIMAGE]
-		if afterimage.a > 0.0 and afterimaged < _afterimage_budget:
-			BulletAfterimage.stamp(self, art[ART_TEXTURE], centre, size, angle, rotation, afterimage)
-			afterimaged += 1
-		# An outlined quad is a unit wider each side, for the silhouette.
-		var quad := size + 2.0 * SpriteOutline.OFFSET if outlines else size
-		mesh.set_instance_transform_2d(at, Transform2D(rotation, Vector2(quad, quad), 0.0, centre))
-		mesh.set_instance_color(at, outline_flag)
-		mesh.set_instance_custom_data(at, region)
-		at += 1
-	if outlines:
-		outlined += batch.size() / 2
+		var trails := afterimage.a > 0.0
+		var heading_offset := PI * 0.5 + offset + turn
+		if outlines:
+			outlined += bullets.size()
+		for bullet: Projectile in bullets:
+			var size := maxf(float(bullet.size), 4.0)
+			var half := size * 0.5
+			var centre := bullet.pos + Vector2(half, half)
+			var angle := bullet.angle
+			var length := bullet.length
+			if length > 0.0 and bullet.traits & ProjectileKind.TRAIT_LINE_SEGMENT:
+				# _draw_wall's row of tiles, unoutlined (they overlap each other).
+				var axis := Vector2(cos(angle), -sin(angle))
+				var tiles := maxi(1, int(round(length / size)))
+				var tile_rotation := -angle + offset + (turn if additive else 0.0)
+				for k in tiles + 1:
+					var along := -length * 0.5 + (float(k) / float(tiles)) * length
+					mesh.set_instance_transform_2d(at, Transform2D(tile_rotation, Vector2(size, size), 0.0,
+						centre + axis * along))
+					mesh.set_instance_color(at, flat)
+					mesh.set_instance_custom_data(at, region)
+					at += 1
+				continue
+			var rotation := offset if no_rotate else ((heading_offset - angle) if additive else turn)
+			if trails and afterimaged < _afterimage_budget:
+				BulletAfterimage.stamp(self, art[ART_TEXTURE], centre, size, angle, rotation, afterimage)
+				afterimaged += 1
+			# An outlined quad is a unit wider each side, for the silhouette.
+			var quad := size + grow
+			mesh.set_instance_transform_2d(at, Transform2D(rotation, Vector2(quad, quad), 0.0, centre))
+			mesh.set_instance_color(at, outline_flag)
+			mesh.set_instance_custom_data(at, region)
+			at += 1
 	mesh.visible_instance_count = at
 	RenderingServer.canvas_item_add_multimesh(_bodies, mesh.get_rid(), sheet.get_rid())
 
 
-static func _sprites_in(bullet: Dictionary) -> int:
-	var length := float(bullet.get("length", 0.0))
-	if length > 0.0 and ProjectileKind.traits(bullet) & ProjectileKind.TRAIT_LINE_SEGMENT:
-		return maxi(1, int(round(length / maxf(float(bullet.get("size", 8)), 4.0)))) + 1
+static func _sprites_in(bullet: Projectile) -> int:
+	var length := bullet.length
+	if length > 0.0 and bullet.traits & ProjectileKind.TRAIT_LINE_SEGMENT:
+		return maxi(1, int(round(length / maxf(float(bullet.size), 4.0)))) + 1
 	return 1
 
 
@@ -244,11 +269,11 @@ static func unit_quad() -> ArrayMesh:
 	return _quad
 
 
-func _draw_bullet(canvas: CanvasItem, bullet: Dictionary, art: Array, outlines: bool) -> void:
-	var size: float = maxf(float(bullet.get("size", 8)), 4.0)
+func _draw_bullet(canvas: CanvasItem, bullet: Projectile, art: Array, outlines: bool) -> void:
+	var size := maxf(float(bullet.size), 4.0)
 	var texture: Texture2D = art[ART_TEXTURE]
 	var half := size * 0.5
-	var centre: Vector2 = bullet["pos"] + Vector2(half, half)
+	var centre := bullet.pos + Vector2(half, half)
 	if texture == null:
 		canvas.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		canvas.draw_circle(centre, half, Color(1.0, 0.9, 0.35))
@@ -257,7 +282,7 @@ func _draw_bullet(canvas: CanvasItem, bullet: Dictionary, art: Array, outlines: 
 	# most groups carry an angleOffset of PI/4. Rotating on the travel
 	# angle alone leaves every shot 45 degrees off its heading. Mirrors
 	# the web client: -angle + PI/2 + angleOffset.
-	var angle: float = bullet["angle"]
+	var angle := bullet.angle
 	var offset: float = art[ART_OFFSET]
 	# A continuous spin replaces the heading outright -- a shuriken does
 	# not point where it is going -- while an additive one turns on top of
@@ -265,8 +290,8 @@ func _draw_bullet(canvas: CanvasItem, bullet: Dictionary, art: Array, outlines: 
 	# continuous one would break the line they are meant to form.
 	var turn: float = art[ART_TURN]
 	var additive: bool = art[ART_ADDITIVE]
-	var length := float(bullet.get("length", 0.0))
-	if length > 0.0 and ProjectileKind.traits(bullet) & ProjectileKind.TRAIT_LINE_SEGMENT:
+	var length := bullet.length
+	if length > 0.0 and bullet.traits & ProjectileKind.TRAIT_LINE_SEGMENT:
 		_draw_wall(canvas, texture, centre, size, angle, offset,
 			length, turn if additive else 0.0)
 		return
@@ -295,12 +320,10 @@ func _draw_bullet(canvas: CanvasItem, bullet: Dictionary, art: Array, outlines: 
 	canvas.draw_texture_rect(texture, Rect2(-half, -half, size, size), false)
 
 
-## A group's render attributes resolved once per frame: the ProjectileArt getters
-## are per-group memoized but still a call and a dict lookup each, and a bullet
-## hell draws hundreds of bullets from a handful of groups -- so each group is
-## resolved on first sight into a flat array (ART_* indices) reused for its every
-## bullet that frame. Afterimages are a native-only trail (the web skips them for
-## the draw-call budget).
+## A group's render attributes as a flat array (ART_* indices), resolved on first
+## sight and kept: only ART_TURN changes, and paint() refreshes it each frame.
+## Afterimages are a native-only trail (the web skips them for the draw-call
+## budget).
 func _resolve_group(content: GameData, group_id: int, now_ms: int) -> Array:
 	var spin := content.projectiles_art.spin(group_id)
 	var texture: Texture2D = content.projectile_texture(group_id)
@@ -323,6 +346,7 @@ func _resolve_group(content: GameData, group_id: int, now_ms: int) -> Array:
 		sheet,
 		region,
 		instanced,
+		spin,
 	]
 
 
@@ -366,5 +390,5 @@ static func _draw_wall(canvas: CanvasItem, texture: Texture2D, centre: Vector2,
 
 ## Whether a bullet is suppressed entirely (see BulletVisibility). A loop over
 ## many bullets takes one BulletVisibility for the frame instead.
-static func _hidden(state: RealmState, bullet: Dictionary) -> bool:
+static func _hidden(state: RealmState, bullet: Projectile) -> bool:
 	return BulletVisibility.of(state).hides(bullet)

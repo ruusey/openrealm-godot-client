@@ -13,7 +13,7 @@ func _build(archetype := {}, definitions := [DEFINITION], base_angle := 0.0) -> 
 func test_single_shot_by_default():
 	var bullets := _build()
 	assert_eq(bullets.size(), 1)
-	var bullet: Dictionary = bullets.values()[0]
+	var bullet: Projectile = bullets.values()[0]
 	assert_eq(bullet["group_id"], 7)
 	assert_eq(bullet["pos"], Vector2(50, 50))
 	assert_true(bullet["predicted"])
@@ -73,7 +73,7 @@ func test_projectile_angle_offsets_stack_on_the_aim():
 
 func test_range_multiplier_and_piercing_come_from_the_archetype():
 	var bullets := _build({"rangeMul": 1.5, "piercing": true})
-	var bullet: Dictionary = bullets.values()[0]
+	var bullet: Projectile = bullets.values()[0]
 	assert_almost_eq(bullet["range"], 300.0, 0.0001)
 	assert_true(ProjectileKind.has_flag(bullet, ProjectileKind.PASS_THROUGH_ENEMIES))
 
@@ -93,7 +93,7 @@ func test_every_projectile_in_the_group_is_fanned():
 # --- claiming --------------------------------------------------------------
 
 func _prediction(angle: float, position := Vector2.ZERO) -> Dictionary:
-	return {-1: Projectile.predicted(-1, 7, position, angle, DEFINITION, 0)}
+	return {-1: Projectile.predicted_shot(-1, 7, position, angle, DEFINITION, 0)}
 
 
 func test_claims_a_player_shot_by_angle_alone():

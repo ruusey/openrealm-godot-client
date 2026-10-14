@@ -23,10 +23,10 @@ const SPEC_DISPERSION := 4
 ## a slow bullet emits as steadily as a fast one whatever the frame rate,
 ## and no frame emits more than four. Each particle starts within the
 ## bullet's size of its centre, drifts outward slowly, and grows.
-static func trail(field: ParticleField, centre: Vector2, bullet: Dictionary, fx: Dictionary,
+static func trail(field: ParticleField, centre: Vector2, bullet: Projectile, fx: Dictionary,
 		delta: float) -> void:
 	var spec := trail_spec(fx)
-	trail_from(field, centre, bullet, spec, float(bullet.get("fx_acc", 0.0)) + spec[SPEC_RATE] * delta)
+	trail_from(field, centre, bullet, spec, bullet.fx_acc + spec[SPEC_RATE] * delta)
 
 
 ## A trail entry's numbers resolved once (its colour is a hex string to parse):
@@ -42,10 +42,10 @@ static func trail_spec(fx: Dictionary) -> Array:
 
 
 ## Emits the whole particles `accumulated` has built up from a resolved spec.
-static func trail_from(field: ParticleField, centre: Vector2, bullet: Dictionary, spec: Array,
+static func trail_from(field: ParticleField, centre: Vector2, bullet: Projectile, spec: Array,
 		accumulated: float) -> void:
 	var emitted := int(accumulated)
-	bullet["fx_acc"] = accumulated - emitted
+	bullet.fx_acc = accumulated - emitted
 	var colour: Color = spec[SPEC_COLOUR]
 	var seconds: float = spec[SPEC_SECONDS]
 	var base: float = spec[SPEC_SIZE]

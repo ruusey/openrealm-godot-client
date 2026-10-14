@@ -20,7 +20,7 @@ const NOT_STRAIGHT := ProjectileKind.TRAIT_ORBITAL | ProjectileKind.TRAIT_PARAME
 	| ProjectileKind.TRAIT_SPINS | ProjectileKind.TRAIT_HOMING | ProjectileKind.TRAIT_SPEED_CURVE
 
 
-static func step(bullet: Dictionary, bullet_scale: float, now_ms := -1) -> void:
+static func step(bullet: Projectile, bullet_scale: float, now_ms := -1) -> void:
 	var traits := ProjectileKind.traits(bullet)
 	if traits & ProjectileKind.TRAIT_ORBITAL:
 		_orbital(bullet, bullet_scale)
@@ -30,62 +30,62 @@ static func step(bullet: Dictionary, bullet_scale: float, now_ms := -1) -> void:
 		# A LINE_SEGMENT wall with a frequency sweeps around its anchor: the
 		# facing angle advances first, then it moves along the new heading.
 		if traits & ProjectileKind.TRAIT_SPINS:
-			bullet["angle"] += deg_to_rad(bullet["frequency"] * bullet_scale)
+			bullet.angle += deg_to_rad(bullet.frequency * bullet_scale)
 		straight(bullet, bullet_scale, now_ms)
 
 
-static func straight(bullet: Dictionary, bullet_scale: float, now_ms := -1) -> void:
-	var speed: float = bullet["magnitude"]
+static func straight(bullet: Projectile, bullet_scale: float, now_ms := -1) -> void:
+	var speed := bullet.magnitude
 	if ProjectileKind.traits(bullet) & ProjectileKind.TRAIT_SPEED_CURVE:
 		speed *= ProjectileSpeed.multiplier(bullet,
 			now_ms if now_ms >= 0 else Time.get_ticks_msec())
-	var step_size: float = speed * bullet_scale
-	var angle: float = bullet["angle"]
-	bullet["pos"] += Vector2(sin(angle), cos(angle)) * step_size
+	var step_size := speed * bullet_scale
+	var angle := bullet.angle
+	bullet.pos += Vector2(sin(angle), cos(angle)) * step_size
 	# |(sin, cos)| == 1, so distance travelled is exactly the step size.
-	bullet["traveled"] += absf(step_size)
+	bullet.traveled += absf(step_size)
 
 
 ## Straight travel plus a sinusoidal offset perpendicular to it. The wave is a
 ## position offset, so each tick applies the *change* in offset, not a velocity.
-static func _parametric(bullet: Dictionary, bullet_scale: float) -> void:
-	var amplitude: float = bullet["amplitude"]
-	var previous: float = amplitude * sin(deg_to_rad(bullet["time_step"]))
-	bullet["time_step"] = fmod(bullet["time_step"] + bullet["frequency"] * bullet_scale, 360.0)
-	var current: float = amplitude * sin(deg_to_rad(bullet["time_step"]))
-	var offset_delta := (current - previous) * (-1.0 if bullet["invert"] else 1.0)
+static func _parametric(bullet: Projectile, bullet_scale: float) -> void:
+	var amplitude := bullet.amplitude
+	var previous := amplitude * sin(deg_to_rad(bullet.time_step))
+	bullet.time_step = fmod(bullet.time_step + bullet.frequency * bullet_scale, 360.0)
+	var current := amplitude * sin(deg_to_rad(bullet.time_step))
+	var offset_delta := (current - previous) * (-1.0 if bullet.invert else 1.0)
 
-	var angle: float = bullet["angle"]
-	var forward: Vector2 = ProjectileAngle.direction(angle) * bullet["magnitude"] * bullet_scale
-	bullet["pos"] += forward + ProjectileAngle.perpendicular(angle) * offset_delta
+	var angle := bullet.angle
+	var forward := Vector2(sin(angle), cos(angle)) * bullet.magnitude * bullet_scale
+	bullet.pos += forward + Vector2(cos(angle), -sin(angle)) * offset_delta
 	# Range is spent on forward motion only, never on the oscillation.
-	bullet["traveled"] += bullet["magnitude"] * bullet_scale
+	bullet.traveled += bullet.magnitude * bullet_scale
 
 
-static func _orbital(bullet: Dictionary, bullet_scale: float) -> void:
-	var delta := deg_to_rad(bullet["frequency"] * bullet_scale)
-	bullet["orbit_phase"] += delta
-	bullet["pos"] = bullet["orbit_centre"] + Vector2(
-		cos(bullet["orbit_phase"]), sin(bullet["orbit_phase"])) * bullet["orbit_radius"]
+static func _orbital(bullet: Projectile, bullet_scale: float) -> void:
+	var delta := deg_to_rad(bullet.frequency * bullet_scale)
+	bullet.orbit_phase += delta
+	bullet.pos = bullet.orbit_centre + Vector2(
+		cos(bullet.orbit_phase), sin(bullet.orbit_phase)) * bullet.orbit_radius
 	# Range is spent as arc length.
-	bullet["traveled"] += bullet["orbit_radius"] * absf(delta)
+	bullet.traveled += bullet.orbit_radius * absf(delta)
 
 
-static func is_expired(bullet: Dictionary, now_ms: int) -> bool:
-	if bullet["traveled"] > bullet["range"]:
+static func is_expired(bullet: Projectile, now_ms: int) -> bool:
+	if bullet.traveled > bullet.range:
 		return true
-	return (now_ms - int(bullet["created_ms"])) > MAX_LIFETIME_MS
+	return (now_ms - bullet.created_ms) > MAX_LIFETIME_MS
 
 
 ## Advances a newly received bullet to roughly where the server has it by now.
 ## Only plain straight bullets can be fast-forwarded: orbital, parametric and
 ## spinning motion depend on accumulated phase, homing on a target position and
 ## speed curves on elapsed lifetime, so guessing puts any of them out of step.
-static func catch_up(bullet: Dictionary, one_way_latency_ms: float) -> void:
-	if bullet["magnitude"] <= 0.0 or ProjectileKind.traits(bullet) & NOT_STRAIGHT:
+static func catch_up(bullet: Projectile, one_way_latency_ms: float) -> void:
+	if bullet.magnitude <= 0.0 or ProjectileKind.traits(bullet) & NOT_STRAIGHT:
 		return
 	var scale := minf(one_way_latency_ms / 1000.0, MAX_CATCHUP_SECONDS) * TICK_RATE
 	if scale <= 0.5:
 		return
 	straight(bullet, scale)
-	bullet["created_ms"] = int(bullet["created_ms"]) - int(one_way_latency_ms)
+	bullet.created_ms -= int(one_way_latency_ms)

@@ -45,7 +45,7 @@ static func build(shot_number: int, group_id: int, definitions: Array, base_angl
 			# Negative ids keep predictions out of the server id space.
 			var local_id := -(shot_number * 100 + index)
 			index += 1
-			built[local_id] = Projectile.predicted(local_id, group_id, origin,
+			built[local_id] = Projectile.predicted_shot(local_id, group_id, origin,
 				definition_angle + offset, definition, now_ms, range_multiplier, extra_flags)
 	return built
 
@@ -80,17 +80,17 @@ static func claim(bullets: Dictionary, wire: Dictionary, server_id: int, owner_i
 	var best_diff := ANGLE_TOLERANCE
 	var found := false
 	for local_id in bullets:
-		var prediction: Dictionary = bullets[local_id]
+		var prediction: Projectile = bullets[local_id]
 		# ONLY an actual local prediction can be claimed. The id sign is NOT a valid
 		# test: server bullet ids are random longs and are frequently NEGATIVE, so the
 		# old `local_id >= 0` skip treated a previous same-group shot's live bullets as
 		# predictions -- a new volley then "claimed" them and its own bolts never drew
 		# (the missing-projectile bug, worst on rapid fire of a many-bullet weapon).
-		if not bool(prediction.get("predicted", false)):
+		if not prediction.predicted:
 			continue
-		if int(prediction.get("group_id", -1)) != incoming_group:
+		if prediction.group_id != incoming_group:
 			continue
-		var claimed := int(prediction.get("server_id", 0))
+		var claimed := prediction.server_id
 		# Already adopted this exact server bullet -- the 2s full-snapshot reconcile
 		# re-sends it, so without this the server copy gets added alongside the
 		# prediction and the shot draws twice (the "duplicated projectile").
@@ -98,12 +98,12 @@ static func claim(bullets: Dictionary, wire: Dictionary, server_id: int, owner_i
 			return true
 		if claimed != 0:
 			continue
-		var diff := absf(angle_difference(prediction["angle"], incoming_angle))
+		var diff := absf(angle_difference(prediction.angle, incoming_angle))
 		if diff <= best_diff:
 			best_diff = diff
 			best_id = local_id
 			found = true
 	if found:
-		bullets[best_id]["server_id"] = server_id
+		(bullets[best_id] as Projectile).server_id = server_id
 		return true
 	return false

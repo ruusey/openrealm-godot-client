@@ -18,7 +18,7 @@ func before_each():
 	player.position = Vector2(100, 100)
 
 
-func _bullet(overrides := {}) -> Dictionary:
+func _bullet(overrides := {}) -> Projectile:
 	var bullet := {
 		"pos": Vector2.ZERO, "size": 8, "angle": 0.0, "magnitude": 4.0,
 		"range": 1000.0, "traveled": 0.0, "flags": [], "invert": false,
@@ -28,7 +28,7 @@ func _bullet(overrides := {}) -> Dictionary:
 		"anchor_offset": Vector2.ZERO, "created_ms": now,
 	}
 	bullet.merge(overrides, true)
-	return bullet
+	return Projectile.from_fields(bullet)
 
 
 # --- speed curves ----------------------------------------------------------

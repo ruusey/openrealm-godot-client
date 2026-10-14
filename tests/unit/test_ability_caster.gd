@@ -123,7 +123,7 @@ func test_a_projectile_group_is_predicted_from_the_caster():
 	assert_eq(state.projectiles.bullets.size(), 1)
 	var id: int = state.projectiles.bullets.keys()[0]
 	assert_lt(id, 0, "a local id, out of the server's space")
-	var bullet: Dictionary = state.projectiles.bullets[id]
+	var bullet: Projectile = state.projectiles.bullets[id]
 	assert_eq(bullet["group_id"], 12)
 	assert_eq(bullet["pos"], state.local.position, "from the caster")
 	assert_almost_eq(bullet["angle"], ProjectileAngle.aim(_centre(), target), 0.0001, "aimed at the point")
@@ -138,7 +138,7 @@ func test_cursor_spawned_shots_and_homing_ones():
 	var target := _centre() + Vector2(100, 0)
 	caster.cast(2, target)
 	assert_eq(state.projectiles.bullets.size(), 1)
-	var bullet: Dictionary = state.projectiles.bullets.values()[0]
+	var bullet: Projectile = state.projectiles.bullets.values()[0]
 	assert_eq(bullet["pos"], target - Vector2.ONE * GameConstants.PLAYER_SIZE * 0.5)
 	assert_almost_eq(bullet["angle"], PI / 2.0, 0.0001, "the preset heading, not the aim")
 	assert_false(ProjectileKind.HOMING in bullet["flags"])

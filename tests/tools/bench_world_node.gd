@@ -310,10 +310,9 @@ func _send_moves() -> void:
 
 func _send_unloads() -> void:
 	var gone := []
-	for id in state.projectiles.bullets:
-		var bullet: Dictionary = state.projectiles.bullets[id]
-		if bullet["traveled"] > bullet["range"]:
-			gone.append(id)
+	for bullet: Projectile in state.projectiles.bullets.values():
+		if bullet.traveled > bullet.range:
+			gone.append(bullet.id)
 	if not gone.is_empty():
 		state.apply_packet("UnloadPacket", {"bullets": gone})
 

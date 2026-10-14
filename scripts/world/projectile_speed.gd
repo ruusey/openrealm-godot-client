@@ -18,30 +18,31 @@ const DEFAULT_LIFETIME_TICKS := 192
 const DEFAULT_SHARPNESS := 4.0
 
 
-static func multiplier(bullet: Dictionary, now_ms: int) -> float:
+static func multiplier(bullet: Projectile, now_ms: int) -> float:
 	if not ProjectileKind.has_speed_curve(bullet):
 		return 1.0
 
-	var ticks: float = float(bullet.get("lifetime_ticks", 0))
+	var ticks := float(bullet.lifetime_ticks)
 	if ticks <= 0.0:
 		ticks = DEFAULT_LIFETIME_TICKS
 	var life_ms := ticks * 1000.0 / GameConstants.TICK_RATE
-	var progress := clampf((now_ms - int(bullet.get("created_ms", now_ms))) / life_ms, 0.0, 1.0)
+	var progress := clampf((now_ms - bullet.created_ms) / life_ms, 0.0, 1.0)
 
-	var sharpness: float = float(bullet.get("frequency", 0))
+	var sharpness := bullet.frequency
 	if sharpness <= 0.0:
 		sharpness = DEFAULT_SHARPNESS
 
 	# The normalizers depend only on the (constant-per-bullet) sharpness, so they
 	# are computed once and cached -- leaving a single exp() per tick, not three.
 	var ramp: bool = ProjectileKind.has_flag(bullet, ProjectileKind.SPEED_RAMP)
-	if not bullet.has("curve_den"):
+	if not bullet.curve_ready:
+		bullet.curve_ready = true
 		if ramp:
-			bullet["curve_end"] = 0.0
-			bullet["curve_den"] = exp(sharpness) - 1.0
+			bullet.curve_end = 0.0
+			bullet.curve_den = exp(sharpness) - 1.0
 		else:
-			bullet["curve_end"] = exp(-sharpness)
-			bullet["curve_den"] = 1.0 - bullet["curve_end"]
+			bullet.curve_end = exp(-sharpness)
+			bullet.curve_den = 1.0 - bullet.curve_end
 	if ramp:
-		return (exp(sharpness * progress) - 1.0) / bullet["curve_den"]
-	return (exp(-sharpness * progress) - bullet["curve_end"]) / bullet["curve_den"]
+		return (exp(sharpness * progress) - 1.0) / bullet.curve_den
+	return (exp(-sharpness * progress) - bullet.curve_end) / bullet.curve_den

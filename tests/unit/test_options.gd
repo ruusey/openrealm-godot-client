@@ -55,9 +55,9 @@ func test_outlines_and_wall_bands_follow_their_switches():
 func test_other_players_bullets_hide_but_ours_and_enemies_never_do():
 	state.apply_packet("LoadPacket", {"players": [WireHelper.player(1, "me", Vector2.ZERO),
 		WireHelper.player(2, "them", Vector2(10, 0))]})
-	var theirs := {"src_entity_id": 2}
-	var ours := {"src_entity_id": 1}
-	var enemy := {"src_entity_id": 77}
+	var theirs := Projectile.from_fields({"src_entity_id": 2})
+	var ours := Projectile.from_fields({"src_entity_id": 1})
+	var enemy := Projectile.from_fields({"src_entity_id": 77})
 	assert_false(BulletRenderer._hidden(state, theirs), "on by default")
 	state.settings.set_on("show_other_bullets", false)
 	assert_true(BulletRenderer._hidden(state, theirs))

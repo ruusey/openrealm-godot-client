@@ -3,7 +3,7 @@ extends GutTest
 ## The deterministic integrator. These numbers are the server's: if this drifts
 ## the client and server disagree about where every bullet is.
 
-func _bullet(overrides := {}) -> Dictionary:
+func _bullet(overrides := {}) -> Projectile:
 	var bullet := {
 		"pos": Vector2.ZERO, "angle": 0.0, "magnitude": 5.0, "range": 100.0,
 		"traveled": 0.0, "flags": [], "invert": false, "time_step": 0.0,
@@ -11,7 +11,7 @@ func _bullet(overrides := {}) -> Dictionary:
 		"orbit_radius": 0.0, "orbit_phase": 0.0, "created_ms": 0, "size": 8,
 	}
 	bullet.merge(overrides, true)
-	return bullet
+	return Projectile.from_fields(bullet)
 
 
 func test_straight_travel_follows_the_angle():

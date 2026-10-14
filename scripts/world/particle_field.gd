@@ -79,9 +79,10 @@ func _emit(delta: float, bullets: Dictionary, hidden: Variant) -> void:
 	var visibility: BulletVisibility = hidden if hidden is BulletVisibility else null
 	var test: Callable = hidden if hidden is Callable else Callable()
 	var any_hidden := (visibility != null and visibility.any) or test.is_valid()
-	for id in bullets:
-		var bullet: Dictionary = bullets[id]
-		var group_id := int(bullet.get("group_id", -1))
+	for bullet: Projectile in bullets.values():
+		if bullet.fx_kind == 0:
+			continue
+		var group_id := bullet.group_id
 		var fx: Dictionary = _fx_by_group.get(group_id, NO_FX)
 		if fx.is_empty():
 			fx = _art.fx(group_id)
@@ -90,32 +91,34 @@ func _emit(delta: float, bullets: Dictionary, hidden: Variant) -> void:
 		var muzzle: Dictionary = fx["muzzle"]
 		var bursts: bool = not muzzle.is_empty() or not fx["impact"].is_empty()
 		if trail.is_empty() and not bursts:
+			bullet.fx_kind = 0
 			continue
+		bullet.fx_kind = 1
 		var out_of_sight: bool = any_hidden and (visibility.hides(bullet) if visibility != null else test.call(bullet))
-		bullet["fx_hidden"] = out_of_sight
+		bullet.fx_hidden = out_of_sight
 		if out_of_sight:
-			_seen[id] = bullet
+			_seen[bullet.id] = bullet
 			continue
-		var half := float(bullet.get("size", 8)) * 0.5
-		var centre: Vector2 = bullet["pos"] + Vector2(half, half)
+		var half := bullet.size * 0.5
+		var centre := bullet.pos + Vector2(half, half)
 		if not trail.is_empty():
 			var spec: Array = _trail_specs.get(group_id, NO_SPEC)
 			if spec.is_empty():
 				spec = ParticleEmitter.trail_spec(trail)
 				_trail_specs[group_id] = spec
 			# Most frames add a fraction of a particle; only a whole one calls out.
-			var accumulated: float = float(bullet.get("fx_acc", 0.0)) + spec[ParticleEmitter.SPEC_RATE] * delta
+			var accumulated: float = bullet.fx_acc + spec[ParticleEmitter.SPEC_RATE] * delta
 			if accumulated < 1.0:
-				bullet["fx_acc"] = accumulated
+				bullet.fx_acc = accumulated
 			else:
 				ParticleEmitter.trail_from(self, centre, bullet, spec, accumulated)
-		if not muzzle.is_empty() and not _seen.has(id):
+		if not muzzle.is_empty() and not _seen.has(bullet.id):
 			ParticleEmitter.burst(self, centre, muzzle)
 		# A muzzle-only bullet is remembered too, or it would flash every
 		# frame -- which is what both references' diff, keyed on the impact
 		# alone, would do with one; no shipped group has a muzzle to show it.
 		if bursts:
-			_seen[id] = bullet
+			_seen[bullet.id] = bullet
 	if _seen.is_empty():
 		return
 	_gone.clear()
@@ -123,14 +126,14 @@ func _emit(delta: float, bullets: Dictionary, hidden: Variant) -> void:
 		if not bullets.has(id):
 			_gone.append(id)
 	for id in _gone:
-		var bullet: Dictionary = _seen[id]
+		var bullet: Projectile = _seen[id]
 		_seen.erase(id)
-		if bullet.get("fx_hidden", false):
+		if bullet.fx_hidden:
 			continue
-		var impact: Dictionary = _fx_by_group.get(int(bullet.get("group_id", -1)), NO_FX).get("impact", {})
+		var impact: Dictionary = _fx_by_group.get(bullet.group_id, NO_FX).get("impact", {})
 		if not impact.is_empty():
-			var half := float(bullet.get("size", 8)) * 0.5
-			ParticleEmitter.burst(self, bullet["pos"] + Vector2(half, half), impact)
+			var half := bullet.size * 0.5
+			ParticleEmitter.burst(self, bullet.pos + Vector2(half, half), impact)
 
 
 ## False when the pool is full: the budget drops what it cannot hold.

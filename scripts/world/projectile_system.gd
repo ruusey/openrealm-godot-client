@@ -26,10 +26,9 @@ const CONSUME_LINGER_MS := 50
 ## wall's life at 10s, so this never fires during a live one.
 const WALL_FALLBACK_LIFETIME_MS := 30_000
 const NO_TILES := {}
-## Traits that take a bullet off the plain straight-line integrator.
-const CURVED_MOTION := ProjectileKind.TRAIT_ORBITAL | ProjectileKind.TRAIT_PARAMETRIC \
-	| ProjectileKind.TRAIT_SPINS | ProjectileKind.TRAIT_SPEED_CURVE \
-	| ProjectileKind.TRAIT_HOMING | ProjectileKind.TRAIT_ANCHORED
+## Traits that need more than the inlined motion in advance().
+const TRACKED_MOTION := ProjectileKind.TRAIT_SPEED_CURVE | ProjectileKind.TRAIT_HOMING \
+	| ProjectileKind.TRAIT_ANCHORED
 
 var bullets := {}
 ## Round-trip time, used to fast-forward freshly received bullets.
@@ -50,7 +49,7 @@ var _tile_stops := {}
 ## Scratch lists reused every frame: what advance() drops, and the own shots that
 ## hit prediction tests.
 var _dropped: Array = []
-var _own_live: Array[Dictionary] = []
+var _own_live: Array[Projectile] = []
 ## Client-side hit prediction is O(own-bullets x enemies); it only consumes a
 ## non-pierce shot a few ms before the server's Unload, so on the web renderer we
 ## run it every 3rd frame instead of every frame. Native runs it every frame.
@@ -81,7 +80,7 @@ func clear() -> void:
 
 
 ## A locally predicted bullet, registered so its server copy can claim it.
-func add_prediction(local_id: int, bullet: Dictionary) -> void:
+func add_prediction(local_id: int, bullet: Projectile) -> void:
 	bullets[local_id] = bullet
 	_predictions[local_id] = bullet
 
@@ -101,7 +100,7 @@ func apply_load(data: Dictionary) -> void:
 			# would draw the same bullet twice.
 			continue
 		var bullet := Projectile.from_wire(wire, now)
-		if _entities != null and ProjectileKind.is_anchored(bullet):
+		if _entities != null and bullet.flag_bits & (1 << ProjectileKind.ANCHORED):
 			ProjectileTracking.capture_anchor(bullet, _entities, _player)
 		ProjectileMotion.catch_up(bullet, _catchup_latency * 0.5)
 		bullets[id] = bullet
@@ -141,7 +140,7 @@ func apply_unload(data: Dictionary) -> void:
 		gone[id] = true
 	# A prediction that claimed one of these server bullets goes with it.
 	for local_id in _predictions.keys():
-		if gone.has(int(_predictions[local_id].get("server_id", 0))) or not bullets.has(local_id):
+		if gone.has((_predictions[local_id] as Projectile).server_id) or not bullets.has(local_id):
 			bullets.erase(local_id)
 			_predictions.erase(local_id)
 
@@ -160,49 +159,72 @@ func advance(delta: float) -> void:
 	var solid := _solid_layer()
 	_dropped.clear()
 	_own_live.clear()
-	for id in bullets:
-		var bullet: Dictionary = bullets[id]
-		# Cross-script static calls cost ten dictionary reads in GDScript, so the
-		# cached traits are read here directly and resolved only on first sight.
-		var traits: int = bullet.get("traits", -1)
+	var walls := not solid.is_empty()
+	var tile_size := float(GameConstants.TILE_SIZE)
+	for bullet: Projectile in bullets.values():
+		# Cross-script static calls cost ten member reads in GDScript, so the cached
+		# traits are read here directly and resolved only on first sight, and the
+		# motion below is ProjectileMotion's, inlined.
+		var traits := bullet.traits
 		if traits < 0 or not traits & ProjectileKind.TRAIT_OWNER_RESOLVED:
 			traits = _resolve_traits(bullet)
 		# A non-pierce bullet that predicted a hit is frozen at the impact point
 		# (not flying through the enemy) and lingers briefly before the local
 		# fallback removes it; the server's Unload normally removes it first.
 		if traits & ProjectileKind.TRAIT_CONSUMED:
-			if now - int(bullet.get("consumed_at", now)) > CONSUME_LINGER_MS:
-				_dropped.append(id)
+			if now - bullet.consumed_at > CONSUME_LINGER_MS:
+				_dropped.append(bullet.id)
 			continue
-		if traits & CURVED_MOTION == 0:
-			# ProjectileMotion.straight, inlined: most of a bullet hell is plain shots.
-			var step_size: float = bullet["magnitude"] * bullet_scale
-			var angle: float = bullet["angle"]
-			bullet["pos"] += Vector2(sin(angle) * step_size, cos(angle) * step_size)
-			bullet["traveled"] += absf(step_size)
-		else:
+		if traits & TRACKED_MOTION:
 			# Order matches the server tick: steer, integrate, then re-anchor.
 			if tracking and traits & ProjectileKind.TRAIT_HOMING:
 				ProjectileTracking.steer(bullet, _entities, _player, bullet_scale)
 			ProjectileMotion.step(bullet, bullet_scale, now)
 			if tracking and traits & ProjectileKind.TRAIT_ANCHORED:
 				ProjectileTracking.anchor(bullet, _entities, _player)
+		elif traits & ProjectileKind.TRAIT_PARAMETRIC:
+			var amplitude := bullet.amplitude
+			var previous := amplitude * sin(deg_to_rad(bullet.time_step))
+			bullet.time_step = fmod(bullet.time_step + bullet.frequency * bullet_scale, 360.0)
+			var offset_delta := amplitude * sin(deg_to_rad(bullet.time_step)) - previous
+			if bullet.invert:
+				offset_delta = -offset_delta
+			var angle := bullet.angle
+			var forward := bullet.magnitude * bullet_scale
+			var sine := sin(angle)
+			var cosine := cos(angle)
+			bullet.pos += Vector2(sine * forward + cosine * offset_delta,
+				cosine * forward - sine * offset_delta)
+			bullet.traveled += forward
+		elif traits & ProjectileKind.TRAIT_ORBITAL:
+			var turn := deg_to_rad(bullet.frequency * bullet_scale)
+			var phase := bullet.orbit_phase + turn
+			bullet.orbit_phase = phase
+			bullet.pos = bullet.orbit_centre + Vector2(cos(phase), sin(phase)) * bullet.orbit_radius
+			bullet.traveled += bullet.orbit_radius * absf(turn)
+		else:
+			if traits & ProjectileKind.TRAIT_SPINS:
+				bullet.angle += deg_to_rad(bullet.frequency * bullet_scale)
+			var step_size := bullet.magnitude * bullet_scale
+			var angle := bullet.angle
+			bullet.pos += Vector2(sin(angle) * step_size, cos(angle) * step_size)
+			bullet.traveled += absf(step_size)
 		# _should_drop_locally, inlined for everything but a LINE_SEGMENT wall.
 		var drop := false
 		if traits & ProjectileKind.TRAIT_LINE_SEGMENT:
 			drop = _should_drop_locally(bullet, traits, now, solid)
 		else:
-			if traits & ProjectileKind.TRAIT_STOPS_AT_WALLS and not solid.is_empty():
-				var half := float(bullet.get("size", 4)) * 0.5
-				var pos: Vector2 = bullet["pos"]
-				var tile_id: int = solid.get(Vector2i(floori((pos.x + half) / GameConstants.TILE_SIZE),
-					floori((pos.y + half) / GameConstants.TILE_SIZE)), -1)
+			if walls and traits & ProjectileKind.TRAIT_STOPS_AT_WALLS:
+				var half := bullet.size * 0.5
+				var pos := bullet.pos
+				var tile_id: int = solid.get(Vector2i(floori((pos.x + half) / tile_size),
+					floori((pos.y + half) / tile_size)), -1)
 				drop = tile_id > 0 and _in_wall(bullet, traits, solid)
 			if not drop:
-				drop = (now - int(bullet.get("created_ms", now))) > ProjectileMotion.MAX_LIFETIME_MS \
-					or (traits & ProjectileKind.TRAIT_OWN and bullet["traveled"] > bullet["range"])
+				drop = (now - bullet.created_ms) > ProjectileMotion.MAX_LIFETIME_MS \
+					or (traits & ProjectileKind.TRAIT_OWN and bullet.traveled > bullet.range)
 		if drop:
-			_dropped.append(id)
+			_dropped.append(bullet.id)
 		elif traits & ProjectileKind.TRAIT_OWN \
 				and not traits & (ProjectileKind.TRAIT_PIERCES | ProjectileKind.TRAIT_HOMING):
 			_own_live.append(bullet)
@@ -227,23 +249,23 @@ func advance(delta: float) -> void:
 ## into us (that was the "die to an invisible projectile" bug: client-side range/lifetime
 ## GUESSES dropped an enemy bullet the server kept alive -- terrain is not a guess). A hard
 ## 10s lifetime cap stays as a backstop for the rare case an Unload is never delivered.
-func _should_drop_locally(bullet: Dictionary, traits: int, now: int, solid: Dictionary) -> bool:
+func _should_drop_locally(bullet: Projectile, traits: int, now: int, solid: Dictionary) -> bool:
 	# A LINE_SEGMENT beam/wall is server-authoritative no matter who fired it -- removed by
 	# the server's Unload, with the long cap only as a backstop. It must NOT take the
 	# own-shot path below: a stationary beam never expires by range, so a player's own beam
 	# would otherwise sit on screen for the full MAX_LIFETIME instead of clearing on Unload.
 	if traits & ProjectileKind.TRAIT_LINE_SEGMENT:
-		return (now - int(bullet.get("created_ms", now))) > WALL_FALLBACK_LIFETIME_MS
+		return (now - bullet.created_ms) > WALL_FALLBACK_LIFETIME_MS
 	if traits & ProjectileKind.TRAIT_OWN:
-		return bullet["traveled"] > bullet["range"] \
-			or (now - int(bullet.get("created_ms", now))) > ProjectileMotion.MAX_LIFETIME_MS \
+		return bullet.traveled > bullet.range \
+			or (now - bullet.created_ms) > ProjectileMotion.MAX_LIFETIME_MS \
 			or _in_wall(bullet, traits, solid)
 	# Enemy shots are server-authoritative, but a wall stops them on the server too
 	# (proccessTerrainHit), so mirroring that ONE rule client-side is safe: the bullet the
 	# server keeps flying is one that did not hit a wall, which _in_wall leaves alone.
 	if _in_wall(bullet, traits, solid):
 		return true
-	return (now - int(bullet.get("created_ms", now))) > ProjectileMotion.MAX_LIFETIME_MS
+	return (now - bullet.created_ms) > ProjectileMotion.MAX_LIFETIME_MS
 
 
 ## A bullet WE are responsible for: our own local prediction, or one the server attributes
@@ -254,23 +276,23 @@ func _should_drop_locally(bullet: Dictionary, traits: int, now: int, solid: Dict
 ## or hit-predicted here.
 ## The bullet's traits plus whether it is ours, which depends on who we are and so
 ## is resolved here rather than in ProjectileKind.
-func _resolve_traits(bullet: Dictionary) -> int:
+func _resolve_traits(bullet: Projectile) -> int:
 	var traits := ProjectileKind.traits(bullet) | ProjectileKind.TRAIT_OWNER_RESOLVED
 	if _is_own_shot(bullet, traits):
 		traits |= ProjectileKind.TRAIT_OWN
-	if bool(bullet.get("consumed", false)):
+	if bullet.consumed:
 		traits |= ProjectileKind.TRAIT_CONSUMED
 	if traits & ProjectileKind.TRAIT_PREDICTED:
-		_predictions[int(bullet.get("id", 0))] = bullet
-	bullet["traits"] = traits
+		_predictions[bullet.id] = bullet
+	bullet.traits = traits
 	return traits
 
 
-func _is_own_shot(bullet: Dictionary, traits: int) -> bool:
+func _is_own_shot(bullet: Projectile, traits: int) -> bool:
 	if traits & ProjectileKind.TRAIT_ALLY:
 		return false
 	return traits & (ProjectileKind.TRAIT_PREDICTED | ProjectileKind.TRAIT_PLAYER_SHOT) != 0 \
-		or int(bullet.get("src_entity_id", 0)) == _player.id
+		or bullet.src_entity_id == _player.id
 
 
 ## The collision layer this frame, or an empty table when there is no terrain to test.
@@ -284,11 +306,11 @@ func _solid_layer() -> Dictionary:
 ## dies the instant its centre enters a collision-layer tile that has collision (a
 ## wall or a solid prop like a tree). Removed locally so a shot stops at the wall
 ## instead of sailing through it until the server's Unload arrives a round-trip later.
-func _in_wall(bullet: Dictionary, traits: int, solid: Dictionary) -> bool:
+func _in_wall(bullet: Projectile, traits: int, solid: Dictionary) -> bool:
 	if not traits & ProjectileKind.TRAIT_STOPS_AT_WALLS or solid.is_empty():
 		return false
-	var half := float(bullet.get("size", 4)) * 0.5
-	var pos: Vector2 = bullet["pos"]
+	var half := bullet.size * 0.5
+	var pos := bullet.pos
 	var tile_id: int = solid.get(Vector2i(floori((pos.x + half) / GameConstants.TILE_SIZE),
 		floori((pos.y + half) / GameConstants.TILE_SIZE)), -1)
 	if tile_id <= 0:
@@ -318,15 +340,15 @@ func _predict_hits(now: int) -> void:
 		enemy_reaches.append(enemy_size * HIT_RADIUS_FACTOR)
 	var enemy_count := enemy_centres.size()
 	for bullet in _own_live:
-		var size := float(bullet.get("size", 4))
+		var size := float(bullet.size)
 		var radius := size * HIT_RADIUS_FACTOR
-		var centre: Vector2 = bullet["pos"] + Vector2(size, size) * 0.5
+		var centre := bullet.pos + Vector2(size, size) * 0.5
 		for i in enemy_count:
 			var reach := radius + enemy_reaches[i]
 			if centre.distance_squared_to(enemy_centres[i]) < reach * reach:
-				bullet["consumed"] = true
-				bullet["consumed_at"] = now
-				bullet["traits"] = int(bullet["traits"]) | ProjectileKind.TRAIT_CONSUMED
+				bullet.consumed = true
+				bullet.consumed_at = now
+				bullet.traits |= ProjectileKind.TRAIT_CONSUMED
 				break
 
 
@@ -380,7 +402,7 @@ func fire_basic_attack(target: Vector2) -> Dictionary:
 	# stationary bullet never expires by range it lingered for the full MAX_LIFETIME.
 	# Draw only the server's copy, removed by its Unload, exactly as enemy beams are.
 	var is_beam := definitions.any(func(d: Dictionary) -> bool:
-		return ProjectileKind.has_flag(d, ProjectileKind.LINE_SEGMENT))
+		return ProjectileKind.definition_has_flag(d, ProjectileKind.LINE_SEGMENT))
 	# Origin is the body centre (matches the server's getCenteredPosition), so a
 	# resized player (/size) still fires from the middle of the sprite rather than
 	# its top-left corner.

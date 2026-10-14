@@ -28,7 +28,7 @@ static func of(entity_type: int, id: int, entities: EntityRegistry,
 			if not entity.is_empty():
 				return entities.render_position(entity)
 		GameConstants.ENTITY_BULLET:
-			var bullet: Dictionary = projectiles.bullets.get(id, {})
-			if not bullet.is_empty():
-				return bullet.get("pos", Vector2.ZERO)
+			var bullet: Projectile = projectiles.bullets.get(id)
+			if bullet != null:
+				return bullet.pos
 	return Vector2.ZERO

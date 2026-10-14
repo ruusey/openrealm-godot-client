@@ -39,8 +39,7 @@ static func hides(state: RealmState, top_left: Vector2, size: float) -> bool:
 
 ## A bullet out of sight -- never one of ours. Asked of every bullet every
 ## frame, so nothing about the bullet is read unless we are blind.
-static func hides_bullet(state: RealmState, bullet: Dictionary) -> bool:
-	if not active(state) or bullet.get("predicted", false) \
-			or int(bullet.get("src_entity_id", 0)) == state.local.id:
+static func hides_bullet(state: RealmState, bullet: Projectile) -> bool:
+	if not active(state) or bullet.predicted or bullet.src_entity_id == state.local.id:
 		return false
-	return hides(state, bullet["pos"], float(bullet.get("size", 8)))
+	return hides(state, bullet.pos, float(bullet.size))

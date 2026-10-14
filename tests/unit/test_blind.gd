@@ -23,8 +23,8 @@ func _blind() -> void:
 	state.local.effects = [Blind.EFFECT]
 
 
-func _bullet(at: Vector2, src := 77, predicted := false) -> Dictionary:
-	return {"pos": at, "size": 8, "src_entity_id": src, "predicted": predicted}
+func _bullet(at: Vector2, src := 77, predicted := false) -> Projectile:
+	return Projectile.from_fields({"pos": at, "size": 8, "src_entity_id": src, "predicted": predicted})
 
 
 func test_only_the_status_blinds():

@@ -32,15 +32,15 @@ static func of(state: RealmState) -> BulletVisibility:
 	return visibility
 
 
-func hides(bullet: Dictionary) -> bool:
+func hides(bullet: Projectile) -> bool:
 	if not any:
 		return false
-	var src := int(bullet.get("src_entity_id", 0))
-	if _blind and src != _local_id and not bullet.get("predicted", false):
-		var half := float(bullet.get("size", 8)) * 0.5
-		var centre: Vector2 = bullet["pos"] + Vector2(half, half)
+	var src := bullet.src_entity_id
+	if _blind and src != _local_id and not bullet.predicted:
+		var half := bullet.size * 0.5
+		var centre := bullet.pos + Vector2(half, half)
 		if centre.distance_to(_blind_centre) > Blind.RADIUS + half:
 			return true
 	if not _others_hidden or src == _local_id:
 		return false
-	return _players.has(src) or ProjectileKind.has_flag(bullet, ProjectileKind.ALLY_PROJECTILE)
+	return _players.has(src) or bullet.flag_bits & (1 << ProjectileKind.ALLY_PROJECTILE) != 0

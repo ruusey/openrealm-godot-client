@@ -14,27 +14,27 @@ extends RefCounted
 
 ## Records where the bullet sits relative to its source, so it can be snapped
 ## back every tick afterwards. Mirrors Bullet.setupAnchor.
-static func capture_anchor(bullet: Dictionary, entities: EntityRegistry,
+static func capture_anchor(bullet: Projectile, entities: EntityRegistry,
 		player: LocalPlayer) -> void:
-	var source: Variant = _position_of(int(bullet.get("src_entity_id", 0)), entities, player)
+	var source: Variant = _position_of(bullet.src_entity_id, entities, player)
 	if source == null:
 		return
-	bullet["anchor_offset"] = bullet["pos"] - (source as Vector2)
+	bullet.anchor_offset = bullet.pos - (source as Vector2)
 
 
-static func anchor(bullet: Dictionary, entities: EntityRegistry, player: LocalPlayer) -> void:
-	var source: Variant = _position_of(int(bullet.get("src_entity_id", 0)), entities, player)
+static func anchor(bullet: Projectile, entities: EntityRegistry, player: LocalPlayer) -> void:
+	var source: Variant = _position_of(bullet.src_entity_id, entities, player)
 	if source == null:
 		return
-	bullet["pos"] = (source as Vector2) + bullet["anchor_offset"]
+	bullet.pos = (source as Vector2) + bullet.anchor_offset
 
 
 ## Rotates the heading toward the target by at most `frequency` degrees this
 ## tick. Velocity is (sin a, cos a), so the angle pointing at the target is
 ## atan2(dx, dy) -- not the usual atan2(dy, dx). Mirrors Bullet.steerToward.
-static func steer(bullet: Dictionary, entities: EntityRegistry, player: LocalPlayer,
+static func steer(bullet: Projectile, entities: EntityRegistry, player: LocalPlayer,
 		bullet_scale: float) -> void:
-	var target_id := int(bullet.get("target_entity_id", 0))
+	var target_id := bullet.target_entity_id
 	var target: Variant = _position_of(target_id, entities, player)
 	if target == null:
 		return
@@ -43,9 +43,9 @@ static func steer(bullet: Dictionary, entities: EntityRegistry, player: LocalPla
 		+ Vector2.ONE * _size_of(target_id, entities, player) * 0.5
 	var origin: Vector2 = Projectile.centre(bullet)
 	var desired := atan2(centre.x - origin.x, centre.y - origin.y)
-	var difference := wrapf(desired - float(bullet["angle"]), -PI, PI)
-	var max_turn := deg_to_rad(float(bullet.get("frequency", 0)) * bullet_scale)
-	bullet["angle"] = float(bullet["angle"]) + clampf(difference, -max_turn, max_turn)
+	var difference := wrapf(desired - bullet.angle, -PI, PI)
+	var max_turn := deg_to_rad(bullet.frequency * bullet_scale)
+	bullet.angle += clampf(difference, -max_turn, max_turn)
 
 
 ## The local player is tracked by prediction, not by the entity roster, so its

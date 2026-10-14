@@ -65,7 +65,7 @@ func _init() -> void:
 	# their own if the prediction had already expired.
 	var answered := await _drive.wait(ANSWER_TIMEOUT, func() -> bool:
 		for id in state.projectiles.bullets:
-			if id > 0 or state.projectiles.bullets[id].get("server_id", 0) != 0:
+			if id > 0 or (state.projectiles.bullets[id] as Projectile).server_id != 0:
 				return true
 		return false)
 	if not answered:

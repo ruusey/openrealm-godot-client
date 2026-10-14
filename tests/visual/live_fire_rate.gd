@@ -84,6 +84,6 @@ func _fire() -> void:
 func _note_bullets() -> void:
 	var state: RealmState = _drive.main.state
 	for id in state.projectiles.bullets:
-		var bullet: Dictionary = state.projectiles.bullets[id]
-		if int(bullet.get("src_entity_id", 0)) == state.local.id and not _ours.has(id):
+		var bullet: Projectile = state.projectiles.bullets[id]
+		if bullet.src_entity_id == state.local.id and not _ours.has(id):
 			_from_server[id] = true

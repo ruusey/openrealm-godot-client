@@ -26,7 +26,7 @@ func before_each():
 	field.rng.seed = 7
 
 
-func _bullet(group: int, at := Vector2(100, 100)) -> Dictionary:
+func _bullet(group: int, at := Vector2(100, 100)) -> Projectile:
 	# Straight and still, so the centre the tests reason about stays put.
 	return Projectile.from_wire({"id": 1, "projectileId": group, "size": 8,
 		"pos": {"x": at.x, "y": at.y}, "angle": 0.0, "magnitude": 0.0, "range": 1000.0,
@@ -225,7 +225,7 @@ func test_the_state_steps_the_field_with_its_bullets_and_clears_it_with_them():
 
 func test_a_bullet_out_of_sight_leaves_no_trail():
 	var bullets := {1: _bullet(TRAIL_GROUP)}
-	var hidden := func(_b: Dictionary) -> bool: return true
+	var hidden := func(_b: Projectile) -> bool: return true
 	for i in 30:
 		field.advance(FRAME, bullets, hidden)
 	assert_eq(field.count, 0, "nothing to see, nothing emitted")
@@ -236,7 +236,7 @@ func test_a_bullet_out_of_sight_leaves_no_trail():
 func test_a_bullet_out_of_sight_bursts_nowhere_when_it_goes():
 	var bullets := {1: _bullet(IMPACT_GROUP)}
 	field.advance(FRAME, bullets)
-	var hidden := func(_b: Dictionary) -> bool: return true
+	var hidden := func(_b: Projectile) -> bool: return true
 	field.advance(FRAME, bullets, hidden)
 	field.advance(FRAME, {}, hidden)
 	assert_eq(field.count, 0, "it left sight, then landed: no burst either time")

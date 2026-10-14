@@ -558,24 +558,23 @@ func _configure(sprite: Sprite3D, texture: Texture2D, xz: Vector2, height: float
 func _place_projectiles(centre: Vector2) -> void:
 	var now := Time.get_ticks_msec()
 	var used := 0
-	for id in state.projectiles.bullets:
-		var bullet: Dictionary = state.projectiles.bullets[id]
-		if BulletRenderer._hidden(state, bullet):
+	var visibility := BulletVisibility.of(state)
+	for bullet: Projectile in state.projectiles.bullets.values():
+		if visibility.hides(bullet):
 			continue
-		var group_id := int(bullet.get("group_id", -1))
+		var group_id := bullet.group_id
 		var texture := content.projectile_texture(group_id)
 		if texture == null or texture.get_height() <= 0:
 			continue
-		var size := maxf(float(bullet.get("size", 8)), 4.0)
-		var pos: Vector2 = bullet["pos"]
-		var mid := pos + Vector2(size, size) * 0.5
-		var angle: float = bullet.get("angle", 0.0)
+		var size := maxf(float(bullet.size), 4.0)
+		var mid := bullet.pos + Vector2(size, size) * 0.5
+		var angle := bullet.angle
 		var offset := content.projectiles_art.angle_offset(group_id)
 		var spin := content.projectiles_art.spin(group_id)
 		var turn := ProjectileArt.spun(spin, now)
 		var additive: bool = spin.is_empty() or spin["additive"]
 		var heading := BulletRenderer.rotation_for(angle, offset, turn, additive)
-		var length := float(bullet.get("length", 0.0))
+		var length := bullet.length
 		if length > 0.0 and ProjectileKind.has_flag(bullet, ProjectileKind.LINE_SEGMENT):
 			# A wall tile points ALONG the line -- no PI/2 (that term aligns a
 			# TRAVELLING bullet to its heading), exactly as the 2D _draw_wall does.
@@ -831,17 +830,17 @@ func _place_lights(centre: Vector2) -> void:
 ## The nearest wand/staff/tome bullets in flight, one travelling omni each.
 func _place_bullet_lights(centre: Vector2) -> void:
 	var found := []
-	for id in state.projectiles.bullets:
-		var bullet: Dictionary = state.projectiles.bullets[id]
+	var visibility := BulletVisibility.of(state)
+	for bullet: Projectile in state.projectiles.bullets.values():
 		# A bullet we don't draw casts no glow either (parity with the 2D path).
-		if BulletRenderer._hidden(state, bullet):
+		if visibility.hides(bullet):
 			continue
 		# Resolved once per group (colour hex parsed there), not per bullet per frame.
-		var light_def := content.projectile_light_resolved(int(bullet.get("group_id", -1)))
+		var light_def := content.projectile_light_resolved(bullet.group_id)
 		if light_def.is_empty():
 			continue
-		var size := maxf(float(bullet.get("size", 8)), 4.0)
-		var mid: Vector2 = bullet["pos"] + Vector2(size, size) * 0.5
+		var size := maxf(float(bullet.size), 4.0)
+		var mid := bullet.pos + Vector2(size, size) * 0.5
 		if mid.distance_to(centre) > ENTITY_RANGE:
 			continue
 		found.append([mid.distance_squared_to(centre), mid, light_def["color"], light_def["radius"]])
