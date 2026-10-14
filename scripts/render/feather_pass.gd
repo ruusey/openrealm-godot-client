@@ -8,9 +8,10 @@ extends RefCounted
 ## feathering them reads as mush -- as are tiles flagged noBlend, like carpet.
 ## Runs over the base layer once it is drawn, before the walls on top of it.
 ##
-## Where land meets liquid only the land side is drawn here, with a shore band
-## (TileFeather.shore) rather than a fringe; the liquid's side of the same shore
-## is foam and shallows, animated by liquid.gdshader.
+## Where land meets water only the land side is drawn here, with a shore band
+## (TileFeather.shore) rather than a fringe; the water's side of the same shore
+## is foam and shallows, animated by liquid.gdshader. Lava is left as it always
+## was: the land beside it takes the ordinary fringe, and lava itself none.
 
 const TILE_SIZE := GameConstants.TILE_SIZE
 const VOID_TILE := 0
@@ -40,10 +41,11 @@ const EDGES := {
 
 var feathers := TileFeather.new()
 var blending := TileBlend.new()
-## Baked shore bands by (liquid id * 8 + direction) * SHORE_PERIOD + phase, and
-## liquid colours by id.
+## Baked shore bands by (liquid id * 8 + direction) * SHORE_PERIOD + phase,
+## liquid colours by id, and whether each liquid is lava.
 var _shores := {}
 var _colours := {}
+var _lava := {}
 ## Fringes laid down by the last pass -- the visible evidence that seam
 ## blending is running and that the gates are letting the right edges through.
 var drawn := 0
@@ -78,6 +80,8 @@ func paint(canvas: CanvasItem, tiles: TileMapState, content: GameData,
 			# Liquid feathers only into other liquid (deep water into shallow); its
 			# shores belong to the land beside it.
 			var mine_liquid: bool = mine_look[GameData.LOOK_FLAGS] & GameData.LOOK_LIQUID != 0
+			if mine_liquid and _is_lava(content, mine):
+				continue
 			var liquid_sides := 0
 			var origin := Vector2(tile_x * TILE_SIZE, tile_y * TILE_SIZE)
 			for direction in DIRECTIONS:
@@ -100,7 +104,12 @@ func paint(canvas: CanvasItem, tiles: TileMapState, content: GameData,
 					continue
 				var texture: Texture2D = null
 				var rect: Rect2
-				if liquid_beside and not mine_liquid:
+				var lava_beside := liquid_beside and _is_lava(content, neighbour)
+				if lava_beside:
+					if not mine_liquid and blending.blends(content, mine, neighbour):
+						texture = feathers.texture(content, neighbour, direction)
+						rect = TileFeather.edge_rect(origin, direction, TILE_SIZE, fringe)
+				elif liquid_beside and not mine_liquid:
 					var along := tile_x if direction <= TileFeather.SOUTH else tile_y
 					var key: int = (neighbour * 8 + direction) * TileFeather.SHORE_PERIOD \
 						+ posmod(along, TileFeather.SHORE_PERIOD)
@@ -168,7 +177,13 @@ func _wet_corners(by_texture: Dictionary, base: Dictionary, above: Dictionary, l
 			Vector2(land_cell * TILE_SIZE), corner, TILE_SIZE, depth))
 
 
-## A liquid's average colour, which tells water from lava; blue when it has none.
+func _is_lava(content: GameData, tile_id: int) -> bool:
+	if not _lava.has(tile_id):
+		_lava[tile_id] = TileFeather.is_lava(blending.signature(content, tile_id))
+	return _lava[tile_id]
+
+
+## A liquid's average colour; blue when it has none.
 func _colour(content: GameData, tile_id: int) -> Color:
 	if not _colours.has(tile_id):
 		var signature: Variant = blending.signature(content, tile_id)

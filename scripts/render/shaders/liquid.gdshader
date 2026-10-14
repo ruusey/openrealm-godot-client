@@ -156,13 +156,6 @@ void fragment() {
 			* sin(swell_t * 3.14159);
 		water = mix(water, foam_colour, max(foam, swell * 0.6) * foam_strength);
 
-		// Lava: a molten rim glowing along the crust and darker crust drifting off it.
-		float rim = step(coast, 2.0 + 2.5 * pulse);
-		float crust = step(0.66, noise(snapped * 0.16 + vec2(TIME * 0.05, 0.0)))
-			* step(coast, shore_reach * 0.8) * (1.0 - rim);
-		lava = mix(lava, vec3(0.28, 0.06, 0.03), crust * 0.7);
-		lava = mix(lava, vec3(1.0, 0.86, 0.38), rim * 0.75);
-
 		vec3 lip = lip_colour * (0.96 + 0.08 * hash(snapped));
 		colour = mix(mix(water, lava, warm), lip, step(coast, 0.0));
 	}

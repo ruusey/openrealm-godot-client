@@ -31,17 +31,15 @@ const UPSAMPLE := 4
 const PEAK_ALPHA := 0.5
 enum { NORTH, SOUTH, WEST, EAST, NORTH_WEST, NORTH_EAST, SOUTH_WEST, SOUTH_EAST }
 
-## Land beside a liquid gets a band of its own rather than the liquid's pixels:
-## ground darkened wet by water, scorched and lit by lava. Its depth wanders on a
-## wave that repeats every SHORE_PERIOD cells along the shore, so each cell bakes
-## the stretch of the wave at its place in that period and joins its neighbours.
+## Land beside water gets a band of its own rather than the water's pixels:
+## ground darkened wet. Its depth wanders on a wave that repeats every
+## SHORE_PERIOD cells along the shore, so each cell bakes the stretch of the wave
+## at its place in that period and joins its neighbours. Lava keeps the plain
+## fringe.
 const SHORE_DEPTH := 14
 const SHORE_PERIOD := 4
 const WET_ALPHA := 0.42
-const SCORCH_ALPHA := 0.7
 const WET_SHADE := 0.3
-const SCORCH := Color(0.12, 0.035, 0.02)
-const LAVA_GLOW := Color(1.0, 0.5, 0.14)
 
 ## Baked fringes are packed onto shared pages, so every fringe a chunk draws
 ## comes from one texture and batches into one draw call, not one per fringe
@@ -72,8 +70,13 @@ func texture(content: GameData, tile_id: int, direction: int) -> Texture2D:
 	return _variants[key]
 
 
+## Whether a liquid's average colour (null when it has none) is lava's.
+static func is_lava(colour: Variant) -> bool:
+	return colour != null and (colour as Color).r - (colour as Color).b > 0.15
+
+
 ## Bakes the band along an edge (or, for a corner direction, around a corner) of
-## a land cell shared with a liquid of average colour `colour`. `along` is the
+## a land cell shared with water of average colour `colour`. `along` is the
 ## cell's coordinate along that edge. Not cached here: the caller keeps them.
 func shore(colour: Color, direction: int, along: int) -> Texture2D:
 	var texture := _pack(_bake_shore(colour, direction,
@@ -89,7 +92,6 @@ static func _bake_shore(colour: Color, direction: int, phase: int) -> Image:
 	var size := Vector2i(cell, depth) if direction <= SOUTH \
 		else Vector2i(depth, cell) if direction <= EAST else Vector2i(depth, depth)
 	var image := Image.create(size.x, size.y, false, Image.FORMAT_RGBA8)
-	var warm := clampf((colour.r - colour.b) * 3.0, 0.0, 1.0)
 	var wet := Color(colour.r * WET_SHADE, colour.g * WET_SHADE, colour.b * WET_SHADE)
 	var period := float(cell * SHORE_PERIOD)
 	for y in size.y:
@@ -113,11 +115,7 @@ static func _bake_shore(colour: Color, direction: int, phase: int) -> Image:
 			var fade := 1.0 - from_seam / reach
 			if fade <= 0.0:
 				continue
-			var heat := 1.0 - smoothstep(0.0, 0.4, 1.0 - fade)
-			var scorch := SCORCH.lerp(LAVA_GLOW, heat * 0.85)
-			var tint := wet.lerp(scorch, warm)
-			var strength := lerpf(WET_ALPHA * pow(fade, 1.4), SCORCH_ALPHA * pow(fade, 1.1), warm)
-			image.set_pixel(x, y, Color(tint.r, tint.g, tint.b, strength))
+			image.set_pixel(x, y, Color(wet.r, wet.g, wet.b, WET_ALPHA * pow(fade, 1.4)))
 	return image
 
 

@@ -23,9 +23,6 @@ const CORNER_STEPS := [-1, -1, 1, 1, -1, 1, -1, 1]
 const LAND := 1
 const LIQUID := 2
 
-## Lava's lip: the ground most of the way to a crust still glowing dull red.
-const LAVA_CRUST := 0.8
-const CRUST := Color(0.42, 0.09, 0.035)
 const NO_SHORE := Color(0.0, 0.0, 1.0, 1.0)
 ## Two lips further apart than this (RGB, 0-1) are different ground.
 const MIXED_LIPS := 0.12
@@ -34,6 +31,8 @@ const MIXED_LIPS := 0.12
 var _liquid_key := []
 ## land id * 65536 + liquid id -> _lip()
 var _lips := {}
+## liquid id -> whether it is lava, which keeps its plain edge: shores are water's.
+var _lava := {}
 
 
 func _init() -> void:
@@ -53,6 +52,7 @@ func refresh() -> void:
 	if tiles.cleared or _liquid_key != key:
 		chunks.drop_all()
 		_lips.clear()
+		_lava.clear()
 		_liquid_key = key
 	if not tiles.changed_cells.is_empty():
 		chunks.mark(tiles.changed_cells)   # mark only; the ground layer clears them
@@ -103,7 +103,7 @@ func paint_cells(canvas: CanvasItem, own: Rect2i) -> Dictionary:
 						sides |= 1 << i
 					if kinds[at + CORNER_STEPS[i] * width + CORNER_STEPS[i + 4]] == LAND:
 						corners |= 1 << i
-				var shore := NO_SHORE if sides == 0 and corners == 0 \
+				var shore := NO_SHORE if (sides == 0 and corners == 0) or _is_lava(tile_id) \
 					else _shore(base, cell, tile_id, sides, corners)
 				canvas.draw_texture_rect(texture, rect, false, shore)
 			if GroundChunk.counts(own, tile_x, tile_y):
@@ -140,8 +140,7 @@ static func _distance(one: Color, two: Color) -> float:
 	return Vector3(one.r - two.r, one.g - two.g, one.b - two.b).length()
 
 
-## The ground at the water's edge as the land's shore band leaves it (wet by
-## water), or cooled to crust by lava.
+## The ground at the water's edge as the land's shore band leaves it, wet.
 func _lip(land: int, liquid_id: int) -> Color:
 	var key := land * 65536 + liquid_id
 	if _lips.has(key):
@@ -150,10 +149,12 @@ func _lip(land: int, liquid_id: int) -> Color:
 	var liquid: Variant = feathers.blending.signature(content, liquid_id)
 	var ground_colour: Color = ground if ground != null else Color(0.4, 0.4, 0.3)
 	var liquid_colour: Color = liquid if liquid != null else Color(0.2, 0.4, 0.8)
-	var lip: Color
-	if liquid_colour.r - liquid_colour.b > 0.15:
-		lip = ground_colour.lerp(CRUST, LAVA_CRUST)
-	else:
-		lip = ground_colour.lerp(liquid_colour * TileFeather.WET_SHADE, TileFeather.WET_ALPHA)
+	var lip := ground_colour.lerp(liquid_colour * TileFeather.WET_SHADE, TileFeather.WET_ALPHA)
 	_lips[key] = lip
 	return lip
+
+
+func _is_lava(liquid_id: int) -> bool:
+	if not _lava.has(liquid_id):
+		_lava[liquid_id] = TileFeather.is_lava(feathers.blending.signature(content, liquid_id))
+	return _lava[liquid_id]
