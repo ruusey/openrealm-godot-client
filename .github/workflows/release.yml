@@ -7,9 +7,13 @@ name: Release builds
 #   openrealm-godot-web.zip     -> deploy-remote.bat pulls this to the /play mount
 #   openrealm-godot-windows.zip -> single OpenRealm.exe (pck embedded)
 #   openrealm-godot-linux.zip   -> single OpenRealm.x86_64 (pck embedded)
+#   openrealm-godot-macos.zip   -> OpenRealm.app (universal, UNSIGNED)
 #
-# macOS is intentionally not built (unsigned .app is a poor experience and needs
-# an Apple cert + notarization we don't have).
+# The macOS .app is UNSIGNED: CI has no Apple Developer certificate, so codesign
+# + notarization are disabled in the export preset. Gatekeeper blocks it on first
+# launch -- users right-click the .app -> Open, or run
+# `xattr -dr com.apple.quarantine OpenRealm.app` once. Exporting the .app to a
+# .zip works on the Linux runner (a .dmg would need a macOS host).
 #
 # Exports run with the standard (non-Mono) Godot 4.7.2 headless binary -- the
 # Mono build refuses web exports (see export_presets.cfg). The Web preset has
@@ -34,6 +38,7 @@ env:
   WEB_ASSET: openrealm-godot-web.zip
   WIN_ASSET: openrealm-godot-windows.zip
   LINUX_ASSET: openrealm-godot-linux.zip
+  MAC_ASSET: openrealm-godot-macos.zip
 
 jobs:
   release:
@@ -106,7 +111,7 @@ jobs:
         run: |
           set -euo pipefail
           rm -rf build
-          mkdir -p build/web build/windows build/linux
+          mkdir -p build/web build/windows build/linux build/macos
 
           # export-release can exit non-zero on non-fatal warnings, so verify the
           # artifact exists rather than trusting the exit code.
@@ -120,9 +125,15 @@ jobs:
           export_target "Web"             build/web/index.html    "build/web/index.wasm"
           export_target "Windows Desktop" build/windows/OpenRealm.exe "build/windows/OpenRealm.exe"
           export_target "Linux"           build/linux/OpenRealm.x86_64 "build/linux/OpenRealm.x86_64"
+          # macOS exports the .app bundled into a .zip (works headless on Linux; a
+          # .dmg would need a macOS host). Non-fatal: a mac-export hiccup must never
+          # block the proven Web/Windows/Linux release — it's packaged only if present.
+          echo "== export macOS -> build/macos/OpenRealm.zip"
+          ~/godot/godot --headless --path "$PROJECT_DIR" --export-release "macOS" build/macos/OpenRealm.zip || true
+          if [ -f build/macos/OpenRealm.zip ]; then echo "macOS export OK"; else echo "WARNING: macOS export produced nothing — continuing without it"; fi
 
           chmod +x build/linux/OpenRealm.x86_64
-          ls -la build/web build/windows build/linux
+          ls -la build/web build/windows build/linux build/macos || true
 
       # Build a clean BMP-based multi-size .ico from the source PNG for the Windows
       # .exe icon. The actual embedding happens natively in the brand-windows job
@@ -143,7 +154,11 @@ jobs:
           (cd build/web && zip -r "$GITHUB_WORKSPACE/$WEB_ASSET" .)
           (cd build/windows && zip "$GITHUB_WORKSPACE/$WIN_ASSET" OpenRealm.exe)
           (cd build/linux && zip "$GITHUB_WORKSPACE/$LINUX_ASSET" OpenRealm.x86_64)
-          ls -la "$WEB_ASSET" "$WIN_ASSET" "$LINUX_ASSET"
+          # The macOS export is already a .zip of OpenRealm.app -- ship it as-is if
+          # it was produced (export is non-fatal above).
+          [ -f build/macos/OpenRealm.zip ] && cp build/macos/OpenRealm.zip "$GITHUB_WORKSPACE/$MAC_ASSET" || echo "no macOS asset to package"
+          ls -la "$WEB_ASSET" "$WIN_ASSET" "$LINUX_ASSET" || true
+          ls -la "$MAC_ASSET" 2>/dev/null || true
 
       - name: Upload zips as workflow artifacts
         uses: actions/upload-artifact@v4
@@ -153,6 +168,7 @@ jobs:
             ${{ env.WEB_ASSET }}
             ${{ env.WIN_ASSET }}
             ${{ env.LINUX_ASSET }}
+            ${{ env.MAC_ASSET }}
             openrealm.ico
           if-no-files-found: error
 
@@ -164,6 +180,7 @@ jobs:
             ${{ env.WEB_ASSET }}
             ${{ env.WIN_ASSET }}
             ${{ env.LINUX_ASSET }}
+            ${{ env.MAC_ASSET }}
           generate_release_notes: true
           draft: false
           prerelease: false
