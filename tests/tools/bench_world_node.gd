@@ -13,6 +13,8 @@ extends Node
 ## that repaints one ground chunk every frame and reports what that costs.
 
 const MAP_SIZE := 96
+const SHALLOW_WATER_TILE := 5
+const LAVA_TILE := 25
 const MOVE_INTERVAL_MS := 62.5
 const UNLOAD_INTERVAL_MS := 125.0
 
@@ -25,6 +27,8 @@ var data_root := ""
 var hidden_layers: PackedStringArray = []
 ## Also writes the report here: a release build has no console to print to.
 var out_path := ""
+## Water and lava blobs in the floor, so the liquid layer and its shores are drawn.
+var shores := false
 var _lines: PackedStringArray = []
 
 var content: GameData
@@ -93,6 +97,7 @@ func _parse_args() -> void:
 			"data": data_root = parts[1]
 			"hide": hidden_layers = parts[1].split(",")
 			"out": out_path = parts[1]
+			"shores": shores = parts[1] == "1"
 
 
 func _build_world() -> void:
@@ -118,6 +123,7 @@ func _build_world() -> void:
 	_chunk_probe = Node2D.new()
 	_chunk_probe.set_script(load("res://tests/tools/bench_chunk_probe.gd"))
 	_chunk_probe.set("ground", world.tiles)
+	_chunk_probe.set("liquid", world.liquid)
 	_chunk_probe.visible = "chunk" in hidden_layers
 	add_child(_chunk_probe)
 	# Last in the tree, so its _process marks the end of every other node's.
@@ -149,7 +155,14 @@ func _populate() -> void:
 		for x in MAP_SIZE:
 			# A crystal accent every few cells, so the lighting has emitters to light.
 			var lit := (x * 7 + y * 3) % 23 == 0
-			tiles.append({"tileId": 124 if lit else floor_id, "layer": 0, "xIndex": y, "yIndex": x})
+			var ground := 124 if lit else floor_id
+			if shores:
+				var blob := sin(x * 0.45) + sin(y * 0.38 + x * 0.12)
+				if blob > 0.9:
+					ground = SHALLOW_WATER_TILE
+				elif blob < -1.2:
+					ground = LAVA_TILE
+			tiles.append({"tileId": ground, "layer": 0, "xIndex": y, "yIndex": x})
 			var edge := x == 0 or y == 0 or x == MAP_SIZE - 1 or y == MAP_SIZE - 1
 			if edge or (x % 12 == 0 and y % 12 < 3):
 				tiles.append({"tileId": wall_id, "layer": GameConstants.COLLISION_LAYER, "xIndex": y, "yIndex": x})
@@ -355,7 +368,9 @@ func _report() -> void:
 	_say("BENCH drawn=%s" % world.draw_stats)
 	if _chunk_probe.visible:
 		var samples: Array[float] = _chunk_probe.get("samples")
-		_say("BENCH chunk_paint=%.2fms" % (_mean(samples) / 1000.0))
+		var liquid_samples: Array[float] = _chunk_probe.get("liquid_samples")
+		_say("BENCH chunk_paint=%.2fms liquid_paint=%.2fms" % [_mean(samples) / 1000.0,
+			_mean(liquid_samples) / 1000.0])
 	_say("BENCH draw_calls=%d objects_drawn=%d primitives=%d video_mem=%.1fMB" % [
 		Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
 		Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME),

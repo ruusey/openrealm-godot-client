@@ -29,7 +29,19 @@ extends RefCounted
 const FRACTION := 0.15
 const UPSAMPLE := 4
 const PEAK_ALPHA := 0.5
-enum { NORTH, SOUTH, WEST, EAST }
+enum { NORTH, SOUTH, WEST, EAST, NORTH_WEST, NORTH_EAST, SOUTH_WEST, SOUTH_EAST }
+
+## Land beside a liquid gets a band of its own rather than the liquid's pixels:
+## ground darkened wet by water, scorched and lit by lava. Its depth wanders on a
+## wave that repeats every SHORE_PERIOD cells along the shore, so each cell bakes
+## the stretch of the wave at its place in that period and joins its neighbours.
+const SHORE_DEPTH := 14
+const SHORE_PERIOD := 4
+const WET_ALPHA := 0.42
+const SCORCH_ALPHA := 0.7
+const WET_SHADE := 0.3
+const SCORCH := Color(0.12, 0.035, 0.02)
+const LAVA_GLOW := Color(1.0, 0.5, 0.14)
 
 ## Baked fringes are packed onto shared pages, so every fringe a chunk draws
 ## comes from one texture and batches into one draw call, not one per fringe
@@ -58,6 +70,67 @@ func texture(content: GameData, tile_id: int, direction: int) -> Texture2D:
 		if not deferred:
 			flush()
 	return _variants[key]
+
+
+## Bakes the band along an edge (or, for a corner direction, around a corner) of
+## a land cell shared with a liquid of average colour `colour`. `along` is the
+## cell's coordinate along that edge. Not cached here: the caller keeps them.
+func shore(colour: Color, direction: int, along: int) -> Texture2D:
+	var texture := _pack(_bake_shore(colour, direction,
+		posmod(along, SHORE_PERIOD) if direction <= EAST else 0))
+	if not deferred:
+		flush()
+	return texture
+
+
+static func _bake_shore(colour: Color, direction: int, phase: int) -> Image:
+	var cell := GameConstants.TILE_SIZE
+	var depth := SHORE_DEPTH
+	var size := Vector2i(cell, depth) if direction <= SOUTH \
+		else Vector2i(depth, cell) if direction <= EAST else Vector2i(depth, depth)
+	var image := Image.create(size.x, size.y, false, Image.FORMAT_RGBA8)
+	var warm := clampf((colour.r - colour.b) * 3.0, 0.0, 1.0)
+	var wet := Color(colour.r * WET_SHADE, colour.g * WET_SHADE, colour.b * WET_SHADE)
+	var period := float(cell * SHORE_PERIOD)
+	for y in size.y:
+		for x in size.x:
+			var from_seam := 0.0
+			var along := 0.0
+			var near := Vector2(x + 0.5, y + 0.5)
+			var far := Vector2(size) - near
+			match direction:
+				NORTH: from_seam = near.y; along = near.x
+				SOUTH: from_seam = far.y; along = near.x
+				WEST: from_seam = near.x; along = near.y
+				EAST: from_seam = far.x; along = near.y
+				NORTH_WEST: from_seam = near.length()
+				NORTH_EAST: from_seam = Vector2(far.x, near.y).length()
+				SOUTH_WEST: from_seam = Vector2(near.x, far.y).length()
+				_: from_seam = far.length()
+			var turn := TAU * (along + phase * cell) / period
+			var wander := 0.5 + 0.3 * sin(turn + 0.7) + 0.2 * sin(3.0 * turn + 2.1)
+			var reach := depth * (0.65 + 0.35 * wander) if direction <= EAST else depth * 0.8
+			var fade := 1.0 - from_seam / reach
+			if fade <= 0.0:
+				continue
+			var heat := 1.0 - smoothstep(0.0, 0.4, 1.0 - fade)
+			var scorch := SCORCH.lerp(LAVA_GLOW, heat * 0.85)
+			var tint := wet.lerp(scorch, warm)
+			var strength := lerpf(WET_ALPHA * pow(fade, 1.4), SCORCH_ALPHA * pow(fade, 1.1), warm)
+			image.set_pixel(x, y, Color(tint.r, tint.g, tint.b, strength))
+	return image
+
+
+## Where a shore corner sits within a cell: tucked into that corner.
+static func corner_rect(origin: Vector2, direction: int, cell: float, depth: float) -> Rect2:
+	match direction:
+		NORTH_WEST:
+			return Rect2(origin, Vector2(depth, depth))
+		NORTH_EAST:
+			return Rect2(origin + Vector2(cell - depth, 0.0), Vector2(depth, depth))
+		SOUTH_WEST:
+			return Rect2(origin + Vector2(0.0, cell - depth), Vector2(depth, depth))
+	return Rect2(origin + Vector2(cell - depth, cell - depth), Vector2(depth, depth))
 
 
 ## A baked fringe's pixels, read from its page's own copy rather than back off the GPU.

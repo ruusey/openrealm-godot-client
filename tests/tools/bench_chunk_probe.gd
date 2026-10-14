@@ -3,8 +3,10 @@ extends Node2D
 ## Repaints one ground chunk's worth of cells inside its own draw, timing it.
 
 var ground: TileRenderer
+var liquid: TileRenderer
 var chunk := Vector2i(2, 2)
 var samples: Array[float] = []
+var liquid_samples: Array[float] = []
 
 
 func _process(_delta: float) -> void:
@@ -17,3 +19,7 @@ func _draw() -> void:
 	var started := Time.get_ticks_usec()
 	ground.paint_cells(self, Rect2i(chunk * GroundChunk.SIZE, Vector2i(GroundChunk.SIZE, GroundChunk.SIZE)))
 	samples.append(Time.get_ticks_usec() - started)
+	if liquid != null:
+		started = Time.get_ticks_usec()
+		liquid.paint_cells(self, Rect2i(chunk * GroundChunk.SIZE, Vector2i(GroundChunk.SIZE, GroundChunk.SIZE)))
+		liquid_samples.append(Time.get_ticks_usec() - started)

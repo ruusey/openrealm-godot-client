@@ -28,6 +28,7 @@ const PROP_TILE := 120
 const SHALLOW_WATER_TILE := 5
 ## A floor that burns: damaging, and (like every shipped lava tile) slowing too.
 const LAVA_TILE := 25
+const ROCK_TILE := 21
 ## A square wall -- 8x8, no front face of its own -- which is what the
 ## side-bands are for.
 const SQUARE_WALL_TILE := 184
@@ -35,7 +36,7 @@ const SQUARE_WALL_TILE := 184
 
 static func names() -> Array:
 	return ["terrain", "entities", "ysort", "bullets", "collision", "overlap",
-		"walk_left", "walk_right", "walk_up", "walk_down", "walls", "feather", "effects", "walldepth", "shadows", "attack_left", "attack_right", "attack_up", "spin", "portals", "transition", "transition_named", "damage", "damage_fading", "chat", "death", "wading", "inventory", "abilities", "potion_storage", "fame_store", "forge", "minimap", "trails", "login", "exchange_market", "wall_bands", "effects_cast", "effects_generic", "effects_holy", "effects_dark", "effects_arcane", "effects_knight", "effects_rogue", "effects_trapper", "effects_heavy", "trade", "player_hud", "party", "nearby", "item_card", "options", "options_controls", "masteries", "dev_overlay", "blind", "dyes", "quests", "quest_stars", "login_delete", "login_stats", "terms", "how_to", "leaderboard", "loot_preview", "minimap_hop", "billboards", "chunk_seams"]
+		"walk_left", "walk_right", "walk_up", "walk_down", "walls", "feather", "effects", "walldepth", "shadows", "attack_left", "attack_right", "attack_up", "spin", "portals", "transition", "transition_named", "damage", "damage_fading", "chat", "death", "wading", "inventory", "abilities", "potion_storage", "fame_store", "forge", "minimap", "trails", "login", "exchange_market", "wall_bands", "effects_cast", "effects_generic", "effects_holy", "effects_dark", "effects_arcane", "effects_knight", "effects_rogue", "effects_trapper", "effects_heavy", "trade", "player_hud", "party", "nearby", "item_card", "options", "options_controls", "masteries", "dev_overlay", "blind", "dyes", "quests", "quest_stars", "login_delete", "login_stats", "terms", "how_to", "leaderboard", "loot_preview", "minimap_hop", "billboards", "chunk_seams", "shores"]
 
 
 ## A second step, applied after the first rendered frame, for scenarios whose
@@ -112,6 +113,7 @@ static func apply(name: String, state: RealmState) -> void:
 		"trails": _trails(state)
 		"billboards": _billboards(state)
 		"chunk_seams": _chunk_seams(state)
+		"shores": _shores(state)
 		# The login screen: no realm at all, the capture raises the screen itself.
 		"login", "login_delete", "login_stats", "terms", "how_to", "leaderboard": pass
 		_: push_error("unknown scenario '%s'" % name)
@@ -1106,6 +1108,34 @@ static func _chunk_seams(state: RealmState) -> void:
 	state.local.id = 1
 	state.local.position = Vector2(-16, 64)
 	state.apply_packet("LoadPacket", {"players": [_player(1, "Ruu", Vector2(-16, 64), 0)]})
+
+
+## Liquid against land: a ragged pond of shallow water around deep water in
+## grass and sand, and a lava pool in rock with a rock island and a one-cell
+## inlet, so straight shores, inner and outer corners and lone cells all show.
+static func _shores(state: RealmState) -> void:
+	var tiles: Array = []
+	for x in range(-16, 17):
+		for y in range(-12, 13):
+			var tile_id := GRASS_TILE if x < 0 else ROCK_TILE
+			if x < 0 and y > 3:
+				tile_id = FLOOR_TILE
+			var pond := Vector2(x + 7, y)
+			var reach := 4.6 + 0.9 * sin(3.0 * pond.angle()) + 0.5 * cos(5.0 * pond.angle())
+			if pond.length() < reach:
+				tile_id = DEEP_WATER_TILE if pond.length() < reach - 2.0 else SHALLOW_WATER_TILE
+			var pool := Vector2(x - 7, y)
+			if pool.length() < 3.8 + 0.7 * sin(2.0 * pool.angle() + 1.0):
+				tile_id = LAVA_TILE
+			tiles.append({"tileId": tile_id, "layer": 0, "xIndex": y, "yIndex": x})
+	for cell in [Vector2i(-3, -6), Vector2i(11, 4)]:
+		tiles.append({"tileId": LAVA_TILE if cell.x > 0 else SHALLOW_WATER_TILE,
+			"layer": 0, "xIndex": cell.y, "yIndex": cell.x})
+	tiles.append({"tileId": ROCK_TILE, "layer": 0, "xIndex": 0, "yIndex": 7})
+	state.apply_packet("LoadMapPacket", _map(tiles))
+	state.local.id = 1
+	state.local.position = Vector2(-16, -16)
+	state.apply_packet("LoadPacket", {"players": [_player(1, "Ruu", Vector2(-16, 200), 0)]})
 
 
 ## The server's top five as the Menu's Leaderboard lists them, fame and
