@@ -7,7 +7,7 @@ name: Release builds
 #   openrealm-godot-web.zip     -> deploy-remote.bat pulls this to the /play mount
 #   openrealm-godot-windows.zip -> single OpenRealm.exe (pck embedded)
 #   openrealm-godot-linux.zip   -> single OpenRealm.x86_64 (pck embedded)
-#   openrealm-godot-macos.zip   -> OpenRealm.app (universal, UNSIGNED)
+#   openrealm-godot-macos.zip   -> OpenRealm.app (x86_64, Rosetta on Apple Silicon, UNSIGNED)
 #
 # The macOS .app is UNSIGNED: CI has no Apple Developer certificate, so codesign
 # + notarization are disabled in the export preset. Gatekeeper blocks it on first
