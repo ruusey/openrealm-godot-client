@@ -20,10 +20,18 @@ extends Node2D
 ## give this pass a container of its own, above the entities and below the
 ## projectiles.
 
+const NO_COVER: Array = []
+const COVER_TEXTURE := 0
+const COVER_CANOPY := 1
+const COVER_RECT := 2
+
 var state: RealmState
 var content: GameData
 ## Top faces / canopies stamped last frame.
 var drawn := 0
+## tile id -> _resolve_cover(); cleared when the content changes.
+var _covers := {}
+var _covers_for: GameData
 
 
 func _draw() -> void:
@@ -31,6 +39,9 @@ func _draw() -> void:
 	if state == null or content == null:
 		return
 
+	if _covers_for != content or not content.ready:
+		_covers.clear()
+		_covers_for = content
 	var walls: Dictionary = state.tiles.layers.get(GameConstants.COLLISION_LAYER, {})
 	if walls.is_empty():
 		return
@@ -40,34 +51,56 @@ func _draw() -> void:
 	var first := Vector2i(floori(view.position.x / size), floori(view.position.y / size))
 	var last := Vector2i(ceili(view.end.x / size), ceili(view.end.y / size))
 
+	var looks: Dictionary = content.tile_looks
+	var cracks: Dictionary = state.tiles.cracks
 	for tile_x in range(first.x, last.x + 1):
 		for tile_y in range(first.y, last.y + 1):
-			var tile_id: int = walls.get(Vector2i(tile_x, tile_y), 0)
+			var cell := Vector2i(tile_x, tile_y)
+			var tile_id: int = walls.get(cell, 0)
 			if tile_id <= 0:
 				continue
-			# Large decorations (render bigger than the cell): redraw the canopy over entities,
-			# from the sprite's top down to the trunk cell's south edge. A character standing
-			# south of that edge (in front of the trunk) overlaps only the un-redrawn bottom
-			# and so draws over it; one behind/under the canopy is covered.
-			var cell_rect := Rect2(tile_x * size, tile_y * size, size, size)
-			var draw_rect := content.tile_render_rect(tile_id, cell_rect)
-			if draw_rect != cell_rect:
-				var cover_h := float(tile_y * size + size) - draw_rect.position.y
-				var canopy := content.tile_canopy(tile_id, cover_h / draw_rect.size.y)
-				if canopy != null:
-					draw_texture_rect(canopy,
-						Rect2(draw_rect.position, Vector2(draw_rect.size.x, cover_h)), false)
-					drawn += 1
+			# Everything below is per tile id, so it is resolved once per id and kept
+			# (_covers); this pass runs every frame over every cell in view.
+			var cover: Array = _covers.get(tile_id, NO_COVER)
+			if cover.is_empty():
+				cover = _resolve_cover(tile_id, looks)
+				_covers[tile_id] = cover
+			var texture: Texture2D = cover[COVER_TEXTURE]
+			if texture == null:
 				continue
-			var face := content.tile_top_face(tile_id)
-			if face == null:
+			var at := Vector2(tile_x * size, tile_y * size)
+			if cover[COVER_CANOPY]:
+				# Large decorations (render bigger than the cell): redraw the canopy over
+				# entities, from the sprite's top down to the trunk cell's south edge. A
+				# character standing south of that edge (in front of the trunk) overlaps
+				# only the un-redrawn bottom and so draws over it; one behind/under the
+				# canopy is covered.
+				var rect: Rect2 = cover[COVER_RECT]
+				draw_texture_rect(texture, Rect2(at + rect.position, rect.size), false)
+				drawn += 1
 				continue
-			var face_rect := Rect2(tile_x * size, tile_y * size, size, size)
-			draw_texture_rect(face, face_rect, false)
+			var face_rect := Rect2(at, Vector2(size, size))
+			draw_texture_rect(texture, face_rect, false)
 			# The clean top face would otherwise paint over a breakable wall's cracks.
-			var stage := state.tiles.crack_at(Vector2i(tile_x, tile_y))
-			if stage > 0:
-				var crack := content.crack_top_face(stage)
-				if crack != null:
-					draw_texture_rect(crack, face_rect, false)
+			if not cracks.is_empty():
+				var stage := int(cracks.get(cell, 0))
+				if stage > 0:
+					var crack := content.crack_top_face(stage)
+					if crack != null:
+						draw_texture_rect(crack, face_rect, false)
 			drawn += 1
+
+
+## What a tile id redraws over the entities: [texture, is canopy, the rect it
+## covers relative to the cell's top-left]. A canopy is the top of a large
+## decoration down to its trunk cell's south edge; anything else is a wall's
+## square top face (null for a tile that has neither).
+func _resolve_cover(tile_id: int, looks: Dictionary) -> Array:
+	var size := float(GameConstants.TILE_SIZE)
+	var cell_rect := Rect2(0.0, 0.0, size, size)
+	var draw_rect := content.tile_render_rect(tile_id, cell_rect)
+	if draw_rect != cell_rect:
+		var cover_h := size - draw_rect.position.y
+		var canopy := content.tile_canopy(tile_id, cover_h / draw_rect.size.y)
+		return [canopy, true, Rect2(draw_rect.position, Vector2(draw_rect.size.x, cover_h))]
+	return [content.tile_top_face(tile_id), false, cell_rect]

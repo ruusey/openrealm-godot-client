@@ -22,6 +22,7 @@ const CAP := 4096
 const MAX_STEP := 0.048
 const DRAG_PER_SECOND := 3.0
 const NO_FX := {}
+const NO_SPEC: Array = []
 
 var count := 0
 var x := PackedFloat32Array()
@@ -42,6 +43,8 @@ var _seen := {}
 ## group id -> its fx entry, so the per-bullet read is one dictionary hit.
 var _fx_by_group := {}
 var _gone: Array = []
+## group id -> ParticleEmitter.trail_spec of its trail.
+var _trail_specs := {}
 
 
 func _init(art: ProjectileArt = null) -> void:
@@ -96,7 +99,16 @@ func _emit(delta: float, bullets: Dictionary, hidden: Variant) -> void:
 		var half := float(bullet.get("size", 8)) * 0.5
 		var centre: Vector2 = bullet["pos"] + Vector2(half, half)
 		if not trail.is_empty():
-			ParticleEmitter.trail(self, centre, bullet, trail, delta)
+			var spec: Array = _trail_specs.get(group_id, NO_SPEC)
+			if spec.is_empty():
+				spec = ParticleEmitter.trail_spec(trail)
+				_trail_specs[group_id] = spec
+			# Most frames add a fraction of a particle; only a whole one calls out.
+			var accumulated: float = float(bullet.get("fx_acc", 0.0)) + spec[ParticleEmitter.SPEC_RATE] * delta
+			if accumulated < 1.0:
+				bullet["fx_acc"] = accumulated
+			else:
+				ParticleEmitter.trail_from(self, centre, bullet, spec, accumulated)
 		if not muzzle.is_empty() and not _seen.has(id):
 			ParticleEmitter.burst(self, centre, muzzle)
 		# A muzzle-only bullet is remembered too, or it would flash every
@@ -153,10 +165,12 @@ func _step(delta: float) -> void:
 		vx[alive] = vx[i] * keep
 		vy[alive] = vy[i] * keep
 		life[alive] = remaining_life
-		max_life[alive] = max_life[i]
-		size_start[alive] = size_start[i]
-		size_end[alive] = size_end[i]
-		tint[alive] = tint[i]
+		# Until the first death nothing moves down, and the constants stay put.
+		if alive != i:
+			max_life[alive] = max_life[i]
+			size_start[alive] = size_start[i]
+			size_end[alive] = size_end[i]
+			tint[alive] = tint[i]
 		alive += 1
 	count = alive
 

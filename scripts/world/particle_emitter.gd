@@ -12,6 +12,11 @@ const SPREAD_TO_SPEED := 20.0
 const TRAIL_DEFAULTS := {"rate": 24.0, "lifeMs": 500.0, "size": 6.0, "spread": 0.2}
 const BURST_DEFAULTS := {"count": 8.0, "lifeMs": 300.0, "size": 5.0, "speed": 50.0}
 const TRAIL_TINT := Color(0.067, 0.067, 0.067)
+const SPEC_RATE := 0
+const SPEC_COLOUR := 1
+const SPEC_SECONDS := 2
+const SPEC_SIZE := 3
+const SPEC_DISPERSION := 4
 
 
 ## A trail is emitted from a fractional accumulator kept on the bullet, so
@@ -20,13 +25,31 @@ const TRAIL_TINT := Color(0.067, 0.067, 0.067)
 ## bullet's size of its centre, drifts outward slowly, and grows.
 static func trail(field: ParticleField, centre: Vector2, bullet: Dictionary, fx: Dictionary,
 		delta: float) -> void:
-	var accumulated: float = float(bullet.get("fx_acc", 0.0)) + number(fx, "rate", TRAIL_DEFAULTS) * delta
+	var spec := trail_spec(fx)
+	trail_from(field, centre, bullet, spec, float(bullet.get("fx_acc", 0.0)) + spec[SPEC_RATE] * delta)
+
+
+## A trail entry's numbers resolved once (its colour is a hex string to parse):
+## [rate, colour, seconds, size, dispersion], indexed by SPEC_*.
+static func trail_spec(fx: Dictionary) -> Array:
+	return [
+		number(fx, "rate", TRAIL_DEFAULTS),
+		ProjectileArt.colour(fx.get("color"), TRAIL_TINT),
+		number(fx, "lifeMs", TRAIL_DEFAULTS) * 0.001,
+		number(fx, "size", TRAIL_DEFAULTS),
+		number(fx, "spread", TRAIL_DEFAULTS) * SPREAD_TO_SPEED,
+	]
+
+
+## Emits the whole particles `accumulated` has built up from a resolved spec.
+static func trail_from(field: ParticleField, centre: Vector2, bullet: Dictionary, spec: Array,
+		accumulated: float) -> void:
 	var emitted := int(accumulated)
 	bullet["fx_acc"] = accumulated - emitted
-	var colour := ProjectileArt.colour(fx.get("color"), TRAIL_TINT)
-	var seconds := number(fx, "lifeMs", TRAIL_DEFAULTS) * 0.001
-	var base := number(fx, "size", TRAIL_DEFAULTS)
-	var dispersion := number(fx, "spread", TRAIL_DEFAULTS) * SPREAD_TO_SPEED
+	var colour: Color = spec[SPEC_COLOUR]
+	var seconds: float = spec[SPEC_SECONDS]
+	var base: float = spec[SPEC_SIZE]
+	var dispersion: float = spec[SPEC_DISPERSION]
 	var rng := field.rng
 	for k in mini(emitted, MAX_TRAIL_PER_FRAME):
 		var direction := Vector2.from_angle(rng.randf() * TAU)

@@ -26,6 +26,10 @@ const TILE_LIGHT_ENERGY := 2.0
 ## pool follows the nearest of them, coloured and sized from that data. Not
 ## shadow-casting -- a fast mover flickering shadows is noise, and cheaper.
 const MAX_BULLET_LIGHTS := 20
+## Which bullets carry the travelling lights is re-picked every this many frames;
+## in between, the picked ones' lights only follow them.
+const BULLET_LIGHT_RESELECT := 4
+const NO_BULLET := {}
 const BULLET_LIGHT_ENERGY := 1.6
 const MAX_TILE_LIGHTS := 24
 ## Lava/water glow reaches farther but dimmer. The pooled tile light sat right on the
@@ -73,6 +77,8 @@ var _occluder_rects: Array[Rect2i] = []
 var _near_distance := PackedFloat32Array()
 var _near_at := PackedVector2Array()
 var _near_light: Array = []
+var _near_id := PackedInt64Array()
+var _bullet_light_frame := 0
 var _bullet_lights_shown := 0
 ## group id -> its resolved data.light ({} for none).
 var _bullet_light_by_group := {}
@@ -129,6 +135,7 @@ func setup(state: RealmState, content: GameData) -> void:
 	_near_distance.resize(MAX_BULLET_LIGHTS)
 	_near_at.resize(MAX_BULLET_LIGHTS)
 	_near_light.resize(MAX_BULLET_LIGHTS)
+	_near_id.resize(MAX_BULLET_LIGHTS)
 	# Occluders only matter for shadow-casting lights, which web has none of.
 	if not _web:
 		for i in MAX_OCCLUDERS:
@@ -212,6 +219,10 @@ func _place_bullet_lights() -> void:
 				light.visible = false
 			_bullet_lights_shown = 0
 		return
+	_bullet_light_frame += 1
+	if _bullet_light_frame % BULLET_LIGHT_RESELECT != 0:
+		_follow_bullet_lights()
+		return
 	# A bullet we don't draw must not cast light either -- another player's shot
 	# with "show other players' bullets" off, or one hidden by Blind.
 	var visibility := BulletVisibility.of(_state)
@@ -238,10 +249,12 @@ func _place_bullet_lights() -> void:
 			_near_distance[slot] = _near_distance[slot - 1]
 			_near_at[slot] = _near_at[slot - 1]
 			_near_light[slot] = _near_light[slot - 1]
+			_near_id[slot] = _near_id[slot - 1]
 			slot -= 1
 		_near_distance[slot] = distance
 		_near_at[slot] = at
 		_near_light[slot] = light_def
+		_near_id[slot] = id
 		found = mini(found + 1, limit)
 	for i in limit:
 		var light := _bullet_lights[i]
@@ -254,6 +267,21 @@ func _place_bullet_lights() -> void:
 			light.color = light_def["color"]
 			light.texture_scale = _scale_for(light_def["radius"])
 	_bullet_lights_shown = found
+
+
+## Between reselections the chosen bullets' lights just follow them, and a light
+## whose bullet is gone goes out.
+func _follow_bullet_lights() -> void:
+	var bullets: Dictionary = _state.projectiles.bullets
+	for i in _bullet_lights_shown:
+		var light := _bullet_lights[i]
+		var bullet: Dictionary = bullets.get(_near_id[i], NO_BULLET)
+		if bullet.is_empty():
+			if light.visible:
+				light.visible = false
+			continue
+		var half := float(bullet.get("size", 8)) * 0.5
+		light.position = bullet["pos"] + Vector2(half, half)
 
 
 ## The glowing tiles in view get a light each (nearest the player first), and the

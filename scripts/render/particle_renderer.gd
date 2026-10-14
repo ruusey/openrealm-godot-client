@@ -10,6 +10,8 @@ extends Node2D
 ## over its own smoke.
 
 const DOT_SIZE := 32
+## Past any size a shipped fx entry gives a particle; only pads the cull.
+const MAX_PARTICLE_SIZE := 64.0
 
 var state: RealmState
 var drawn := 0
@@ -47,13 +49,20 @@ func _paint_batched(field: ParticleField, view: Rect2) -> int:
 	if _multimesh.instance_count < field.count:
 		_multimesh.instance_count = field.count
 	var count := 0
+	# The field's size_at/alpha_at and view.grow(size), inlined; the padded view
+	# rejects the far-off particles before their size is worked out.
+	var padded := view.grow(MAX_PARTICLE_SIZE)
 	for i in field.count:
-		var size := field.size_at(i)
 		var at := Vector2(field.x[i], field.y[i])
-		if not view.grow(size).has_point(at):
+		if not padded.has_point(at):
+			continue
+		var remaining := field.life[i] / field.max_life[i]
+		var size := field.size_start[i] + (field.size_end[i] - field.size_start[i]) * (1.0 - remaining)
+		if at.x < view.position.x - size or at.y < view.position.y - size \
+				or at.x > view.end.x + size or at.y > view.end.y + size:
 			continue
 		var colour: Color = field.tint[i]
-		colour.a = field.alpha_at(i)
+		colour.a = remaining * remaining
 		_multimesh.set_instance_transform_2d(count, Transform2D(0.0, Vector2(size, size), 0.0, at))
 		_multimesh.set_instance_color(count, colour)
 		count += 1
