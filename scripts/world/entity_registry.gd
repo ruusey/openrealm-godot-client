@@ -18,6 +18,9 @@ var lock_on := -1
 
 var _short_ids := {}   # shortId -> entity id
 var _clock: Callable
+## Snaps packet arrivals onto the server's send grid; null leaves them raw (tests
+## that script exact arrival times).
+var packet_clock: PacketClock
 ## The local player's centre, for the viewport gate on extrapolation; INF
 ## when there is no local player to gate on. RealmState wires it.
 var viewer: Callable = func() -> Vector2: return Vector2.INF
@@ -51,14 +54,29 @@ func clear_but(keep_id: int) -> void:
 		players[keep_id] = kept
 
 
+## Where to draw an entity now. The sprite, its tag and the hit test all ask
+## within a frame, so the answer is kept for that clock reading; a new snapshot
+## (EntitySnapshots.push) drops it.
 func render_position(entity: Dictionary) -> Vector2:
-	return EntitySnapshots.render_position(entity, _clock.call(), viewer.call())
+	var now := float(_clock.call())
+	if entity.get("drawn_at", -1.0) == now:
+		return entity["drawn"]
+	var at := EntitySnapshots.render_position(entity, now, viewer.call())
+	entity["drawn_at"] = now
+	entity["drawn"] = at
+	return at
+
+
+## When the packet being applied was sent, as near as can be told.
+func _arrival() -> float:
+	var now := float(_clock.call())
+	return packet_clock.stamp(now) if packet_clock != null else now
 
 
 ## Applies a LoadPacket's entity tables. The wire mapping itself lives in
 ## EntityLoader; this keeps the registry to storage, lookup and movement.
 func apply_load(data: Dictionary) -> void:
-	EntityLoader.apply(self, data, _clock.call())
+	EntityLoader.apply(self, data, _arrival())
 
 
 func apply_unload(data: Dictionary) -> void:
@@ -75,7 +93,7 @@ func apply_unload(data: Dictionary) -> void:
 
 
 func apply_object_move(data: Dictionary) -> void:
-	var now: int = _clock.call()
+	var now := _arrival()
 	for movement in data.get("movements", []):
 		var entity := find(int(movement.get("entityType", 0)), int(movement.get("entityId", 0)))
 		if entity.is_empty():
@@ -87,7 +105,7 @@ func apply_object_move(data: Dictionary) -> void:
 
 
 func apply_compact_move(data: Dictionary) -> void:
-	var now: int = _clock.call()
+	var now := _arrival()
 	for movement in data.get("movements", []):
 		var short_id := int(movement.get("shortEntityId", 0))
 		if not _short_ids.has(short_id):
@@ -125,7 +143,7 @@ func upsert(table: Dictionary, id: int, kind: int) -> Dictionary:
 	return table[id]
 
 
-func snapshot_from_wire(entity: Dictionary, wire: Dictionary, now: int) -> void:
+func snapshot_from_wire(entity: Dictionary, wire: Dictionary, now: float) -> void:
 	var pos: Dictionary = wire.get("pos", {})
 	EntitySnapshots.push(entity, Vector2(pos.get("x", 0.0), pos.get("y", 0.0)),
 		Vector2(wire.get("dX", 0.0), wire.get("dY", 0.0)), now, viewer.call())

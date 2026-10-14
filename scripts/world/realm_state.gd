@@ -41,15 +41,26 @@ var settings := GameSettings.new()
 var progress := AccountProgress.new()   # masteries, quests, stars: kept across realms
 var guild := GuildState.new()           # account-wide guild: roster, dialog, invite
 var companions := CompanionState.new()  # account-wide AI party roster: kept across realms
+var _frame := -1
+var _frame_ms := 0.0
 
 var transition_pending: bool:
 	get: return transition.pending
 
 
-func _init(content: GameData = null,
-		clock: Callable = func() -> int: return Time.get_ticks_msec()) -> void:
+## Without a clock of its own the realm runs on the wall clock, and remote
+## entities interpolate on a sub-millisecond one with packets snapped to the
+## server's send grid; a scripted clock drives everything exactly as given.
+## The entities' clock is read once per frame, at its start, so the sprite, its
+## tag and every lookup in between agree on where an entity is.
+func _init(content: GameData = null, clock: Callable = Callable()) -> void:
+	if clock.is_valid():
+		entities = EntityRegistry.new(clock)
+	else:
+		clock = func() -> int: return Time.get_ticks_msec()
+		entities = EntityRegistry.new(_frame_clock)
+		entities.packet_clock = PacketClock.new()
 	tiles = TileMapState.new(content)
-	entities = EntityRegistry.new(clock)
 	local = LocalPlayer.new()
 	entities.viewer = func() -> Vector2: return local.centre() if local.is_present() else Vector2.INF
 	movement = MovementPredictor.new(local, tiles)
@@ -68,6 +79,14 @@ func _init(content: GameData = null,
 	party = PartyState.new(clock)
 	pvp = PvpChallengeState.new(clock)
 	transition = RealmTransition.new(self, clock)
+
+
+func _frame_clock() -> float:
+	var frame := Engine.get_process_frames()
+	if frame != _frame:
+		_frame = frame
+		_frame_ms = Time.get_ticks_usec() * 0.001
+	return _frame_ms
 
 
 func apply_packet(name: String, data: Dictionary) -> void:
@@ -147,8 +166,7 @@ func advance(delta: float, input: Vector2, latency_ms: float) -> Array:
 	# Trails/impacts follow the same visibility rule as the bullet sprite + glow:
 	# a shot we don't draw (another player's/companion's with "show other players'
 	# bullets" off, or one hidden by Blind) spawns no particles either.
-	particles.advance(delta, projectiles.bullets,
-		func(bullet: Dictionary) -> bool: return BulletRenderer._hidden(self, bullet))
+	particles.advance(delta, projectiles.bullets, BulletVisibility.of(self))
 	texts.advance(delta)
 	abilities.expire()
 	minimap.expire()

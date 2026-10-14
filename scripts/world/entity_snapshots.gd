@@ -45,9 +45,10 @@ const OFFSET_FLOOR_PX := 0.3
 ## Records a server position. Where the entity is drawn does not change on
 ## this clock reading: the difference is banked as an offset and closed
 ## over the frames that follow.
-static func push(entity: Dictionary, position: Vector2, velocity: Vector2, now_ms: int,
+static func push(entity: Dictionary, position: Vector2, velocity: Vector2, now_ms: float,
 		viewer: Vector2 = Vector2.INF) -> void:
 	var snapshots: Array = entity["snaps"]
+	entity["drawn_at"] = -1.0
 	var drawn := render_position(entity, now_ms, viewer) if not snapshots.is_empty() else Vector2.INF
 	var t := float(now_ms)
 	if not snapshots.is_empty() and t - snapshots[-1]["t"] < COLLAPSE_MS:
@@ -65,12 +66,12 @@ static func push(entity: Dictionary, position: Vector2, velocity: Vector2, now_m
 ## Where to draw the entity: the sampled position plus what is left of the
 ## last correction. `viewer` is the local player's centre, for the viewport
 ## gate; INF means no gate.
-static func render_position(entity: Dictionary, now_ms: int, viewer: Vector2 = Vector2.INF) -> Vector2:
+static func render_position(entity: Dictionary, now_ms: float, viewer: Vector2 = Vector2.INF) -> Vector2:
 	return sampled(entity, now_ms, viewer) + _offset(entity, now_ms)
 
 
 ## The server's position at the render time, with no smoothing over it.
-static func sampled(entity: Dictionary, now_ms: int, viewer: Vector2 = Vector2.INF) -> Vector2:
+static func sampled(entity: Dictionary, now_ms: float, viewer: Vector2 = Vector2.INF) -> Vector2:
 	var snapshots: Array = entity.get("snaps", [])
 	if snapshots.is_empty():
 		return Vector2.ZERO
@@ -103,11 +104,11 @@ static func _outside_viewport(entity: Dictionary, position: Vector2, viewer: Vec
 
 ## What is left of the last correction at this clock reading, stepped once
 ## per reading however many times the frame asks.
-static func _offset(entity: Dictionary, now_ms: int) -> Vector2:
+static func _offset(entity: Dictionary, now_ms: float) -> Vector2:
 	var offset: Vector2 = entity.get("offset", Vector2.ZERO)
 	if offset == Vector2.ZERO:
 		return offset
-	var dt := float(now_ms - int(entity.get("offset_t", now_ms))) / 1000.0
+	var dt := (now_ms - float(entity.get("offset_t", now_ms))) / 1000.0
 	if dt > 0.0:
 		var gap := offset.length()
 		var step := minf(gap, minf(gap / CLOSE_TIME_S, MAX_CLOSE_PX_PER_S) * dt)

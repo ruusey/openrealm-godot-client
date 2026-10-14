@@ -7,7 +7,7 @@ extends RefCounted
 ## lookup: this is the only place that knows NetPlayer/NetEnemy/NetPortal
 ## field names, which is also the part that changes when the protocol does.
 
-static func apply(registry: EntityRegistry, data: Dictionary, now: int) -> void:
+static func apply(registry: EntityRegistry, data: Dictionary, now: float) -> void:
 	for wire in data.get("players", []):
 		var player := registry.upsert(registry.players, int(wire.get("id", 0)), GameConstants.ENTITY_PLAYER)
 		player["name"] = wire.get("name", "")
