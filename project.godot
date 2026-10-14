@@ -171,6 +171,11 @@ quick_slot_8={
 [rendering]
 
 textures/canvas_textures/default_texture_filter=0
+# ETC2 ASTC import is required for the universal/arm64 macOS export (Godot aborts
+# that preset otherwise). Only the macOS preset packs the ASTC variants; the
+# Windows/Linux (s3tc_bptc) and Web (uncompressed) presets don't, so this just
+# adds the variants to the import cache without changing their exports.
+textures/vram_compression/import_etc2_astc=true
 renderer/rendering_method="gl_compatibility"
 environment/defaults/default_clear_color=Color(0, 0, 0, 1)
 # A float 2D framebuffer so the additive light pools can exceed 1.0; that headroom
