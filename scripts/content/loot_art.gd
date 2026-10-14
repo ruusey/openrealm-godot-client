@@ -28,6 +28,11 @@ static func definition(library: ContentLibrary, tier: int, is_chest: bool) -> Di
 		"fullSize": false}
 
 
+## A vault chest, as the registry holds a container.
+static func is_chest(container: Dictionary) -> bool:
+	return bool(container.get("is_chest", false)) or int(container.get("tier", 0)) == CHEST_TIER
+
+
 static func texture(content: GameData, tier: int, is_chest: bool) -> AtlasTexture:
 	return content.sprites.atlas_for(definition(content.library, tier, is_chest))
 

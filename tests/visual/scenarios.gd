@@ -36,7 +36,7 @@ const SQUARE_WALL_TILE := 184
 
 static func names() -> Array:
 	return ["terrain", "entities", "ysort", "bullets", "collision", "overlap",
-		"walk_left", "walk_right", "walk_up", "walk_down", "walls", "feather", "effects", "walldepth", "shadows", "attack_left", "attack_right", "attack_up", "spin", "portals", "transition", "transition_named", "damage", "damage_fading", "chat", "death", "wading", "inventory", "abilities", "potion_storage", "fame_store", "forge", "minimap", "trails", "login", "exchange_market", "wall_bands", "effects_cast", "effects_generic", "effects_holy", "effects_dark", "effects_arcane", "effects_knight", "effects_rogue", "effects_trapper", "effects_heavy", "trade", "player_hud", "party", "nearby", "item_card", "options", "options_controls", "masteries", "dev_overlay", "blind", "dyes", "quests", "quest_stars", "login_delete", "login_stats", "terms", "how_to", "leaderboard", "loot_preview", "minimap_hop", "billboards", "chunk_seams", "shores"]
+		"walk_left", "walk_right", "walk_up", "walk_down", "walls", "feather", "effects", "walldepth", "shadows", "attack_left", "attack_right", "attack_up", "spin", "portals", "transition", "transition_named", "damage", "damage_fading", "chat", "death", "wading", "inventory", "abilities", "potion_storage", "fame_store", "forge", "minimap", "trails", "login", "exchange_market", "wall_bands", "effects_cast", "effects_generic", "effects_holy", "effects_dark", "effects_arcane", "effects_knight", "effects_rogue", "effects_trapper", "effects_heavy", "trade", "player_hud", "party", "nearby", "item_card", "options", "options_controls", "masteries", "dev_overlay", "blind", "dyes", "quests", "quest_stars", "login_delete", "login_stats", "terms", "how_to", "leaderboard", "loot_preview", "minimap_hop", "billboards", "chunk_seams", "shores", "vault", "touch_phone"]
 
 
 ## A second step, applied after the first rendered frame, for scenarios whose
@@ -110,6 +110,8 @@ static func apply(name: String, state: RealmState) -> void:
 		"dyes": _dyes(state)
 		"quests", "quest_stars": _quests(state)
 		"loot_preview": _loot_preview(state)
+		"vault": _vault(state)
+		"touch_phone": _inventory(state)
 		"trails": _trails(state)
 		"billboards": _billboards(state)
 		"chunk_seams": _chunk_seams(state)
@@ -861,6 +863,25 @@ static func _loot_preview(state: RealmState) -> void:
 				_item(0), _item(800), _item(3012), _item(51), _item(846)]},
 		{"lootContainerId": 11, "tier": 0, "isChest": false, "pos": {"x": 0.0, "y": -112.0},
 			"items": [{"itemId": -1}, _item(8), _item(839), _item(845), _item(3012), _item(50)]}]})
+
+
+## The vault: an empty chest at our feet, its slots open beside the bag, and
+## two more across the floor, one holding a few things in their own slots.
+static func _vault(state: RealmState) -> void:
+	_inventory(state)
+	state.apply_packet("UnloadPacket", {"containers": [5, 9]})
+	var empty := []
+	for i in Inventory.LOOT_SIZE:
+		empty.append({"itemId": -1})
+	var some := empty.duplicate()
+	some[0] = _item(51)
+	some[2] = _item(846)
+	some[7] = _item(3010)
+	state.apply_packet("LoadPacket", {"containers": [
+		{"lootContainerId": 20, "tier": -1, "isChest": true, "items": empty,
+			"pos": {"x": state.local.position.x, "y": state.local.position.y}},
+		{"lootContainerId": 21, "tier": -1, "isChest": true, "items": empty, "pos": {"x": 96.0, "y": 0.0}},
+		{"lootContainerId": 22, "tier": -1, "isChest": true, "items": some, "pos": {"x": 96.0, "y": 96.0}}]})
 
 
 static func _item(item_id: int, extra := {}) -> Dictionary:

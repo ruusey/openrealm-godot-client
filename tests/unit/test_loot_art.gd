@@ -24,7 +24,8 @@ func test_the_table_is_loaded_by_tier_and_its_sheets_preloaded():
 	assert_eq(content.library.loot_containers[-1]["name"], "Chest")
 	var alone := ContentLibrary.new()
 	alone.loot_containers = {0: {"spriteKey": "loot-only.png"}}
-	assert_eq(alone.sheet_keys(), ["loot-only.png"], "a sheet only a bag uses is still preloaded")
+	assert_eq(alone.sheet_keys(), ["loot-only.png", ContentLibrary.CRACK_SHEET],
+		"a sheet only a bag uses is still preloaded")
 	assert_not_null(LootArt.texture(content, 0, false), "a bag the table names")
 	assert_not_null(LootArt.texture(content, -1, true), "the chest")
 

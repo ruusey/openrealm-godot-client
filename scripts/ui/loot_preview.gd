@@ -6,9 +6,10 @@ extends Panel
 ##
 ## Its sizes are the web's screen pixels as they are -- five columns of
 ## 15px cells, 11px icons, 2px of padding, two rows at most -- on a dark box
-## with a thin gold edge and 3px corners. Strictly something to look at: it
-## takes no mouse, so a click through it lands on the world as it would on
-## the web's non-interactive layer.
+## with a thin gold edge and 3px corners. A vault chest shows all its slots,
+## empty ones as dim cells, so an empty chest still reads as somewhere to put
+## things. Strictly something to look at: it takes no mouse, so a click
+## through it lands on the world as it would on the web's non-interactive layer.
 
 const COLUMNS := 5
 const ROWS := 2
@@ -19,9 +20,13 @@ const ICON := 11
 const DROP := 4
 const BACKGROUND := Color(0x0a / 255.0, 0x0a / 255.0, 0x0c / 255.0, 0.72)
 const EDGE := Color(0xc8 / 255.0, 0xa8 / 255.0, 0x6e / 255.0, 0.55)
+const SLOT := Color(0.2, 0.18, 0.15, 0.95)
+const SLOT_EDGE := Color(0xc8 / 255.0, 0xa8 / 255.0, 0x6e / 255.0, 0.45)
 
 var _icons: Array[TextureRect] = []
 var _shown := 0
+## A chest's slot count; 0 for a bag, which shows only what it holds.
+var _slots := 0
 
 
 func _init() -> void:
@@ -67,12 +72,38 @@ static func cell_origin(i: int) -> Vector2:
 ## Fills the grid; `textures` is one a shown item, null where the item has
 ## no art (the web leaves that cell empty).
 func show_items(textures: Array) -> void:
+	_slots = 0
 	_shown = textures.size()
 	size = grid_size(_shown)
 	for i in _icons.size():
 		var icon := _icons[i]
 		icon.texture = textures[i] if i < _shown else null
 		icon.visible = icon.texture != null
+	queue_redraw()
+
+
+## A chest: every slot in place, `textures` one a slot with null where it is
+## empty.
+func show_slots(textures: Array) -> void:
+	_slots = mini(textures.size(), _icons.size())
+	_shown = textures.filter(func(texture: Variant) -> bool: return texture != null).size()
+	size = grid_size(_slots)
+	for i in _icons.size():
+		var icon := _icons[i]
+		icon.texture = textures[i] if i < _slots else null
+		icon.visible = icon.texture != null
+	queue_redraw()
+
+
+func _draw() -> void:
+	for i in _slots:
+		var cell := Rect2(cell_origin(i) - Vector2.ONE, Vector2.ONE * (ICON + 2))
+		draw_rect(cell, SLOT)
+		draw_rect(cell, SLOT_EDGE, false, 1.0)
+
+
+func slot_count() -> int:
+	return _slots
 
 
 ## Centred under the bag's bottom-middle point, on a whole pixel.

@@ -5,9 +5,9 @@ extends Control
 ## to shoot at what AutoAim finds, and the three hotbar abilities in an arc
 ## over it, each a tap -- the arrangement every phone action game settles
 ## on -- with the HP and MP potions on the bottom row beside them, their
-## counts on them; Bag and Menu top-left, over where the bag opens, so
-## nothing on the right is ever covered by a panel. Laid out in points;
-## the layer scales.
+## counts on them, and on a phone Nexus beside those, one tap from safety;
+## Bag and Menu top-left, over where the bag opens, so nothing on the right
+## is ever covered by a panel. Laid out in points; the layer scales.
 
 const ATTACK_RADIUS := 52.0
 const ABILITY_RADIUS := 26.0
@@ -21,6 +21,7 @@ const ATTACK_COLOUR := Color(0.75, 0.2, 0.2, 0.85)
 const ABILITY_COLOUR := Color(0.15, 0.15, 0.2, 0.85)
 const HP_COLOUR := Color(0.6, 0.12, 0.12, 0.9)
 const MP_COLOUR := Color(0.15, 0.25, 0.65, 0.9)
+const NEXUS_COLOUR := Color(0.62, 0.46, 0.08, 0.9)
 const BUTTON_SIZE := Vector2(88.0, 40.0)
 
 signal cast(slot: int)
@@ -40,14 +41,16 @@ var _abilities: Array[Button] = []
 var _sweeps: Array[CooldownSweep] = []
 var _hp: Button
 var _mp: Button
+## The phone's escape to the nexus, on the bottom row; null elsewhere, where
+## Nexus rides the top row.
+var _nexus: Button
 var _panels: BoxContainer
 ## Economy entry points; kept so refresh() can hide them when the account's
 ## economy_enabled gate is off. Add Fame exists on web only.
 var _add_fame_btn: Button
 var _economy_btn: Button
 ## On a phone the top row collapses into a hamburger with a tap-to-close dim.
-var _mobile := OS.has_feature("web_android") or OS.has_feature("web_ios") \
-	or OS.has_feature("android") or OS.has_feature("ios")
+var _mobile: bool
 var _hamburger: Button
 var _backdrop: ColorRect
 var _drawn := ""
@@ -57,7 +60,8 @@ var _row := Vector2.ZERO
 
 ## Built when made, not when it enters the tree, so the buttons can be
 ## shown or hidden before then -- a scripted capture enables first.
-func _init() -> void:
+func _init(mobile := is_phone()) -> void:
+	_mobile = mobile
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_attack = TouchButtons.round(ATTACK_RADIUS, ATTACK_COLOUR)
 	_attack.text = "Attack"
@@ -75,6 +79,12 @@ func _init() -> void:
 		_sweeps.append(sweep)
 	_hp = _potion(HP_COLOUR, true)
 	_mp = _potion(MP_COLOUR, false)
+	if _mobile:
+		_nexus = TouchButtons.round(POTION_RADIUS, NEXUS_COLOUR)
+		_nexus.text = "Nexus"
+		_nexus.add_theme_font_size_override("font_size", POTION_FONT)
+		_nexus.pressed.connect(func() -> void: nexus.emit())
+		add_child(_nexus)
 	# Horizontal on desktop; a vertical dropdown on a phone, where the full row
 	# won't fit across the screen.
 	_panels = VBoxContainer.new() if _mobile else HBoxContainer.new()
@@ -84,8 +94,8 @@ func _init() -> void:
 	# (Character/Skills/Quests/…), so call it "More" to avoid two nested "Menu"s.
 	_panels.add_child(_panel_button("More", menu))
 	_panels.add_child(_panel_button("Chat", chat))
-	# Escape to safety: no portal to stand on on a phone, so it rides the top row.
-	_panels.add_child(_panel_button("Nexus", nexus))
+	if not _mobile:
+		_panels.add_child(_panel_button("Nexus", nexus))
 	# Add Fame pays via Phantom in-page (web only); Economy shows on all builds.
 	if OS.has_feature("web"):
 		_add_fame_btn = _panel_button("Add Fame", add_fame); _panels.add_child(_add_fame_btn)
@@ -108,6 +118,11 @@ func _init() -> void:
 		add_child(_hamburger)
 
 
+static func is_phone() -> bool:
+	return OS.has_feature("web_android") or OS.has_feature("web_ios") \
+		or OS.has_feature("android") or OS.has_feature("ios")
+
+
 ## Attack and the abilities in the bottom-right corner of `area`, Bag and
 ## Menu in a row at `panels_at`.
 func place(area: Vector2, panels_at: Vector2) -> void:
@@ -124,7 +139,9 @@ func place(area: Vector2, panels_at: Vector2) -> void:
 	# the corner itself when there is no Attack beside them.
 	var x := centre.x - reach - ABILITY_RADIUS - GAP - POTION_RADIUS if _attack.visible \
 		else area.x - MARGIN - POTION_RADIUS
-	for potion in [_hp, _mp]:
+	for potion in [_hp, _mp, _nexus]:
+		if potion == null:
+			continue
 		potion.position = Vector2(x, centre.y) - Vector2.ONE * POTION_RADIUS
 		x -= POTION_RADIUS * 2.0 + GAP
 	if _mobile:
@@ -149,6 +166,8 @@ func refresh(content: GameData, state: RealmState) -> void:
 			_economy_btn.visible = state.progress.economy_enabled
 		if _add_fame_btn != null:
 			_add_fame_btn.visible = state.progress.economy_enabled
+		if _nexus != null and content != null:
+			_nexus.disabled = content.maps.is_nexus(state.tiles.map_id)
 	if content == null or content.abilities == null or state == null:
 		return
 	var key := "%d:%d" % [state.local.class_id, state.abilities.version]
@@ -179,8 +198,8 @@ func show_combat(on: bool) -> void:
 
 ## Whether a shown button holds the point.
 func holds(point: Vector2) -> bool:
-	for button in [_attack, _hp, _mp, _panels] + _abilities:
-		if button.is_visible_in_tree() and button.get_global_rect().has_point(point):
+	for button in [_attack, _hp, _mp, _nexus, _panels] + _abilities:
+		if button != null and button.is_visible_in_tree() and button.get_global_rect().has_point(point):
 			return true
 	if _hamburger != null and _hamburger.is_visible_in_tree() and _hamburger.get_global_rect().has_point(point):
 		return true

@@ -95,8 +95,22 @@ func capture(scenario: String, output: String, content: GameData) -> bool:
 	# overlay is, and every other capture is unchanged.
 	var bag := InventoryPanel.new()
 	bag.setup(state, content, InventoryActions.new(state, null, content))
-	bag.shown = scenario in ["inventory", "item_card"]
+	bag.shown = scenario in ["inventory", "item_card", "vault"]
 	stage.add_child(bag)
+	# The chest at our feet: only for its scenario, as the bag is.
+	if scenario == "vault":
+		var loot := LootWindow.new()
+		loot.setup(state, content, InventoryActions.new(state, null, content), bag.beside)
+		stage.add_child(loot)
+	# A phone's buttons, Nexus on the potions' row: built as a phone, since a
+	# capture runs on the desktop.
+	if scenario == "touch_phone":
+		var layer := CanvasLayer.new()
+		var cluster := TouchCluster.new(true)
+		layer.add_child(cluster)
+		stage.add_child(layer)
+		cluster.place(Vector2(get_viewport().get_visible_rect().size), Vector2(TouchCluster.MARGIN, 8.0))
+		cluster.refresh(content, state)
 	var bar := AbilityBar.new()
 	bar.setup(state, content, null)
 	bar.shown = scenario == "abilities"

@@ -3,10 +3,15 @@ extends CanvasLayer
 
 ## The bag at our feet, WoW's way: beside the backpack (`at`), by the left
 ## thumb, a thumb-high row an item and Loot all / Close under them; Close
-## puts it away until the next bag. Takes are pick_ups.
+## puts it away until the next bag. Takes are pick_ups. A vault chest opens
+## even empty, as a grid of its slots that a backpack item drags onto.
 
 const WIDTH := 300.0
 const BUTTON_HEIGHT := 56.0
+## The server drops into the container this close (top-left to top-left);
+## further off a drop makes a new bag, so a chest's slots show only inside it.
+const CHEST_REACH := 32.0
+const CHEST_COLUMNS := 5
 
 var state: RealmState
 var content: GameData
@@ -19,6 +24,10 @@ var at: Callable = func() -> Vector2: return Vector2(InventoryLayout.MARGIN, Par
 var _root: PanelContainer
 var _title: Label
 var _rows_box: VBoxContainer
+var _chest_slots: GridContainer
+var _slots: Array[ItemSlot] = []
+var _hint: Label
+var _chest := false
 var _full: Label
 var _loot_all: Button
 var _tooltip: ItemTooltip
@@ -53,6 +62,27 @@ func _ready() -> void:
 	_rows_box = VBoxContainer.new()
 	_rows_box.add_theme_constant_override("separation", 6)
 	column.add_child(_rows_box)
+	_chest_slots = GridContainer.new()
+	_chest_slots.columns = CHEST_COLUMNS
+	_chest_slots.add_theme_constant_override("h_separation", 6)
+	_chest_slots.add_theme_constant_override("v_separation", 6)
+	_chest_slots.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	column.add_child(_chest_slots)
+	for i in Inventory.LOOT_SIZE:
+		var slot := ItemSlot.new(Inventory.GROUND_LOOT_START + i)
+		slot.custom_minimum_size = Vector2.ONE * BUTTON_HEIGHT
+		slot.dropped.connect(func(from: int, to: int) -> void:
+			if not Inventory.is_ground_loot(from):
+				actions.move(from, to))
+		slot.activated.connect(func(index: int) -> void: take(index - Inventory.GROUND_LOOT_START))
+		slot.hovered.connect(func(index: int, over: bool) -> void:
+			_on_hover(index - Inventory.GROUND_LOOT_START, over))
+		_chest_slots.add_child(slot)
+		_slots.append(slot)
+	_hint = HudWidgets.label("Drag items from your bag onto a slot to store them here.", 14, Color("b8b0a0"))
+	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_hint.custom_minimum_size.x = WIDTH - 24.0
+	column.add_child(_hint)
 	_full = HudWidgets.label("Your backpack is full.", 14, Color("e85050"))
 	column.add_child(_full)
 	var buttons := HBoxContainer.new()
@@ -86,10 +116,13 @@ func _process(delta: float) -> void:
 func _rescan() -> void:
 	var bag: Dictionary = {} if actions == null or state == null or not state.local.is_present() \
 		else Inventory.nearest_loot(state.entities, state.local.position, GameConstants.PLAYER_SIZE)
+	_chest = LootArt.is_chest(bag) and in_chest_reach(bag)
+	if LootArt.is_chest(bag) and not _chest:
+		bag = {}
 	var bag_id := int(bag.get("id", -1))
 	if bag_id != _closed_on:
 		_closed_on = -1
-	visible = shown and bag_id != -1 and bag_id != _closed_on and _count(bag) > 0
+	visible = shown and bag_id != -1 and bag_id != _closed_on and (_chest or _count(bag) > 0)
 	if not visible:
 		_tooltip.hide_card()
 		_drawn = ""
@@ -100,12 +133,19 @@ func _rescan() -> void:
 		refresh()
 
 
-## The rows, one an item the bag holds, in the bag's own slot order.
+## The rows, one an item the bag holds, in the bag's own slot order; for a
+## chest its slots instead.
 func refresh() -> void:
 	for row in _rows_box.get_children():
 		row.free()
 	var items := actions.loot_items()
-	for i in items.size():
+	_title.text = "Vault Chest" if _chest else "Loot"
+	_rows_box.visible = not _chest
+	_chest_slots.visible = _chest
+	_hint.visible = _chest
+	for i in _slots.size():
+		_slots[i].show_from(items[i] if _chest and i < items.size() and items[i] is Dictionary else {}, content)
+	for i in 0 if _chest else items.size():
 		if not Inventory.holds(items[i]):
 			continue
 		var row := LootRow.new()
@@ -114,7 +154,7 @@ func refresh() -> void:
 		row.hovered.connect(_on_hover)
 		_rows_box.add_child(row)
 	_full.visible = state.local.inventory.first_empty_backpack() == -1
-	_loot_all.disabled = _full.visible
+	_loot_all.disabled = _full.visible or _count({"items": items}) == 0
 	_root.reset_size()
 
 
@@ -139,6 +179,18 @@ func close() -> void:
 
 func row_count() -> int:
 	return _rows_box.get_child_count()
+
+
+func is_chest() -> bool:
+	return visible and _chest
+
+
+func chest_slot(index: int) -> ItemSlot:
+	return _slots[index]
+
+
+func in_chest_reach(bag: Dictionary) -> bool:
+	return state.entities.render_position(bag).distance_to(state.local.position) <= CHEST_REACH
 
 
 func captures_mouse() -> bool:

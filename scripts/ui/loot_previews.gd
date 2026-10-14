@@ -1,8 +1,9 @@
 class_name LootPreviews
 extends RefCounted
 
-## A LootPreview under every loot container on screen with anything in it:
-## the web client's renderLootPreviews, driven by EntityOverlay each frame.
+## A LootPreview under every loot container on screen with anything in it,
+## and under every vault chest, empty or not: the web client's
+## renderLootPreviews, driven by EntityOverlay each frame.
 ##
 ## Every container, not just the one at your feet -- the web walks all of
 ## `gameState.lootContainers` and culls only what is well off the screen,
@@ -55,15 +56,30 @@ static func anchor(to_screen: Transform2D, position: Vector2) -> Vector2:
 
 func _show(id: int, state: RealmState, content: GameData, to_screen: Transform2D, on_screen: Rect2) -> void:
 	var container: Dictionary = state.entities.containers[id]
+	var chest := LootArt.is_chest(container)
 	var items := LootPreview.shown_items(container.get("items", []))
-	if items.is_empty():
+	if items.is_empty() and not chest:
 		return
 	var at := anchor(to_screen, state.entities.render_position(container))
 	if not on_screen.has_point(at):
 		return
-	var textures := items.map(func(item: Dictionary) -> Texture2D:
-		return content.item_texture(int(item.get("itemId", -1))) if content != null else null)
 	var grid: LootPreview = _pool.acquire(id)
-	grid.show_items(textures)
+	if chest:
+		grid.show_slots(chest_textures(container.get("items", []), content))
+	else:
+		grid.show_items(items.map(func(item: Dictionary) -> Texture2D: return _texture(item, content)))
 	grid.place(at)
 	shown += 1
+
+
+## One a chest slot, null where the slot is empty.
+static func chest_textures(items: Array, content: GameData) -> Array:
+	var textures := []
+	for i in Inventory.LOOT_SIZE:
+		var item: Variant = items[i] if i < items.size() else null
+		textures.append(_texture(item, content) if Inventory.holds(item) else null)
+	return textures
+
+
+static func _texture(item: Dictionary, content: GameData) -> Texture2D:
+	return content.item_texture(int(item.get("itemId", -1))) if content != null else null
