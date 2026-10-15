@@ -24,6 +24,7 @@ var _mine: Array = []
 var _theirs: Array = []
 var _confirm: Button
 var _drawn := Vector2i(-1, -1)
+var _tooltip: ItemTooltip
 
 
 func setup(realm_state: RealmState, game_data: GameData, trade_actions: TradeActions) -> void:
@@ -56,6 +57,11 @@ func _ready() -> void:
 	column.add_child(buttons)
 	_confirm = InventoryLayout.button(buttons, "Confirm", func() -> void: if actions != null: actions.confirm())
 	InventoryLayout.button(buttons, "Cancel", func() -> void: if actions != null: actions.decline())
+	# Full item info on hover for BOTH sides, so a trader sees exactly what they're
+	# giving and getting (stats, affixes, enchantments, gem, rarity). The partner's page
+	# already rides the trade packet as full NetGameItems. Added last so it draws on top.
+	_tooltip = ItemTooltip.of(state, content)
+	add_child(_tooltip)
 
 
 func _side(into: Container, ours: bool) -> Label:
@@ -68,7 +74,9 @@ func _side(into: Container, ours: bool) -> Label:
 		if ours:
 			slot.gui_input.connect(func(event: InputEvent) -> void: _on_slot_input(slot.index, event))
 		else:
-			slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			# Read-only, but PASS (not IGNORE) so it still emits hover for the tooltip.
+			slot.mouse_filter = Control.MOUSE_FILTER_PASS
+		slot.hovered.connect(func(_idx: int, over: bool) -> void: _on_hover(slot, over))
 	if ours:
 		_mine = slots
 	else:
@@ -82,12 +90,25 @@ func _on_slot_input(index: int, event: InputEvent) -> void:
 		actions.toggle(index)
 
 
+func _on_hover(slot: ItemSlot, over: bool) -> void:
+	if _tooltip == null:
+		return
+	if over and Inventory.holds(slot.item):
+		_tooltip.show_for(slot.item, _root.get_global_mouse_position())
+	else:
+		_tooltip.hide_card()
+
+
 func _process(_delta: float) -> void:
 	visible = state != null and state.trade.active and state.local.is_present()
 	if not visible:
 		_drawn = Vector2i(-1, -1)
+		if _tooltip != null:
+			_tooltip.hide_card()
 		return
 	PanelFit.shrink(_root)
+	if _tooltip != null and _tooltip.visible:
+		_tooltip.follow(_root.get_global_mouse_position())
 	var now := Vector2i(state.trade.version, state.local.inventory.version)
 	if now != _drawn:
 		refresh()
