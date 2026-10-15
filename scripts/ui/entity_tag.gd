@@ -18,6 +18,10 @@ const NAME_GAP := 5.0
 const CHIP_LIFT := 18.0
 const ENEMY_BAR_HEIGHT := 6.0
 const ENEMY_BAR_LIFT := 12.0
+## Enemy chips sit this far above the sprite top — clear of the damage numbers,
+## which anchor at the hit point / sprite top and float ~30px up (fading as they
+## go). Was -2 (right in the rise path), so numbers drew over the status pills.
+const ENEMY_CHIP_LIFT := 22.0
 const BACK := Color(0.133, 0.133, 0.133, 0.7)
 const HP := Color("40c040", 0.9)
 const MP := Color("4080e0", 0.9)
@@ -142,7 +146,7 @@ func show_enemy(at: Vector2, width: float, health: int, max_health: int, effects
 		if hurt:
 			_bar(_hp_back, _hp, Color(0, 0, 0, 0.6), ENEMY_HP, -ENEMY_BAR_LIFT, width,
 				fraction(health, max_health), ENEMY_BAR_HEIGHT)
-		_head.position = Vector2(width * 0.5, -2.0).round()
+		_head.position = Vector2(width * 0.5, -ENEMY_CHIP_LIFT).round()
 	# The head stack self-gates on its own content, so it is forwarded every frame.
 	_head.show_stack(effects, stacks, {})
 

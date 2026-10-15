@@ -4,9 +4,9 @@
 #   python3 tools/gen_schema.py <java-src-root>
 #
 # Source tree : C:\Users\ruuse\Documents\GitHub\openrealm\src
-# Generated   : 2026-10-13 18:44:21Z
-# Packets     : 58
-# Entities    : 21
+# Generated   : 2026-10-15 21:30:29Z
+# Packets     : 59
+# Entities    : 22
 #
 # Field tuples are [name, wire_type, is_collection]; list order is wire order.
 # Primitive wire types are byte, bool, short, int, long, float and string;
@@ -78,6 +78,7 @@ const PACKET_NAMES := {
 	55: "SendPointsPacket",
 	56: "CompanionActionPacket",
 	57: "CompanionRosterPacket",
+	58: "PartyVitalsPacket",
 	101: "TestPacket",
 }
 
@@ -120,6 +121,7 @@ const PACKET_IDS := {
 	"OpenGuildEditorPacket": 51,
 	"OpenItemStorePacket": 34,
 	"PartyUpdatePacket": 41,
+	"PartyVitalsPacket": 58,
 	"PlayerDeathPacket": 15,
 	"PlayerMovePacket": 1,
 	"PlayerPosAckPacket": 26,
@@ -324,6 +326,10 @@ const PACKETS := {
 		["partyId", "long", false],
 		["members", "NetPartyMember", true],
 		["leaderId", "long", false],
+	],
+	"PartyVitalsPacket": [
+		["partyId", "long", false],
+		["members", "NetPartyVitals", true],
 	],
 	"PlayerDeathPacket": [
 		["playerId", "long", false],
@@ -623,6 +629,15 @@ const ENTITIES := {
 		["hotbarInvested", "int", true],
 		["stats", "NetStats", false],
 		["equipment", "NetGameItem", true],
+	],
+	"NetPartyVitals": [
+		["playerId", "long", false],
+		["health", "int", false],
+		["maxHealth", "int", false],
+		["mana", "int", false],
+		["maxMana", "int", false],
+		["effectIds", "short", true],
+		["abilityCooldownEnds", "long", true],
 	],
 	"NetPlayer": [
 		["id", "long", false],

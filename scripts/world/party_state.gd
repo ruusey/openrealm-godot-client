@@ -55,6 +55,33 @@ func apply_update(data: Dictionary) -> void:
 	version += 1
 
 
+## The frequent HP/MP/effects/cooldown refresh (PartyVitalsPacket), merged by
+## playerId into the roster apply_update already holds. The roster itself carries
+## identity/stats/equipment and now arrives only on a static change, so this is
+## what keeps teammates' bars and cooldowns live between those. A vitals row for
+## someone not in the roster yet is ignored; the next roster adds them.
+func apply_vitals(data: Dictionary) -> void:
+	if party_id == 0 or int(data.get("partyId", 0)) != party_id:
+		return
+	var by_id := {}
+	for row in data.get("members", []):
+		by_id[int(row.get("playerId", 0))] = row
+	var changed := false
+	for member in members:
+		var row: Variant = by_id.get(int(member.get("playerId", 0)))
+		if row == null:
+			continue
+		member["health"] = int(row.get("health", member.get("health", 0)))
+		member["maxHealth"] = int(row.get("maxHealth", member.get("maxHealth", 0)))
+		member["mana"] = int(row.get("mana", member.get("mana", 0)))
+		member["maxMana"] = int(row.get("maxMana", member.get("maxMana", 0)))
+		member["effectIds"] = row.get("effectIds", member.get("effectIds", []))
+		member["abilityCooldownEnds"] = row.get("abilityCooldownEnds", member.get("abilityCooldownEnds", []))
+		changed = true
+	if changed:
+		version += 1
+
+
 func apply_text(data: Dictionary) -> void:
 	if String(data.get("from", "")) != ChatLog.SYSTEM:
 		return

@@ -141,6 +141,8 @@ func apply_packet(name: String, data: Dictionary) -> void:
 			progress.apply(name, data, local.id)
 		"PartyUpdatePacket":
 			party.apply_update(data)
+		"PartyVitalsPacket":
+			party.apply_vitals(data)
 		"OpenCreateGuildDialogPacket":
 			guild.apply_create_dialog(data, local.id)
 		"GuildInfoPacket":
