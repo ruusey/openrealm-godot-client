@@ -151,7 +151,12 @@ func blocks(position: Vector2, entity_size: int) -> bool:
 		return false
 
 	var hit_size := floorf(float(entity_size) * GameConstants.COLLISION_HITBOX_SCALE)
-	var box := Rect2(position, Vector2(hit_size, hit_size))
+	# Centre the reduced hitbox on the sprite. A top-left anchor left all the slack on the
+	# right/bottom and none on the left/top, so a player clipped a few px into a wall from
+	# the left/top and that intruded cell then occluded on-screen enemies. MUST match the
+	# server (TileManager.collisionTile / collidesAtPosition).
+	var inset := (float(entity_size) - hit_size) * 0.5
+	var box := Rect2(position + Vector2(inset, inset), Vector2(hit_size, hit_size))
 	var first := Vector2i(floori(box.position.x / TILE_SIZE), floori(box.position.y / TILE_SIZE))
 	var last := Vector2i(floori(box.end.x / TILE_SIZE), floori(box.end.y / TILE_SIZE))
 
