@@ -278,6 +278,14 @@ func _card(companion: Dictionary) -> Control:
 	name_edit.focus_exited.connect(func() -> void: _typing = false)
 	name_edit.text_submitted.connect(func(text: String) -> void: actions.rename(uuid, text))
 	head.add_child(name_edit)
+	# Summon-hotkey marker. The companion C currently deploys shows a gold [C] badge;
+	# any other shows a "Set C" button that claims the hotkey WITHOUT summoning — so with
+	# several banked you choose which one C sends out.
+	if is_selected:
+		_line(head, "[C]", 13, TITLE_COLOUR)
+	else:
+		var set_hotkey := InventoryLayout.button(head, "Set C", func() -> void: _select(uuid))
+		set_hotkey.tooltip_text = "Make the C key summon this companion"
 	InventoryLayout.button(head, "Rename", func() -> void: actions.rename(uuid, name_edit.text))
 	var class_label := _line(head, content.classes_art.display_name(class_id), 12, MUTED)
 	class_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
