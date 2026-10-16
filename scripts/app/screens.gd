@@ -149,7 +149,7 @@ func build(state: RealmState, game_data: GameData, client: OpenRealmClient,
 	var menu_buttons := [["Character", skills.toggle], ["Skills", masteries.toggle], ["Quests", quests.toggle],
 		["Leaderboard", leaderboard.toggle], ["Options", options.toggle]]
 	if CompanionPanel.ENABLED:
-		menu_buttons.append(["Companions", companions.toggle])
+		menu_buttons.append(["Companion", companions.toggle])
 	touch.link(menu_buttons, chat.open_line)
 	party.buttons_bottom = touch.row_bottom
 	store = ItemStorePanel.new()

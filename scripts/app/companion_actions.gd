@@ -16,6 +16,7 @@ const SUMMON_ALL := 8
 const CONSUME_POTION := 9
 const RETRIEVE := 10
 const BUY_SLOT := 11
+const CLEAR_BACKPACK := 12
 
 var client: OpenRealmClient
 
@@ -77,6 +78,11 @@ func retrieve(uuid: String, backpack_slot: int) -> void:
 ## Buy one more owned-roster slot for fame; the server validates fame + the 20 cap.
 func buy_slot() -> void:
 	_send(BUY_SLOT, "", 0, 0, "")
+
+
+## Empty the companion's backpack (keeps equipped gear) — clears looted clutter.
+func clear_backpack(uuid: String) -> void:
+	_send(CLEAR_BACKPACK, uuid, 0, 0, "")
 
 
 func _send(action: int, uuid: String, arg1: int, arg2: int, text: String) -> void:

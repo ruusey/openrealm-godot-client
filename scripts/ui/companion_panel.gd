@@ -354,7 +354,16 @@ func _backpack_grid(into: Container, companion: Dictionary, uuid: String) -> voi
 			backpack.append(item)
 	if backpack.is_empty():
 		return
-	InventoryLayout.heading(into, "Backpack %d  (double-click to take)" % backpack.size())
+	# Heading + a one-shot "Clear bag" that dumps the whole backpack (keeps equipped
+	# gear) — for emptying companions the old autoloot stuffed with shards/essence.
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 8)
+	into.add_child(head)
+	InventoryLayout.heading(head, "Backpack %d  (double-click to take)" % backpack.size()) \
+		.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	InventoryLayout.button(head, "Clear bag", func() -> void:
+		_confirm.request("Clear this companion's backpack? %d item(s) will be discarded (equipped gear is kept)." % backpack.size(),
+			"Clear bag", func() -> void: actions.clear_backpack(uuid)))
 	var grid := GridContainer.new()
 	grid.columns = 5
 	into.add_child(grid)
