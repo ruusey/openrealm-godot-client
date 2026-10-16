@@ -49,19 +49,21 @@ func update_from(c: CompanionState) -> void:
 	visible = true
 	var fraction := 0.0
 	if c.is_deployed():
+		# C recalls a deployed companion. In the Nexus it never expires (just the
+		# action); in combat, the action plus the time left before it auto-returns.
 		_bg.color = BG_DEPLOYED
 		if c.is_nexus_deploy():
-			_text.text = "PET\nNEXUS"
+			_text.text = "Recall\n(C)"
 		else:
-			_text.text = "PET\n" + _mmss(c.deployed_remaining_ms())
+			_text.text = "Recall\n" + _mmss(c.deployed_remaining_ms())
 	elif not c.summon_ready():
 		_bg.color = BG_COOLDOWN
 		var remaining := c.summon_cooldown_remaining_ms()
-		_text.text = "C\n" + _mmss(remaining)
+		_text.text = "Summon\n" + _mmss(remaining)
 		fraction = clampf(float(remaining) / float(COOLDOWN_WINDOW_MS), 0.0, 1.0)
 	else:
 		_bg.color = BG_READY
-		_text.text = "C\nREADY"
+		_text.text = "Summon\n(C)"
 	var covered := SIZE_PX * fraction
 	_shade.position = Vector2(0, 0)
 	_shade.size = Vector2(SIZE_PX, covered)
