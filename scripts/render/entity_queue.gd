@@ -103,6 +103,7 @@ func _queue_players(queue: Array, state: RealmState, content: GameData,
 		# default size renders at the usual PLAYER_RENDER_SIZE.
 		var body_size: float = state.local.size if is_local else float(player.get("size", GameConstants.PLAYER_SIZE))
 		var render_size := PLAYER_RENDER_SIZE * (body_size / float(GameConstants.PLAYER_SIZE))
+		var effects: Array = state.local.effects if is_local else player.get("effects", NO_EFFECTS)
 		queue.append({
 			"kind": "players",
 			"pos": position,
@@ -111,7 +112,9 @@ func _queue_players(queue: Array, state: RealmState, content: GameData,
 				render_size),
 			"texture": texture,
 			"tint": Color(0.4, 1.0, 0.5) if is_local else Color(0.3, 0.6, 1.0),
-			"modulate": _tint(state.local.effects if is_local else player.get("effects", NO_EFFECTS)),
+			"modulate": _tint(effects),
+			# A downed companion is drawn on its side (fallen), facing up.
+			"downed": StatusTint.DOWNED in effects,
 			# The sheet only has a right-facing side clip, so leftward
 			# movement is that clip mirrored.
 			"flip": facing == "side" and mirrored,
