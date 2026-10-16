@@ -102,6 +102,7 @@ static func _resolve_type(kind: int) -> Callable:
 		EffectType.PURIFY_CIRCLE: return FxPurifyCircle.draw
 		EffectType.BEAM_WARNING: return FxBeamWarning.draw
 		EffectType.QUEST_COMPLETE: return FxQuestComplete.draw
+		EffectType.COMPANION_SUMMON: return FxCompanionSummon.draw
 	return Callable()
 
 

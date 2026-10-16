@@ -26,6 +26,7 @@ var shown := true
 
 var _root: PanelContainer
 var _cells: Array = []
+var _companion_cell: CompanionSummonCell
 var _tooltip: ItemTooltip
 var _drawn := ""
 
@@ -57,6 +58,10 @@ func _ready() -> void:
 		cell.hovered.connect(_on_hover)
 		row.add_child(cell)
 		_cells.append(cell)
+	# Companion summon readout at the right end of the hotbar (C key + its timer).
+	# Self-hides when the account owns no companion.
+	_companion_cell = CompanionSummonCell.new()
+	row.add_child(_companion_cell)
 	_tooltip = ItemTooltip.new()
 	add_child(_tooltip)
 
@@ -71,6 +76,7 @@ func _process(_delta: float) -> void:
 		refresh()
 	for slot in AbilityCatalog.SLOTS:
 		_cells[slot + 1].set_cooldown(state.abilities.cooldown_fraction(slot))
+	_companion_cell.update_from(state.companions)
 	if _tooltip.visible:
 		_tooltip.follow(_root.get_global_mouse_position())
 

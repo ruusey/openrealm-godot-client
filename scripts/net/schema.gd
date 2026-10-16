@@ -4,7 +4,7 @@
 #   python3 tools/gen_schema.py <java-src-root>
 #
 # Source tree : C:\Users\ruuse\Documents\GitHub\openrealm\src
-# Generated   : 2026-10-15 21:30:29Z
+# Generated   : 2026-10-16 13:31:47Z
 # Packets     : 59
 # Entities    : 22
 #
@@ -183,6 +183,9 @@ const PACKETS := {
 	"CompanionRosterPacket": [
 		["json", "string", false],
 		["ownedCap", "int", false],
+		["deployedUuid", "string", false],
+		["summonReadyAtMs", "long", false],
+		["deployedUntilMs", "long", false],
 	],
 	"ConsumeShardStackPacket": [
 		["fromSlotIndex", "byte", false],

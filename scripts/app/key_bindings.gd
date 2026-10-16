@@ -19,6 +19,7 @@ const ACTIONS := {
 	"ability_1": "Ability 1", "ability_2": "Ability 2", "ability_3": "Ability 3",
 	"use_portal": "Use portal", "go_nexus": "Go to the nexus", "go_vault": "Go to the vault",
 	"pick_up": "Pick up / interact", "drink_hp": "Drink HP potion", "drink_mp": "Drink MP potion",
+	"summon_companion": "Summon / recall companion",
 	"toggle_inventory": "Bag", "toggle_skills": "Character sheet", "toggle_masteries": "Skills",
 	"toggle_quests": "Quest log",
 	"toggle_minimap": "Minimap",

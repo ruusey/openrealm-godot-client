@@ -30,6 +30,7 @@ var trade: TradePanel
 var party_invite: PartyInvitePopup
 var party: PartyPanel
 var companions: CompanionPanel
+var companion_actions: CompanionActions
 var pvp_challenge: PvpChallengePopup
 var guild_dialog: CreateGuildDialog
 var guild_roster: GuildRosterPanel
@@ -113,7 +114,7 @@ func build(state: RealmState, game_data: GameData, client: OpenRealmClient,
 	party_invite = PartyInvitePopup.new()
 	party_invite.setup(state, party_actions)
 	add_child(party_invite)
-	var companion_actions := CompanionActions.new(client)
+	companion_actions = CompanionActions.new(client)
 	party = PartyPanel.new()
 	party.setup(state, game_data, party_actions, hud, companion_actions)
 	add_child(party)

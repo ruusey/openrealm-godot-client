@@ -116,6 +116,8 @@ func _ready() -> void:
 	portals = PortalInput.new(state, client, game_data)
 	inventory_input = InventoryInput.new(client, inventory_actions, screens.inventory)
 	inventory_input.shop = shop
+	inventory_input.companion_actions = screens.companion_actions
+	inventory_input.companions = state.companions
 	ability_input = AbilityInput.new(client, caster, screens.skills)
 	# A click on a panel is not a shot at, or a cast into, the world behind it.
 	input.mouse_captured = screens.captures_mouse

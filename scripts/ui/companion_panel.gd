@@ -4,20 +4,23 @@ extends CanvasLayer
 ## Manage your AI party: the companions that fight alongside you when you are
 ## not in a live player party. Opened from the top-left Party menu button.
 ##
-## One card per owned companion (up to three): rename, deploy/recall, delete,
-## five equipment cells you drag bag items onto (double-click to unequip), and
-## a skill-point row per class ability. Every change is one CompanionActionPacket
-## to the server, which answers with a fresh roster (CompanionRosterPacket) — so
-## the panel only ever rebuilds from state.companions, never from local guesses.
+## One card per owned companion: rename, summon/recall, delete (with a
+## confirmation), five equipment cells you drag bag items onto (double-click to
+## unequip), and a skill-point row per class ability. You may own several but only
+## ONE deploys at a time, summoned on a cooldown; the HUD shows the timer. Every
+## change is one CompanionActionPacket to the server, which answers with a fresh
+## roster (CompanionRosterPacket) — so the panel only ever rebuilds from
+## state.companions, never from local guesses.
 
 # Master client kill switch for the AI companion UI. Defaults ON; set to false
 # to hide it (the Companions menu button is never added, so the panel becomes
 # unreachable).
 const ENABLED := true
 
-const MAX_ACTIVE := 3
 const TITLE_COLOUR := Color(1.0, 0.85, 0.42)
 const MUTED := Color(0.6, 0.6, 0.65)
+const SELECTED_TINT := Color(1.35, 1.25, 0.7)
+const DEPLOYED_TINT := Color(0.7, 1.3, 0.8)
 const CAPTIONS := ["Wpn", "Arm", "Gnt", "Bts", "Rng"]
 
 var state: RealmState
@@ -34,9 +37,11 @@ var _new_row: HBoxContainer
 var _buy_row: HBoxContainer
 var _picker: OptionButton
 var _cards_box: VBoxContainer
+var _status: Label
 var _drawn := -1
 var _typing := false
 var _tooltip: ItemTooltip
+var _confirm: ConfirmPopup
 
 
 func setup(realm_state: RealmState, game_data: GameData, companion_actions: CompanionActions) -> void:
@@ -67,11 +72,13 @@ func _ready() -> void:
 	# many companions push the body past the screen.
 	_header = HBoxContainer.new()
 	column.add_child(_header)
-	_title = _line(_header, "Companions", 16, TITLE_COLOUR)
+	_title = _line(_header, "Companion", 16, TITLE_COLOUR)
 	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	# Last-resort unstick: yank every deployed companion to your side.
-	InventoryLayout.button(_header, "Summon All", func() -> void: if actions != null: actions.summon_all())
+	# Last-resort unstick: yank the deployed companion to your side.
+	InventoryLayout.button(_header, "Fetch", func() -> void: if actions != null: actions.summon_all())
 	InventoryLayout.button(_header, "Close", close)
+	# Live summon status (cooldown / time deployed), pinned under the header.
+	_status = _line(column, "", 12, MUTED)
 
 	# Everything below the header scrolls; its height is capped to the viewport in
 	# _process so the panel adapts to any size/orientation instead of overflowing.
@@ -108,6 +115,9 @@ func _ready() -> void:
 	# Hover card for companion gear + backpack items (reuses the inventory tooltip).
 	_tooltip = ItemTooltip.of(state, content)
 	add_child(_tooltip)
+	# Confirmation for the destructive delete ('X') on a companion card.
+	_confirm = ConfirmPopup.new()
+	add_child(_confirm)
 
 
 func _process(_delta: float) -> void:
@@ -119,6 +129,26 @@ func _process(_delta: float) -> void:
 	_fit_to_viewport()
 	if state.companions.version != _drawn:
 		_rebuild()
+	_update_status()
+
+
+## Live summon readout, refreshed every frame from the server's epoch deadlines.
+func _update_status() -> void:
+	var c := state.companions
+	if c.is_deployed():
+		if c.is_nexus_deploy():
+			_status.text = "Deployed in the Nexus - no time limit here"
+		else:
+			_status.text = "Deployed - %s until it returns home" % _mmss(c.deployed_remaining_ms())
+	elif not c.summon_ready():
+		_status.text = "Summon cooldown - ready in %s" % _mmss(c.summon_cooldown_remaining_ms())
+	else:
+		_status.text = "Summon ready (press C)"
+
+
+static func _mmss(ms: int) -> String:
+	var total := int(ceil(ms / 1000.0))
+	return "%d:%02d" % [total / 60, total % 60]
 
 
 ## Keep the panel inside the screen on any size/orientation: cap the width to the
@@ -177,6 +207,13 @@ func close() -> void:
 	shown = false
 
 
+## Pick which companion the summon hotkey (C) targets; re-tint the cards.
+func _select(uuid: String) -> void:
+	if uuid != "" and state.companions.selected_uuid != uuid:
+		state.companions.selected_uuid = uuid
+		_drawn = -1
+
+
 func is_typing() -> bool:
 	return visible and _typing
 
@@ -198,9 +235,8 @@ func _on_create() -> void:
 func _rebuild() -> void:
 	_drawn = state.companions.version
 	var roster := state.companions.roster
-	var active := state.companions.active_count()
 	var cap := state.companions.owned_cap
-	_title.text = "Companions %d/%d  (deployed %d/%d)" % [roster.size(), cap, active, MAX_ACTIVE]
+	_title.text = "Companion  (%d/%d owned)" % [roster.size(), cap]
 	# Taken-class set changes with the roster, so refresh the picker here.
 	_populate_picker()
 	_new_row.visible = roster.size() < cap
@@ -215,8 +251,18 @@ func _rebuild() -> void:
 func _card(companion: Dictionary) -> Control:
 	var uuid := str(companion.get("companionUuid", ""))
 	var class_id := int(companion.get("characterClass", 0))
-	var is_active := bool(companion.get("active", false))
+	var is_deployed := uuid == state.companions.deployed_uuid and uuid != ""
+	var is_selected := uuid == state.companions.target_uuid()
 	var frame := PanelContainer.new()
+	# Tint the card so the deployed one (green) and the hotkey target (gold) read at a glance.
+	if is_deployed:
+		frame.self_modulate = DEPLOYED_TINT
+	elif is_selected:
+		frame.self_modulate = SELECTED_TINT
+	# Clicking anywhere on the card picks it as the C-summon target.
+	frame.gui_input.connect(func(event: InputEvent) -> void:
+		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			_select(uuid))
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 4)
 	frame.add_child(box)
@@ -236,13 +282,20 @@ func _card(companion: Dictionary) -> Control:
 	var class_label := _line(head, content.classes_art.display_name(class_id), 12, MUTED)
 	class_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	class_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	var deploy_text := "Recall" if is_active else "Deploy"
-	var deploy := InventoryLayout.button(head, deploy_text,
+	# One companion deploys at a time: this is Recall for the deployed one, Summon
+	# for any other. The server enforces the 10-min cooldown (and the Nexus free
+	# zone) and floats a "ready in Xs" message if it's not time yet.
+	var deploy_text := "Recall" if is_deployed else "Summon"
+	InventoryLayout.button(head, deploy_text,
 		func() -> void:
-			if is_active: actions.recall(uuid)
+			_select(uuid)
+			if is_deployed: actions.recall(uuid)
 			else: actions.deploy(uuid))
-	deploy.disabled = not is_active and state.companions.active_count() >= MAX_ACTIVE
-	InventoryLayout.button(head, "X", func() -> void: actions.delete(uuid))
+	# Delete is destructive (a companion is gear + invested skill points) — confirm first.
+	var display_name := str(companion.get("companionName", "this companion"))
+	InventoryLayout.button(head, "X", func() -> void:
+		_confirm.request("Delete %s? This permanently removes the companion, its gear and skill points." % display_name,
+			"Delete", func() -> void: actions.delete(uuid)))
 
 	_stats_row(box, companion, uuid)
 	_gear_row(box, companion, uuid)
