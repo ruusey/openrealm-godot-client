@@ -180,7 +180,6 @@ func _draw_instanced(sheet: Texture2D, sheet_groups: Array, outlines: bool) -> v
 			needed += 1 if bullet.length <= 0.0 else _sprites_in(bullet)
 	var mesh := _mesh_for(sheet, needed)
 	var outline_flag := Color(1.0 if outlines else 0.0, 1.0, 1.0, 1.0)
-	var flat := Color(0.0, 1.0, 1.0, 1.0)
 	var grow := 2.0 * SpriteOutline.OFFSET if outlines else 0.0
 	var at := 0
 	for i in range(0, sheet_groups.size(), 2):
@@ -203,17 +202,16 @@ func _draw_instanced(sheet: Texture2D, sheet_groups: Array, outlines: bool) -> v
 			var angle := bullet.angle
 			var length := bullet.length
 			if length > 0.0 and bullet.traits & ProjectileKind.TRAIT_LINE_SEGMENT:
-				# _draw_wall's row of tiles, unoutlined (they overlap each other).
-				var axis := Vector2(cos(angle), -sin(angle))
+				# ONE stretched quad (length x size) with the sprite repeated `tiles` times
+				# along it in-shader, instead of a quad per tile — same look, ~length/size
+				# fewer instances to rebuild + draw each frame (the dungeon-wall FPS sink).
+				# reps rides in COLOR.g; COLOR.r = 0 keeps it unoutlined.
 				var tiles := maxi(1, int(round(length / size)))
 				var tile_rotation := -angle + offset + (turn if additive else 0.0)
-				for k in tiles + 1:
-					var along := -length * 0.5 + (float(k) / float(tiles)) * length
-					mesh.set_instance_transform_2d(at, Transform2D(tile_rotation, Vector2(size, size), 0.0,
-						centre + axis * along))
-					mesh.set_instance_color(at, flat)
-					mesh.set_instance_custom_data(at, region)
-					at += 1
+				mesh.set_instance_transform_2d(at, Transform2D(tile_rotation, Vector2(length, size), 0.0, centre))
+				mesh.set_instance_color(at, Color(0.0, float(tiles), 1.0, 1.0))
+				mesh.set_instance_custom_data(at, region)
+				at += 1
 				continue
 			var rotation := offset if no_rotate else ((heading_offset - angle) if additive else turn)
 			if trails and afterimaged < _afterimage_budget:
@@ -229,10 +227,8 @@ func _draw_instanced(sheet: Texture2D, sheet_groups: Array, outlines: bool) -> v
 	RenderingServer.canvas_item_add_multimesh(_bodies, mesh.get_rid(), sheet.get_rid())
 
 
-static func _sprites_in(bullet: Projectile) -> int:
-	var length := bullet.length
-	if length > 0.0 and bullet.traits & ProjectileKind.TRAIT_LINE_SEGMENT:
-		return maxi(1, int(round(length / maxf(float(bullet.size), 4.0)))) + 1
+static func _sprites_in(_bullet: Projectile) -> int:
+	# One instance each now — a LINE_SEGMENT wall is a single stretched, shader-tiled quad.
 	return 1
 
 

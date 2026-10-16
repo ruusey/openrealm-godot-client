@@ -19,6 +19,9 @@ const MOVE_INTERVAL_MS := 62.5
 const UNLOAD_INTERVAL_MS := 125.0
 
 var bullets_target := 1500
+## Persistent LINE_SEGMENT wall hazards (like a dungeon arena). Each renders as a
+## row of length/size tiles, so this is the knob for the wall-render cost.
+var walls_target := 0
 var enemy_count := 150
 var player_count := 30
 var seconds := 10.0
@@ -91,6 +94,7 @@ func _parse_args() -> void:
 			continue
 		match parts[0]:
 			"bullets": bullets_target = int(parts[1])
+			"walls": walls_target = int(parts[1])
 			"enemies": enemy_count = int(parts[1])
 			"players": player_count = int(parts[1])
 			"seconds": seconds = float(parts[1])
@@ -226,6 +230,7 @@ func _process(delta: float) -> void:
 		_since_unload = 0.0
 		_send_unloads()
 	_spawn_bullets()
+	_spawn_walls()
 	_section("net", net_started)
 
 	var started := Time.get_ticks_usec()
@@ -340,6 +345,32 @@ func _spawn_bullets() -> void:
 				"amplitude": 8.0 if (k % 5) == 0 else 0.0, "frequency": 12.0 if (k % 5) == 0 else 0.0,
 				"srcEntityId": source})
 		missing -= burst
+	state.apply_packet("LoadPacket", {"bullets": wires})
+
+
+## Maintain `walls_target` persistent LINE_SEGMENT walls scattered on open floor.
+## Static (magnitude 0) with a huge range; topped up as the wall-life cap recycles them.
+func _spawn_walls() -> void:
+	if walls_target <= 0:
+		return
+	var have := 0
+	for bullet: Projectile in state.projectiles.bullets.values():
+		if bullet.traits & ProjectileKind.TRAIT_LINE_SEGMENT:
+			have += 1
+	var missing := walls_target - have
+	if missing <= 0:
+		return
+	var centre := Vector2(MAP_SIZE, MAP_SIZE) * GameConstants.TILE_SIZE * 0.5
+	var wires := []
+	for i in missing:
+		_next_bullet_id += 1
+		# A frequency makes the wall SWEEP (angle advances every tick), like the real
+		# moving arena hazards — so every tile transform genuinely changes each frame.
+		wires.append({"id": _next_bullet_id, "projectileId": _groups[_rng.randi() % _groups.size()],
+			"pos": _vec(centre + _scatter(360.0)), "size": 16, "angle": _rng.randf() * TAU,
+			"magnitude": 0.0, "range": 1.0e9, "damage": 0, "length": 240.0 + _rng.randf() * 200.0,
+			"frequency": 20.0 + _rng.randf() * 40.0,
+			"flags": [ProjectileKind.LINE_SEGMENT], "srcEntityId": 10_000})
 	state.apply_packet("LoadPacket", {"bullets": wires})
 
 

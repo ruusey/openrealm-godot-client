@@ -19,9 +19,13 @@ const float OUTLINE_ALPHA = 0.85;
 
 varying vec4 region;
 varying float margin;
+// A LINE_SEGMENT wall is ONE stretched quad instead of a row of tiles: the sprite
+// is repeated this many times along the quad's long (X) axis. 1 for everything else.
+varying float reps;
 
 void vertex() {
 	region = INSTANCE_CUSTOM;
+	reps = max(COLOR.g, 1.0);
 	float quad = length(MODEL_MATRIX[0].xy);
 	margin = COLOR.r > 0.5 && quad > 2.0 ? 1.0 / quad : 0.0;
 	COLOR = vec4(1.0);
@@ -38,6 +42,10 @@ void fragment() {
 	vec4 cut = region * vec4(TEXTURE_PIXEL_SIZE, TEXTURE_PIXEL_SIZE);
 	float span = 1.0 - 2.0 * margin;
 	vec2 local = (UV - vec2(margin)) / span;
+	// A wall tiles its sprite along the quad's length; one quad, repeated in-shader.
+	if (reps > 1.0) {
+		local.x = fract(local.x * reps);
+	}
 	vec4 sprite = sprite_at(TEXTURE, cut, local);
 	float outline = 0.0;
 	if (margin > 0.0) {
