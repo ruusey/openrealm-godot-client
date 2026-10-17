@@ -102,9 +102,10 @@ var _bullet_energy := BULLET_LIGHT_ENERGY
 ## in it get a light. Native lights them all; web keeps the tighter cap.
 var _max_tile_lights := MAX_TILE_LIGHTS if OS.has_feature("web") else 64
 ## How many of the nearest tile lights cast wall shadows. Web: 0 (no shadow passes
-## at all). Native: all of them, so a light's occlusion doesn't cut off with range
-## -- a distant candle's glow is still blocked by the wall in front of it.
-var _shadow_casters := 0 if OS.has_feature("web") else 64
+## at all). Native: the nearest handful -- each caster is its own shadow-map pass per
+## frame, so lighting them all tanked crowded dungeon fights; the far candles still
+## glow (they just stop throwing a wall shadow once past the nearest casters).
+var _shadow_casters := 0 if OS.has_feature("web") else 16
 ## Native ambient runs 10% brighter (overworld and dungeon alike) than web.
 var _ambient_mul := 1.0 if OS.has_feature("web") else 1.1
 

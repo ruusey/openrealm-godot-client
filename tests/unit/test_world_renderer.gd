@@ -94,7 +94,10 @@ func test_each_layer_carries_its_own_material():
 	renderer.tiles.material = ground
 	assert_eq(renderer.tiles.material, ground)
 	assert_null(renderer.entities.material, "an effect on one layer stays there")
-	assert_null(renderer.bullets.material)
+	# The bright overlays share one unlit material so the scene lights skip them.
+	assert_eq(renderer.bullets.material.light_mode, CanvasItemMaterial.LIGHT_MODE_UNSHADED)
+	for overlay in [renderer.particles, renderer.effects, renderer.debug]:
+		assert_eq(overlay.material, renderer.bullets.material, "overlays share the unlit material")
 
 
 func test_draw_is_a_no_op_without_state():

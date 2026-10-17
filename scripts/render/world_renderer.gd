@@ -62,7 +62,13 @@ func _ready() -> void:
 	# bullet layer outside the graded world for the same reason).
 	var unlit := CanvasItemMaterial.new()
 	unlit.light_mode = CanvasItemMaterial.LIGHT_MODE_UNSHADED
-	bullets.material = unlit
+	# Bright overlays, not lit scenery: particles, ability effects and the debug
+	# view read full-bright like the bullets, and sharing the unlit material keeps
+	# each a single pass instead of being re-shaded once per overlapping scene light
+	# (dozens in a torch-lined dungeon) -- the per-light multiply those layers paid
+	# was pure cost, since none of them is meant to be darkened by the ambient.
+	for overlay in [bullets, particles, effects, debug]:
+		overlay.material = unlit
 	# Liquid is chunk-cached and animates on the GPU, so it is not redrawn per frame.
 	_redraw_layers = [entities, wall_tops, particles, bullets, effects, debug]
 	_wire()
