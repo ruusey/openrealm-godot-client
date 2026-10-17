@@ -52,7 +52,11 @@ func _ready() -> void:
 ## One scenario, built under a stage of its own so the next starts clean.
 func capture(scenario: String, output: String, content: GameData) -> bool:
 	var stage := Node.new()
-	get_tree().root.add_child(stage)
+	# Deferred + a frame's wait: on some platforms the root is still setting up
+	# its own children when the first scenario is built, and a direct add_child
+	# then aborts ("parent busy setting up children").
+	get_tree().root.add_child.call_deferred(stage)
+	await get_tree().process_frame
 	var state := RealmState.new(content, func() -> int: return 0)
 	state.party.wall_clock = func() -> int: return VisualScenarios.PARTY_WALL_MS
 	VisualScenarios.apply(scenario, state)
