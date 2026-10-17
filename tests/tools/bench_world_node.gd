@@ -5,7 +5,7 @@ extends Node
 ## renderer, lighting and overlay, with no server.
 ##
 ##   godot --path . res://tests/tools/bench_world.tscn -- --bullets=1500 --enemies=150
-##       --players=30 --seconds=10 [--data=<openrealm-data resources dir>]
+##       --players=30 --effects=40 --seconds=10 [--data=<openrealm-data resources dir>]
 ##       [--hide=bullets,entities,lighting,overlay,chunk,...] [--out=<report file>]
 ##
 ## --headless measures the script (CPU) cost alone; windowed adds the GPU. --hide
@@ -22,6 +22,10 @@ var bullets_target := 1500
 ## Persistent LINE_SEGMENT wall hazards (like a dungeon arena). Each renders as a
 ## row of length/size tiles, so this is the knob for the wall-render cost.
 var walls_target := 0
+## Active ability effects to hold on the effects layer (a crowd of casters). Each
+## is a procedural AoE drawer redrawn every frame, so this is the knob for the
+## effect-render cost that a real fight has but a bullets-only bench does not.
+var effects_target := 0
 var enemy_count := 150
 var player_count := 30
 var seconds := 10.0
@@ -42,6 +46,7 @@ var overlay: EntityOverlay
 var camera: Camera2D
 
 var _groups: Array[int] = []
+var _effect_types: Array[int] = []
 var _next_bullet_id := 1_000_000
 var _since_move := 0.0
 var _since_unload := 0.0
@@ -74,6 +79,8 @@ func _ready() -> void:
 		return
 	state = RealmState.new(content)
 	state.settings.set_on("show_other_bullets", true)
+	state.settings.set_on("ability_animations", true)
+	state.settings.set_on("show_ally_effects", true)
 	if "lighting" in hidden_layers:
 		state.settings.set_on("lighting", false)
 	state.settings.set_on("vsync", false)
@@ -95,6 +102,7 @@ func _parse_args() -> void:
 		match parts[0]:
 			"bullets": bullets_target = int(parts[1])
 			"walls": walls_target = int(parts[1])
+			"effects": effects_target = int(parts[1])
 			"enemies": enemy_count = int(parts[1])
 			"players": player_count = int(parts[1])
 			"seconds": seconds = float(parts[1])
@@ -142,6 +150,9 @@ func _pick_groups() -> void:
 		if content.projectile_texture(int(group_id)) != null:
 			_groups.append(int(group_id))
 	_groups.sort()
+	for type_id in EffectType.NAMES:
+		_effect_types.append(int(type_id))
+	_effect_types.sort()
 
 
 func _populate() -> void:
@@ -231,6 +242,7 @@ func _process(delta: float) -> void:
 		_send_unloads()
 	_spawn_bullets()
 	_spawn_walls()
+	_spawn_effects()
 	_section("net", net_started)
 
 	var started := Time.get_ticks_usec()
@@ -372,6 +384,25 @@ func _spawn_walls() -> void:
 			"frequency": 20.0 + _rng.randf() * 40.0,
 			"flags": [ProjectileKind.LINE_SEGMENT], "srcEntityId": 10_000})
 	state.apply_packet("LoadPacket", {"bullets": wires})
+
+
+## Tops the effects layer up to `effects_target` active, each a different drawer
+## type scattered near the fray with a 1.2-1.8s life, so a steady crowd of casts
+## churns through every fx_*.gd the way a real boss fight does.
+func _spawn_effects() -> void:
+	if effects_target <= 0 or _effect_types.is_empty():
+		return
+	var centre := Vector2(MAP_SIZE, MAP_SIZE) * GameConstants.TILE_SIZE * 0.5
+	var missing := effects_target - state.abilities.effects.size()
+	while missing > 0:
+		missing -= 1
+		var at := centre + _scatter(320.0)
+		var target := at + _scatter(120.0)
+		state.apply_packet("CreateEffectPacket", {
+			"effectType": _effect_types[_rng.randi() % _effect_types.size()],
+			"posX": at.x, "posY": at.y, "radius": 40.0 + _rng.randf() * 50.0,
+			"duration": 1200 + _rng.randi() % 600, "targetPosX": target.x, "targetPosY": target.y,
+			"tier": _rng.randi() % 7, "ownerId": state.local.id})
 
 
 func _report() -> void:
