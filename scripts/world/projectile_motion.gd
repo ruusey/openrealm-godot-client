@@ -16,8 +16,11 @@ const TICK_RATE := 64.0
 const MAX_LIFETIME_MS := 10_000
 ## Cap on how far a freshly received bullet is fast-forwarded to cover latency.
 const MAX_CATCHUP_SECONDS := 0.25
-const NOT_STRAIGHT := ProjectileKind.TRAIT_ORBITAL | ProjectileKind.TRAIT_PARAMETRIC \
-	| ProjectileKind.TRAIT_SPINS | ProjectileKind.TRAIT_HOMING | ProjectileKind.TRAIT_SPEED_CURVE
+## Motion that carries accumulated phase or a target id, so a plain fast-forward
+## would land it wrong -- left to arrive a touch late instead. Speed-curve is NOT
+## here: it is fast-forwarded with the curve (see catch_up).
+const NOT_CATCHABLE := ProjectileKind.TRAIT_ORBITAL | ProjectileKind.TRAIT_PARAMETRIC \
+	| ProjectileKind.TRAIT_SPINS | ProjectileKind.TRAIT_HOMING
 
 
 static func step(bullet: Projectile, bullet_scale: float, now_ms := -1) -> void:
@@ -78,14 +81,30 @@ static func is_expired(bullet: Projectile, now_ms: int) -> bool:
 
 
 ## Advances a newly received bullet to roughly where the server has it by now.
-## Only plain straight bullets can be fast-forwarded: orbital, parametric and
-## spinning motion depend on accumulated phase, homing on a target position and
-## speed curves on elapsed lifetime, so guessing puts any of them out of step.
-static func catch_up(bullet: Projectile, one_way_latency_ms: float) -> void:
-	if bullet.magnitude <= 0.0 or ProjectileKind.traits(bullet) & NOT_STRAIGHT:
+## Orbital, parametric, spinning and homing motion can't be guessed forward
+## (accumulated phase / a target), so they arrive a touch late. A straight bullet
+## -- including a SPEED_CURVE one -- is fast-forwarded by the one-way latency.
+##
+## A speed curve is wall-clock driven off created_ms, which the client stamps at
+## RECEIPT -- ~latency after the server spawned the shot. Left as-is the bullet runs
+## its whole ramp/decay a step behind and drifts from where the server (which owns
+## the hit) has it, so the shot visibly passes through enemies or damages ones it is
+## nowhere near. Rewind created_ms to the spawn instant, then replay the latency
+## tick by tick with the curve so BOTH position and phase land where the server is.
+static func catch_up(bullet: Projectile, one_way_latency_ms: float, now_ms := -1) -> void:
+	if bullet.magnitude <= 0.0 or ProjectileKind.traits(bullet) & NOT_CATCHABLE:
 		return
-	var scale := minf(one_way_latency_ms / 1000.0, MAX_CATCHUP_SECONDS) * TICK_RATE
-	if scale <= 0.5:
+	var latency := minf(one_way_latency_ms, MAX_CATCHUP_SECONDS * 1000.0)
+	if latency <= 8.0:
 		return
-	straight(bullet, scale)
-	bullet.created_ms -= int(one_way_latency_ms)
+	if ProjectileKind.traits(bullet) & ProjectileKind.TRAIT_SPEED_CURVE:
+		var clock := float(now_ms if now_ms >= 0 else int(Time.get_ticks_msec()))
+		bullet.created_ms = int(clock - latency)
+		var t := float(bullet.created_ms)
+		while t < clock:
+			var dt_ms := minf(clock - t, 1000.0 / TICK_RATE)
+			straight(bullet, dt_ms / 1000.0 * TICK_RATE, int(t))
+			t += dt_ms
+		return
+	straight(bullet, latency / 1000.0 * TICK_RATE)
+	bullet.created_ms -= int(latency)

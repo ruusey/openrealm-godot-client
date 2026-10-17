@@ -148,3 +148,31 @@ func test_catch_up_skips_stationary_bullets():
 	var bullet := _bullet({"magnitude": 0.0})
 	ProjectileMotion.catch_up(bullet, 200.0)
 	assert_eq(bullet["pos"], Vector2.ZERO)
+
+
+func test_catch_up_replays_a_speed_curve_with_the_curve():
+	# A received SPEED_RAMP shot is caught up with its curve, not at full speed, and its
+	# age is backdated to the spawn instant -- so it lands where the server (which owns the
+	# hit) has it instead of running its ramp a latency-step behind.
+	var opts := {"flags": [ProjectileKind.SPEED_RAMP], "angle": PI / 2.0, "magnitude": 4.0,
+		"frequency": 3.0, "lifetime_ticks": 90}
+	var latency := 100
+	# Reference: the same shot spawned `latency` ago and advanced tick by tick with the curve.
+	var reference := _bullet(opts.duplicate())
+	reference.created_ms = 0
+	var step_ms := 1000.0 / ProjectileMotion.TICK_RATE
+	var t := 0.0
+	while t < float(latency):
+		var dt := minf(float(latency) - t, step_ms)
+		ProjectileMotion.step(reference, dt / 1000.0 * ProjectileMotion.TICK_RATE, int(t))
+		t += dt
+	# A freshly received copy, stamped at receipt, caught up over the same latency.
+	var received := _bullet(opts.duplicate())
+	received.created_ms = latency
+	ProjectileMotion.catch_up(received, float(latency), latency)
+	assert_eq(received.created_ms, 0, "backdated to the spawn instant")
+	assert_almost_eq(received.pos.x, reference.pos.x, 0.01, "lands where the curve puts it")
+	assert_gt(received.pos.x, 0.0, "it moved")
+	# The ramp starts slow, so it has covered LESS than full magnitude over the same time.
+	assert_lt(received.pos.x, 4.0 * float(latency) / 1000.0 * ProjectileMotion.TICK_RATE,
+		"slower than a constant shot because the ramp is still climbing")

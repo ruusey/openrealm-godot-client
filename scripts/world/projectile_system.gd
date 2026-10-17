@@ -106,7 +106,7 @@ func apply_load(data: Dictionary) -> void:
 		var bullet := Projectile.from_wire(wire, now)
 		if _entities != null and bullet.flag_bits & (1 << ProjectileKind.ANCHORED):
 			ProjectileTracking.capture_anchor(bullet, _entities, _player)
-		ProjectileMotion.catch_up(bullet, _catchup_latency * 0.5)
+		ProjectileMotion.catch_up(bullet, _catchup_latency * 0.5, now)
 		bullets[id] = bullet
 		_note_shooter(wire)
 
@@ -415,10 +415,18 @@ func fire_basic_attack(target: Vector2) -> Dictionary:
 	# Draw only the server's copy, removed by its Unload, exactly as enemy beams are.
 	var is_beam := definitions.any(func(d: Dictionary) -> bool:
 		return ProjectileKind.definition_has_flag(d, ProjectileKind.LINE_SEGMENT))
+	# A SPEED_RAMP/SPEED_DECAY shot is not predicted either: its speed is a wall-clock
+	# curve off the spawn time, which a local prediction (stamped at the click, ahead of
+	# the server's spawn) runs out of phase, so the predicted bolt accelerates away from
+	# the authoritative one and the hit lands nowhere near the bolt you see. The server's
+	# copy drives it instead, fast-forwarded to match on arrival (ProjectileMotion.catch_up).
+	var is_speed_curve := definitions.any(func(d: Dictionary) -> bool:
+		return ProjectileKind.definition_has_flag(d, ProjectileKind.SPEED_RAMP) \
+			or ProjectileKind.definition_has_flag(d, ProjectileKind.SPEED_DECAY))
 	# Origin is the body centre (matches the server's getCenteredPosition), so a
 	# resized player (/size) still fires from the middle of the sprite rather than
 	# its top-left corner.
-	if not bool(archetype.get("melee", false)) and not is_beam:
+	if not bool(archetype.get("melee", false)) and not is_beam and not is_speed_curve:
 		var predicted := ShotPredictor.build(shot, group_id, definitions,
 			base_angle, centre, archetype, _clock.call(), extra)
 		bullets.merge(predicted)
