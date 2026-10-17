@@ -34,7 +34,11 @@ var texts: int:
 	get: return _labels.texts
 
 var _root: Control
-var _tags: ControlPool
+## Players and enemies pool separately, each keyed by the raw entity id, so an
+## acquire is a plain int hash with no per-entity ["kind", id] Array built and
+## deep-hashed every frame for every visible character.
+var _player_tags: ControlPool
+var _enemy_tags: ControlPool
 var _bars: EnemyBars
 var _labels: FloatingLabels
 var _loot: LootPreviews
@@ -69,7 +73,8 @@ func _ready() -> void:
 	# Under every tag, as each tag's own bar was under its name and chips.
 	_bars = EnemyBars.new()
 	_root.add_child(_bars)
-	_tags = ControlPool.new(_root, func() -> Control: return EntityTag.new())
+	_player_tags = ControlPool.new(_root, func() -> Control: return EntityTag.new())
+	_enemy_tags = ControlPool.new(_root, func() -> Control: return EntityTag.new())
 	_labels = FloatingLabels.new(_root)
 	_melee = MeleeReticle.new()
 	_root.add_child(_melee)
@@ -98,7 +103,8 @@ func refresh() -> void:
 	if state != null:
 		_show_players(to_screen, view)
 		_show_enemies(to_screen, view)
-	_tags.sweep()
+	_player_tags.sweep()
+	_enemy_tags.sweep()
 	_bars.finish()
 	_melee.place(state, content, to_screen, world_aim.call())
 	_labels.show_all(state, to_screen, view, project_3d)
@@ -125,7 +131,7 @@ func _anchor(to_screen: Transform2D, world_topleft: Vector2, world_size: float,
 
 
 func tag_count() -> int:
-	return _tags.size()
+	return _player_tags.size() + _enemy_tags.size()
 
 
 ## Hurt enemies' health bars drawn last frame.
@@ -159,7 +165,7 @@ func _show_players(to_screen: Transform2D, view: Rect2) -> void:
 		var body_size: float = local.size if is_local else float(player.get("size", GameConstants.PLAYER_SIZE))
 		var render_world := float(GameConstants.PLAYER_RENDER_SIZE) * (body_size / float(GameConstants.PLAYER_SIZE))
 		var size := render_world * scale
-		var tag: EntityTag = _tags.acquire(["player", id])
+		var tag: EntityTag = _player_tags.acquire(id)
 		tag.show_player(_anchor(to_screen, position, render_world, size),
 			size, label if names_on else "",
 			NameColours.over_head(String(player.get("chat_role", "")), is_local, LOCAL_NAME),
@@ -197,6 +203,6 @@ func _show_enemies(to_screen: Transform2D, view: Rect2) -> void:
 			_bars.add(at, width, EntityTag.fraction(health, maximum))
 		# A tag only for the chips; it draws no bar of its own (full health passed).
 		if not effects.is_empty():
-			var tag: EntityTag = _tags.acquire(["enemy", id])
+			var tag: EntityTag = _enemy_tags.acquire(id)
 			tag.show_enemy(at, width, maximum, maximum, effects, enemy.get("effect_stacks", NO_EFFECTS))
 			chips += tag.chip_count()

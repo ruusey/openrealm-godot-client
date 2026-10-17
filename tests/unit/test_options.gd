@@ -105,7 +105,7 @@ func test_the_overlay_drops_names_chips_bubbles_and_numbers():
 	state.apply_packet("TextEffectPacket", {"textEffectId": 0, "entityType": 1, "targetEntityId": 0,
 		"text": "-5", "posX": 1.0, "posY": 1.0})
 	overlay.refresh()
-	var tag: EntityTag = overlay._tags.acquire(["player", 1])
+	var tag: EntityTag = overlay._player_tags.acquire(1)
 	assert_true(tag._name.visible)
 	assert_gt(overlay.chips, 0)
 	assert_eq(overlay.bubbles, 1)

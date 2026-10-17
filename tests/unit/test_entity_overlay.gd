@@ -16,7 +16,8 @@ func before_each():
 
 
 func _tag(kind: String, id: int) -> EntityTag:
-	return overlay._tags._live.get([kind, id])
+	var pool: ControlPool = overlay._player_tags if kind == "player" else overlay._enemy_tags
+	return pool._live.get(id)
 
 
 func test_a_player_gets_a_tag_at_its_screen_position_with_the_web_clients_layout():

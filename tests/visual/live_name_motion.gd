@@ -88,7 +88,7 @@ func _sample() -> void:
 	if not _recording:
 		return
 	var local: LocalPlayer = _main.state.local
-	var tag: EntityTag = _main.screens.overlay._tags._live.get(["player", local.id])
+	var tag: EntityTag = _main.screens.overlay._player_tags._live.get(local.id)
 	if tag == null or not tag.visible:
 		return
 	var to_screen: Transform2D = _main.get_viewport().get_canvas_transform()
