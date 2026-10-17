@@ -232,7 +232,11 @@ func _draw_instanced(sheet: Texture2D, sheet_groups: Array, outlines: bool) -> v
 				# that genuinely moves sweeps via its server-driven angle, not this spin.
 				var tile_rotation := -angle
 				mesh.set_instance_transform_2d(at, Transform2D(tile_rotation, Vector2(length, size), 0.0, centre))
-				mesh.set_instance_color(at, Color(0.0, float(tiles), 1.0, 1.0))
+				# COLOR.b carries the group's angleOffset: the shader turns each tiled
+				# sprite by it within its cell so a diagonal (PI/4) wall sprite points
+				# right, while the quad itself stays flat along the wall axis. The spin
+				# `turn` is deliberately NOT passed -- it would whirl the whole wall.
+				mesh.set_instance_color(at, Color(0.0, float(tiles), offset, 1.0))
 				mesh.set_instance_custom_data(at, region)
 				at += 1
 				continue

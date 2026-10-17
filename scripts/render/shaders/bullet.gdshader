@@ -22,10 +22,15 @@ varying float margin;
 // A LINE_SEGMENT wall is ONE stretched quad instead of a row of tiles: the sprite
 // is repeated this many times along the quad's long (X) axis. 1 for everything else.
 varying float reps;
+// The wall sprite's angleOffset (radians): each tiled sprite is turned by it within
+// its cell so a diagonal sheet sprite points right, while the quad lies flat along
+// the wall. 0 for non-walls, which carry their rotation in the quad transform.
+varying float cell_turn;
 
 void vertex() {
 	region = INSTANCE_CUSTOM;
 	reps = max(COLOR.g, 1.0);
+	cell_turn = COLOR.b;
 	float quad = length(MODEL_MATRIX[0].xy);
 	margin = COLOR.r > 0.5 && quad > 2.0 ? 1.0 / quad : 0.0;
 	COLOR = vec4(1.0);
@@ -45,6 +50,15 @@ void fragment() {
 	// A wall tiles its sprite along the quad's length; one quad, repeated in-shader.
 	if (reps > 1.0) {
 		local.x = fract(local.x * reps);
+		// Turn the sprite within its (square) cell by the group's angleOffset, so a
+		// diagonal sheet sprite reads straight along the wall. Sampling is rotated by
+		// -offset, which displays the sprite rotated by +offset.
+		if (cell_turn != 0.0) {
+			float s = sin(cell_turn);
+			float c = cos(cell_turn);
+			vec2 p = local - vec2(0.5);
+			local = vec2(c * p.x + s * p.y, -s * p.x + c * p.y) + vec2(0.5);
+		}
 	}
 	vec4 sprite = sprite_at(TEXTURE, cut, local);
 	float outline = 0.0;
