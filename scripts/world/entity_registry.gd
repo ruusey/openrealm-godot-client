@@ -17,6 +17,7 @@ var portals := {}
 var lock_on := -1
 
 var _short_ids := {}   # shortId -> entity id
+var _id_to_short := {}   # entity id -> shortId, the reverse of _short_ids for O(1) release
 var _clock: Callable
 ## Snaps packet arrivals onto the server's send grid; null leaves them raw (tests
 ## that script exact arrival times).
@@ -36,6 +37,7 @@ func clear() -> void:
 	containers.clear()
 	portals.clear()
 	_short_ids.clear()
+	_id_to_short.clear()
 	lock_on = -1
 
 
@@ -94,18 +96,22 @@ func apply_unload(data: Dictionary) -> void:
 
 func apply_object_move(data: Dictionary) -> void:
 	var now := _arrival()
+	# The viewer centre can't change within one packet, so it is resolved once here
+	# rather than through the Callable for every entity in the move list.
+	var view_centre: Vector2 = viewer.call()
 	for movement in data.get("movements", []):
 		var entity := find(int(movement.get("entityType", 0)), int(movement.get("entityId", 0)))
 		if entity.is_empty():
 			continue
 		EntitySnapshots.push(entity,
 			Vector2(movement.get("posX", 0.0), movement.get("posY", 0.0)),
-			Vector2(movement.get("velX", 0.0), movement.get("velY", 0.0)), now, viewer.call())
+			Vector2(movement.get("velX", 0.0), movement.get("velY", 0.0)), now, view_centre)
 		entity["attacking"] = (int(movement.get("flags", 0)) & FLAG_ATTACKING) != 0
 
 
 func apply_compact_move(data: Dictionary) -> void:
 	var now := _arrival()
+	var view_centre: Vector2 = viewer.call()
 	for movement in data.get("movements", []):
 		var short_id := int(movement.get("shortEntityId", 0))
 		if not _short_ids.has(short_id):
@@ -116,7 +122,7 @@ func apply_compact_move(data: Dictionary) -> void:
 		EntitySnapshots.push(entity,
 			Vector2(movement.get("posX", 0.0), movement.get("posY", 0.0)),
 			Vector2(float(movement.get("velXFixed", 0)) / VELOCITY_SCALE,
-				float(movement.get("velYFixed", 0)) / VELOCITY_SCALE), now, viewer.call())
+				float(movement.get("velYFixed", 0)) / VELOCITY_SCALE), now, view_centre)
 		entity["attacking"] = (int(movement.get("flags", 0)) & FLAG_ATTACKING) != 0
 
 
@@ -154,12 +160,13 @@ func register_short_id(value: Variant, id: int) -> void:
 	var short_id := int(value)
 	if short_id != 0:
 		_short_ids[short_id] = id
+		_id_to_short[id] = short_id
 
 
 func _release_short_id(entity: Dictionary) -> void:
 	if entity.is_empty():
 		return
-	for short_id in _short_ids.keys():
-		if _short_ids[short_id] == entity.get("id", -1):
-			_short_ids.erase(short_id)
-			return
+	var id: int = entity.get("id", -1)
+	if _id_to_short.has(id):
+		_short_ids.erase(_id_to_short[id])
+		_id_to_short.erase(id)
