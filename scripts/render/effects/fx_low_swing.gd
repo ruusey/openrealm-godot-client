@@ -30,9 +30,9 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, _colour: C
 	var start_a := base - SWEEP * 0.5
 	var lead_a := start_a + SWEEP * t
 	var segments := maxi(2, int(12 * t))
-	canvas.draw_arc(at, reach, start_a, lead_a, segments + 1, Color(SHADOW, alpha * 0.8), 13.0 * Fx.S)
-	canvas.draw_arc(at, reach, start_a, lead_a, segments + 1, Color(STEEL, alpha * 0.95), 8.0 * Fx.S)
-	canvas.draw_arc(at, reach, start_a, lead_a, segments + 1, Color(Color.WHITE, alpha), 3.5 * Fx.S)
+	Fx.arc(canvas, at, start_a, lead_a, reach, segments, 13.0, Color(SHADOW, alpha * 0.8))
+	Fx.arc(canvas, at, start_a, lead_a, reach, segments, 8.0, Color(STEEL, alpha * 0.95))
+	Fx.arc(canvas, at, start_a, lead_a, reach, segments, 3.5, Color(Color.WHITE, alpha))
 	if t < 1.0:
 		# The leading edge: a bright blade standing across the arc.
 		var lead := Fx.polar(at, lead_a, reach)
@@ -41,7 +41,7 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, _colour: C
 		Fx.dot(canvas, lead, 4.5, Color(Color.WHITE, alpha))
 	else:
 		# The cut has passed: an icy wake and motes dripping low (SLOWED).
-		canvas.draw_arc(at, reach, start_a, start_a + SWEEP, segments + 1, Color(FROST, alpha * 0.7), 6.0 * Fx.S)
+		Fx.arc(canvas, at, start_a, start_a + SWEEP, reach, segments, 6.0, Color(FROST, alpha * 0.7))
 		for i in 4:
 			var mote_a := start_a + SWEEP * (0.2 + 0.2 * i)
 			var mote := Fx.polar(at, mote_a, reach * 0.9) + Vector2(0.0, progress * reach * 0.4)

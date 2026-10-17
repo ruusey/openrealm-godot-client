@@ -55,11 +55,12 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, _colour: C
 	Fx.dot(canvas, at, 4.0, Color(WISP, alpha))
 
 
-## One arm from rim to centre, 2.8 half-turns round.
+## One arm from rim to centre, 2.8 half-turns round, drawn as a single polyline.
 static func _spiral(canvas: CanvasItem, at: Vector2, radius: float, turn: float, width_px: float, colour: Color) -> void:
-	var previous := Fx.polar(at, turn, arm_radius(radius, 0.0))
+	var points := PackedVector2Array()
+	points.resize(SEGMENTS + 1)
+	points[0] = Fx.polar(at, turn, arm_radius(radius, 0.0))
 	for s in range(1, SEGMENTS + 1):
 		var t := float(s) / SEGMENTS
-		var point := Fx.polar(at, turn + t * PI * 2.8, arm_radius(radius, t))
-		Fx.line(canvas, previous, point, width_px, colour)
-		previous = point
+		points[s] = Fx.polar(at, turn + t * PI * 2.8, arm_radius(radius, t))
+	Fx.polyline(canvas, points, width_px, colour)

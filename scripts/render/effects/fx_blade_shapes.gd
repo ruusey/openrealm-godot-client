@@ -13,9 +13,7 @@ extends RefCounted
 ## strokes it: `segments` straight pieces, not a smooth curve.
 static func arc(canvas: CanvasItem, at: Vector2, centre: float, sweep: float, radius: float,
 		segments: int, width_px: float, colour: Color) -> void:
-	if colour.a > 0.001 and radius > 0.0:
-		canvas.draw_arc(at, radius, centre - sweep * 0.5, centre + sweep * 0.5, segments + 1,
-			colour, width_px * Fx.S)
+	Fx.arc(canvas, at, centre - sweep * 0.5, centre + sweep * 0.5, radius, segments, width_px, colour)
 
 
 ## A diamond `length` from the middle to each point along `angle` and

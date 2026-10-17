@@ -32,9 +32,9 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, _colour: C
 	var start_a := base - SWEEP * 0.5
 	var lead_a := start_a + SWEEP * t
 	var segments := maxi(2, int(16 * t))
-	canvas.draw_arc(at, r, start_a, lead_a, segments + 1, Color(GORE, alpha * 0.85), 12.0 * Fx.S)
-	canvas.draw_arc(at, r, start_a, lead_a, segments + 1, Color(BLADE, alpha), 7.0 * Fx.S)
-	canvas.draw_arc(at, r, start_a, lead_a, segments + 1, Color(Color.WHITE, alpha * 0.9), 3.0 * Fx.S)
+	Fx.arc(canvas, at, start_a, lead_a, r, segments, 12.0, Color(GORE, alpha * 0.85))
+	Fx.arc(canvas, at, start_a, lead_a, r, segments, 7.0, Color(BLADE, alpha))
+	Fx.arc(canvas, at, start_a, lead_a, r, segments, 3.0, Color(Color.WHITE, alpha * 0.9))
 	if t < 1.0:
 		# The leading edge: a bright blade standing across the arc as it cleaves.
 		var lead := Fx.polar(at, lead_a, r)

@@ -44,7 +44,7 @@ static func draw(canvas: CanvasItem, fx: Dictionary, progress: float, _colour: C
 		Fx.dot(canvas, p, 2.0, Color(Color.WHITE, alpha * 0.9))
 	for k in 3:
 		var a0 := turn - 0.5 - k * 0.25
-		canvas.draw_arc(at, arm * 1.1, a0, a0 + 0.4, 4, Color(STEEL, alpha * 0.4), 1.5 * Fx.S)
+		Fx.arc(canvas, at, a0, a0 + 0.4, arm * 1.1, 3, 1.5, Color(STEEL, alpha * 0.4))
 	for k in 2:
 		var fleck := Fx.polar(at, turn * 0.5 + k * PI, arm * (1.0 + 0.6 * progress))
 		Fx.dot(canvas, fleck, 2.0 * (1.0 - progress), Color(BLOOD, alpha * 0.8))

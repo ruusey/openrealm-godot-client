@@ -122,6 +122,31 @@ static func line(canvas: CanvasItem, from: Vector2, to: Vector2, width_px: float
 		canvas.draw_line(from, to, colour, width_px * S)
 
 
+## A connected path as ONE draw command, for the drawers that trace a stroke
+## segment by segment (a spiral arm, a lightning bolt, a swing edge). The same
+## points drawn as N separate Fx.line calls are N draw commands and the frame's
+## worst spikes under crowd combat; one draw_polyline is pixel-identical.
+static func polyline(canvas: CanvasItem, points: PackedVector2Array, width_px: float, colour: Color) -> void:
+	if colour.a > 0.001 and points.size() >= 2:
+		canvas.draw_polyline(points, colour, width_px * S)
+
+
+## A stroked arc of `segments` straight pieces, as draw_arc draws one but without
+## its per-call vertex buffer (15-30us on the GL compat renderer, where a polyline
+## is ~2us): the arc's points fed to draw_polyline. Same look, a fraction of the
+## cost, and the melee swings that stack three layered arcs a frame feel it.
+static func arc(canvas: CanvasItem, at: Vector2, start_angle: float, end_angle: float,
+		radius: float, segments: int, width_px: float, colour: Color) -> void:
+	if colour.a <= 0.001 or radius <= 0.0 or segments < 1:
+		return
+	var points := PackedVector2Array()
+	points.resize(segments + 1)
+	for i in segments + 1:
+		var a := start_angle + (end_angle - start_angle) * float(i) / float(segments)
+		points[i] = at + Vector2(cos(a), sin(a)) * radius
+	canvas.draw_polyline(points, colour, width_px * S)
+
+
 static func polygon(canvas: CanvasItem, points: Array, colour: Color) -> void:
 	if colour.a > 0.001 and points.size() >= 3:
 		canvas.draw_colored_polygon(PackedVector2Array(points), colour)
@@ -151,7 +176,12 @@ static func facing(fx: Dictionary) -> Vector2:
 ## The web client rolls Math.random() every frame for its jitter, so a
 ## bolt shivers. Seeded from the effect and a coarse tick of its age, so
 ## it shivers here too but a scripted render draws the same shape twice.
+## One shared generator reseeded per call, not a fresh object each time: a
+## drawer uses its rolls immediately and in order, so a crowd of shivering
+## bolts no longer allocates a RandomNumberGenerator per effect per frame.
+static var _rng := RandomNumberGenerator.new()
+
+
 static func rng_for(fx: Dictionary, elapsed_ms: int, ticks_per_second := 25) -> RandomNumberGenerator:
-	var rng := RandomNumberGenerator.new()
-	rng.seed = hash([int(fx.get("started", 0)), fx.get("pos", Vector2.ZERO), elapsed_ms * ticks_per_second / 1000])
-	return rng
+	_rng.seed = hash([int(fx.get("started", 0)), fx.get("pos", Vector2.ZERO), elapsed_ms * ticks_per_second / 1000])
+	return _rng
