@@ -50,6 +50,10 @@ var _tile_stops := {}
 ## hit prediction tests.
 var _dropped: Array = []
 var _own_live: Array[Projectile] = []
+## Enemy centre/reach snapshot reused across _predict_hits calls, so the prediction
+## pass doesn't reallocate both Packed arrays every frame it runs.
+var _enemy_centres := PackedVector2Array()
+var _enemy_reaches := PackedFloat32Array()
 ## Client-side hit prediction is O(own-bullets x enemies); it only consumes a
 ## non-pierce shot a few ms before the server's Unload, so on the web renderer we
 ## run it every 3rd frame instead of every frame. Native runs it every frame.
@@ -203,11 +207,19 @@ func advance(delta: float) -> void:
 			bullet.pos = bullet.orbit_centre + Vector2(cos(phase), sin(phase)) * bullet.orbit_radius
 			bullet.traveled += bullet.orbit_radius * absf(turn)
 		else:
-			if traits & ProjectileKind.TRAIT_SPINS:
-				bullet.angle += deg_to_rad(bullet.frequency * bullet_scale)
 			var step_size := bullet.magnitude * bullet_scale
-			var angle := bullet.angle
-			bullet.pos += Vector2(sin(angle) * step_size, cos(angle) * step_size)
+			if traits & ProjectileKind.TRAIT_SPINS:
+				# A spinner turns every frame, so its heading is never cacheable.
+				bullet.angle += deg_to_rad(bullet.frequency * bullet_scale)
+				var angle := bullet.angle
+				bullet.pos += Vector2(sin(angle) * step_size, cos(angle) * step_size)
+			else:
+				# A straight shot's heading is constant, so the trig runs once and
+				# the cached unit vector carries every later frame.
+				if bullet.heading_angle != bullet.angle:
+					bullet.heading = Vector2(sin(bullet.angle), cos(bullet.angle))
+					bullet.heading_angle = bullet.angle
+				bullet.pos += bullet.heading * step_size
 			bullet.traveled += absf(step_size)
 		# _should_drop_locally, inlined for everything but a LINE_SEGMENT wall.
 		var drop := false
@@ -331,21 +343,21 @@ func _in_wall(bullet: Projectile, traits: int, solid: Dictionary) -> bool:
 func _predict_hits(now: int) -> void:
 	if _entities == null or _entities.enemies.is_empty():
 		return
-	var enemy_centres := PackedVector2Array()
-	var enemy_reaches := PackedFloat32Array()
+	_enemy_centres.clear()
+	_enemy_reaches.clear()
 	for enemy_id in _entities.enemies:
 		var enemy: Dictionary = _entities.enemies[enemy_id]
 		var enemy_size := float(enemy.get("size", GameConstants.TILE_SIZE))
-		enemy_centres.append(_entities.render_position(enemy) + Vector2(enemy_size, enemy_size) * 0.5)
-		enemy_reaches.append(enemy_size * HIT_RADIUS_FACTOR)
-	var enemy_count := enemy_centres.size()
+		_enemy_centres.append(_entities.render_position(enemy) + Vector2(enemy_size, enemy_size) * 0.5)
+		_enemy_reaches.append(enemy_size * HIT_RADIUS_FACTOR)
+	var enemy_count := _enemy_centres.size()
 	for bullet in _own_live:
 		var size := float(bullet.size)
 		var radius := size * HIT_RADIUS_FACTOR
 		var centre := bullet.pos + Vector2(size, size) * 0.5
 		for i in enemy_count:
-			var reach := radius + enemy_reaches[i]
-			if centre.distance_squared_to(enemy_centres[i]) < reach * reach:
+			var reach := radius + _enemy_reaches[i]
+			if centre.distance_squared_to(_enemy_centres[i]) < reach * reach:
 				bullet.consumed = true
 				bullet.consumed_at = now
 				bullet.traits |= ProjectileKind.TRAIT_CONSUMED

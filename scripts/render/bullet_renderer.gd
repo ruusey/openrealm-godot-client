@@ -66,6 +66,12 @@ var _meshes := {}   # sheet -> MultiMesh
 ## Resolved art by group id, kept across frames for the content it came from.
 var _art := {}
 var _art_content: GameData
+## Per-frame draw buckets, reused across frames: group_id -> Array[Projectile] and
+## sheet -> [art, bullets, ...]. The groups and sheets in play barely change frame to
+## frame, so the containers persist and are cleared in place rather than a fresh {} +
+## one Array per group/sheet allocated every draw (pure garbage at bullet-hell counts).
+var _groups := {}
+var _sheets := {}
 
 
 func _ready() -> void:
@@ -110,7 +116,8 @@ func paint(canvas: CanvasItem, state: RealmState, content: GameData,
 	# sheet: bullets need no order among themselves, and drawn sheet by sheet
 	# they batch into a draw call per sheet instead of one each time two
 	# neighbours' sheets differ.
-	var groups := {}
+	for bucket in _groups.values():
+		bucket.clear()
 	for bullet: Projectile in state.projectiles.bullets.values():
 		var traits := bullet.traits
 		if traits < 0:
@@ -129,17 +136,23 @@ func paint(canvas: CanvasItem, state: RealmState, content: GameData,
 		if any_hidden and visibility.hides(bullet):
 			continue
 		drawn += 1
-		var batch: Array = groups.get(bullet.group_id, NO_ART)
-		if batch.is_empty():
+		var batch: Array
+		if _groups.has(bullet.group_id):
+			batch = _groups[bullet.group_id]
+		else:
 			batch = []
-			groups[bullet.group_id] = batch
+			_groups[bullet.group_id] = batch
 		batch.append(bullet)
 	# [art, bullets, art, bullets...] per sheet.
-	var sheets := {}
+	for bucket in _sheets.values():
+		bucket.clear()
 	if _art_content != content:
 		_art_content = content
 		_art.clear()
-	for group_id in groups:
+	for group_id in _groups:
+		var bucket: Array = _groups[group_id]
+		if bucket.is_empty():
+			continue
 		var art: Array = _art.get(group_id, NO_ART)
 		if art.is_empty():
 			art = _resolve_group(content, group_id, now_ms)
@@ -148,17 +161,22 @@ func paint(canvas: CanvasItem, state: RealmState, content: GameData,
 				_art[group_id] = art
 		elif not art[ART_SPIN].is_empty():
 			art[ART_TURN] = ProjectileArt.spun(art[ART_SPIN], now_ms)
-		var sheet_groups: Array = sheets.get(art[ART_SHEET], NO_ART)
-		if sheet_groups.is_empty():
+		var sheet: Texture2D = art[ART_SHEET]
+		var sheet_groups: Array
+		if _sheets.has(sheet):
+			sheet_groups = _sheets[sheet]
+		else:
 			sheet_groups = []
-			sheets[art[ART_SHEET]] = sheet_groups
+			_sheets[sheet] = sheet_groups
 		sheet_groups.append(art)
-		sheet_groups.append(groups[group_id])
+		sheet_groups.append(bucket)
 	var outlines := SpriteOutline.enabled
 	if _bodies.is_valid():
 		RenderingServer.canvas_item_clear(_bodies)
-	for sheet in sheets:
-		var sheet_groups: Array = sheets[sheet]
+	for sheet in _sheets:
+		var sheet_groups: Array = _sheets[sheet]
+		if sheet_groups.is_empty():
+			continue
 		if _bodies.is_valid() and canvas == self and sheet_groups[0][ART_INSTANCED]:
 			_draw_instanced(sheet, sheet_groups, outlines)
 			continue

@@ -17,6 +17,11 @@ var group_id := 0
 var pos := Vector2.ZERO
 var size := 8
 var angle := 0.0
+## Cached unit heading (sin(angle), cos(angle)) for a straight shot, so advance()
+## skips the per-frame trig while the angle is constant. heading_angle holds the
+## angle it was built for; INF forces a recompute on first use and after a turn.
+var heading := Vector2.ZERO
+var heading_angle := INF
 var magnitude := 0.0
 var range := 0.0
 var traveled := 0.0
