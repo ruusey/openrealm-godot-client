@@ -225,7 +225,12 @@ func _draw_instanced(sheet: Texture2D, sheet_groups: Array, outlines: bool) -> v
 				# fewer instances to rebuild + draw each frame (the dungeon-wall FPS sink).
 				# reps rides in COLOR.g; COLOR.r = 0 keeps it unoutlined.
 				var tiles := maxi(1, int(round(length / size)))
-				var tile_rotation := -angle + offset + (turn if additive else 0.0)
+				# The quad IS the wall line, so it lies along the segment's axis (-angle)
+				# and nothing else: the sprite's angleOffset and spin `turn` are per-shot
+				# art that, applied to the whole stretched quad, whirled the entire wall
+				# (the per-tile version only ever spun each little sprite in place). A wall
+				# that genuinely moves sweeps via its server-driven angle, not this spin.
+				var tile_rotation := -angle
 				mesh.set_instance_transform_2d(at, Transform2D(tile_rotation, Vector2(length, size), 0.0, centre))
 				mesh.set_instance_color(at, Color(0.0, float(tiles), 1.0, 1.0))
 				mesh.set_instance_custom_data(at, region)
