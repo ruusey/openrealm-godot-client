@@ -14,9 +14,16 @@ extends RefCounted
 
 ## Records where the bullet sits relative to its source, so it can be snapped
 ## back every tick afterwards. Mirrors Bullet.setupAnchor.
+##
+## Captured against the source's RAW latest-snapshot position, not its
+## interpolated render position: the server anchored the wall to the entity's
+## live server position, and anchored walls ride a bullets-only load delta that
+## carries no fresh enemy snapshot, so subtracting the ~100ms-delayed render
+## position baked that lag into the offset -- which deformed a boss's wall-box
+## (each side captured a tick apart as it entered view, with a different lag).
 static func capture_anchor(bullet: Projectile, entities: EntityRegistry,
 		player: LocalPlayer) -> void:
-	var source: Variant = _position_of(bullet.src_entity_id, entities, player)
+	var source: Variant = _raw_position_of(bullet.src_entity_id, entities, player)
 	if source == null:
 		return
 	bullet.anchor_offset = bullet.pos - (source as Vector2)
@@ -59,6 +66,24 @@ static func _position_of(id: int, entities: EntityRegistry, player: LocalPlayer)
 	if entity.is_empty():
 		return null
 	return entities.render_position(entity)
+
+
+## The source's newest raw server position (the snapshot target), for anchoring --
+## as opposed to _position_of's interpolated render position. Falls back to the
+## render position when there are no snapshots yet (a cold single-load, where the
+## two coincide anyway).
+static func _raw_position_of(id: int, entities: EntityRegistry, player: LocalPlayer) -> Variant:
+	if id == 0:
+		return null
+	if player != null and id == player.id:
+		return player.position
+	var entity := entities.find_any(id)
+	if entity.is_empty():
+		return null
+	var snaps: Array = entity.get("snaps", [])
+	if snaps.is_empty():
+		return entities.render_position(entity)
+	return snaps[-1]["pos"]
 
 
 static func _size_of(id: int, entities: EntityRegistry, player: LocalPlayer) -> float:
