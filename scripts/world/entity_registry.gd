@@ -15,6 +15,8 @@ var containers := {}
 var portals := {}
 ## The enemy the lock-on ring is under (AutoAim), or -1.
 var lock_on := -1
+## Rare-drop bags already chimed for on this map, so one drifting back into view stays quiet.
+var rare_loot_seen := {}
 
 var _short_ids := {}   # shortId -> entity id
 var _id_to_short := {}   # entity id -> shortId, the reverse of _short_ids for O(1) release
@@ -39,6 +41,7 @@ func clear() -> void:
 	_short_ids.clear()
 	_id_to_short.clear()
 	lock_on = -1
+	rare_loot_seen.clear()
 
 
 ## Everything except one player, which is what a realm change leaves behind.
@@ -77,8 +80,8 @@ func _arrival() -> float:
 
 ## Applies a LoadPacket's entity tables. The wire mapping itself lives in
 ## EntityLoader; this keeps the registry to storage, lookup and movement.
-func apply_load(data: Dictionary) -> void:
-	EntityLoader.apply(self, data, _arrival())
+func apply_load(data: Dictionary) -> int:
+	return EntityLoader.apply(self, data, _arrival())
 
 
 func apply_unload(data: Dictionary) -> void:

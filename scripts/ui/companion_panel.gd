@@ -22,6 +22,7 @@ const MUTED := Color(0.6, 0.6, 0.65)
 const SELECTED_TINT := Color(1.35, 1.25, 0.7)
 const DEPLOYED_TINT := Color(0.7, 1.3, 0.8)
 const CAPTIONS := ["Wpn", "Arm", "Gnt", "Bts", "Rng"]
+const STATS := ["hp", "mp", "def", "str", "spd", "dex", "vit", "wis"]
 
 var state: RealmState
 var content: GameData
@@ -36,6 +37,7 @@ var _body: VBoxContainer
 var _new_row: HBoxContainer
 var _buy_row: HBoxContainer
 var _picker: OptionButton
+var _class_preview: VBoxContainer
 var _cards_box: VBoxContainer
 var _status: Label
 var _drawn := -1
@@ -57,7 +59,8 @@ func _ready() -> void:
 	centre.set_anchors_preset(Control.PRESET_FULL_RECT)
 	centre.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(centre)
-	_root = PanelContainer.new()
+	# A drop that misses a target inside the panel is a change of mind, not a throw.
+	_root = InventoryLayout.DropSink.new()
 	_root.custom_minimum_size = Vector2(340, 0)
 	centre.add_child(_root)
 	var margin := MarginContainer.new()
@@ -98,8 +101,13 @@ func _ready() -> void:
 	# Filled lazily in _process once shown — the class catalog loads from the data
 	# service after login, so it is empty here at build time.
 	_picker = OptionButton.new()
+	_picker.item_selected.connect(func(_index: int) -> void: _show_class_preview())
 	_new_row.add_child(_picker)
 	InventoryLayout.button(_new_row, "Create", _on_create)
+	# The picked class's kit, so a player with one character can see what another does.
+	_class_preview = VBoxContainer.new()
+	_class_preview.add_theme_constant_override("separation", 2)
+	_body.add_child(_class_preview)
 
 	# Expand the owned/bench capacity with fame (server validates fame + the 20 cap).
 	_buy_row = HBoxContainer.new()
@@ -136,8 +144,8 @@ func _process(_delta: float) -> void:
 func _update_status() -> void:
 	var c := state.companions
 	if c.is_deployed():
-		if c.is_nexus_deploy():
-			_status.text = "Deployed in the Nexus - no time limit here"
+		if c.deploy_never_expires():
+			_status.text = "Deployed - no time limit"
 		else:
 			_status.text = "Deployed - %s until it returns home" % _mmss(c.deployed_remaining_ms())
 	elif not c.summon_ready():
@@ -193,6 +201,43 @@ func _populate_picker() -> void:
 		_picker.select(prev_idx)
 	elif first_available >= 0:
 		_picker.select(first_available)
+	_show_class_preview()
+
+
+## The picked class's passive and three abilities, each hoverable for its full card.
+func _show_class_preview() -> void:
+	for child in _class_preview.get_children():
+		child.queue_free()
+	var class_id := _picker.get_selected_id()
+	if class_id < 0 or content == null:
+		return
+	var passive := content.abilities.passive(class_id)
+	if not passive.is_empty():
+		_preview_line("Passive: " + str(passive.get("name", "")),
+			AbilityDescriber.passive_lines(content.abilities, class_id))
+	for slot in AbilityCatalog.SLOTS:
+		var ability_id := content.abilities.hotbar_id(class_id, slot)
+		var definition := content.abilities.ability(ability_id)
+		if definition.is_empty():
+			continue
+		_preview_line("%d: %s" % [slot + 1, str(definition.get("name", ""))],
+			AbilityDescriber.ability_lines(content.abilities, ability_id, 0, {}, "Ability %d" % (slot + 1)))
+
+
+func _preview_line(text: String, card: Array) -> void:
+	var label := _line(_class_preview, text, 11, MUTED)
+	_hover_card(label, card)
+
+
+## Show `card` (ItemTooltip lines) while the mouse is over `control`.
+func _hover_card(control: Control, card: Array) -> void:
+	control.mouse_filter = Control.MOUSE_FILTER_PASS
+	control.mouse_entered.connect(func() -> void:
+		if _tooltip != null and not card.is_empty():
+			_tooltip.show_lines(card, get_viewport().get_mouse_position()))
+	control.mouse_exited.connect(func() -> void:
+		if _tooltip != null:
+			_tooltip.hide_card())
 
 
 func toggle() -> void:
@@ -240,6 +285,7 @@ func _rebuild() -> void:
 	# Taken-class set changes with the roster, so refresh the picker here.
 	_populate_picker()
 	_new_row.visible = roster.size() < cap
+	_class_preview.visible = _new_row.visible
 	# Offer the buy button whenever the bench can still grow.
 	_buy_row.visible = cap < CompanionState.MAX_OWNED_CAP
 	for child in _cards_box.get_children():
@@ -291,8 +337,8 @@ func _card(companion: Dictionary) -> Control:
 	class_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	class_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	# One companion deploys at a time: this is Recall for the deployed one, Summon
-	# for any other. The server enforces the 10-min cooldown (and the Nexus free
-	# zone) and floats a "ready in Xs" message if it's not time yet.
+	# for any other. The server enforces the swap cooldown and floats a "ready in Xs"
+	# message if it's not time yet.
 	var deploy_text := "Recall" if is_deployed else "Summon"
 	InventoryLayout.button(head, deploy_text,
 		func() -> void:
@@ -305,7 +351,7 @@ func _card(companion: Dictionary) -> Control:
 		_confirm.request("Delete %s? This permanently removes the companion, its gear and skill points." % display_name,
 			"Delete", func() -> void: actions.delete(uuid)))
 
-	_stats_row(box, companion, uuid)
+	_stats_row(box, companion, uuid, class_id)
 	_gear_row(box, companion, uuid)
 	_backpack_grid(box, companion, uuid)
 	_skills(box, companion, uuid, class_id)
@@ -332,25 +378,41 @@ func _gear_row(into: Container, companion: Dictionary, uuid: String) -> void:
 		row.add_child(cell)
 
 
-## The companion's stats, which double as a stat-potion drop target: drag a stat
-## potion from your bag onto this line to feed it (the server consumes it only if
-## it still raises a stat — a maxed companion leaves it in your bag).
-func _stats_row(into: Container, companion: Dictionary, uuid: String) -> void:
+## The companion's stats against its class caps: a maxed stat in gold, any other
+## as "N/max (+left)", with a maxed count. The companion's saved stats are its base
+## (no gear), which is what the caps judge -- the same rule as PlayerHud.maxed.
+func _stats_row(into: Container, companion: Dictionary, uuid: String, class_id: int) -> void:
 	var stats: Dictionary = companion.get("stats", {})
-	var label := Label.new()
-	label.text = "HP %d  MP %d  DEF %d  STR %d  SPD %d  DEX %d  VIT %d  WIS %d" % [
-		int(stats.get("hp", 0)), int(stats.get("mp", 0)), int(stats.get("def", 0)),
-		int(stats.get("str", 0)), int(stats.get("spd", 0)), int(stats.get("dex", 0)),
-		int(stats.get("vit", 0)), int(stats.get("wis", 0))]
-	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	label.add_theme_font_size_override("font_size", 11)
-	label.add_theme_color_override("font_color", MUTED)
-	into.add_child(label)
-	# A real, highlighted drop box below the stats — dragging onto a line of text
+	var caps: Dictionary = content.library.classes.get(class_id, {}).get("maxStats", {})
+	var maxed_count := 0
+	for stat in STATS:
+		if PlayerHud.maxed(stats, caps, stat):
+			maxed_count += 1
+	_line(into, "Stats  (%d/%d maxed)" % [maxed_count, STATS.size()], 11, MUTED)
+	var grid := GridContainer.new()
+	grid.columns = 4
+	grid.add_theme_constant_override("h_separation", 10)
+	into.add_child(grid)
+	for stat in STATS:
+		var value := int(stats.get(stat, 0))
+		if PlayerHud.maxed(stats, caps, stat):
+			_line(grid, "%s %d" % [stat.to_upper(), value], 11, PlayerHud.GOLD)
+		elif caps.has(stat):
+			var cap := int(caps[stat])
+			_line(grid, "%s %d/%d (+%d)" % [stat.to_upper(), value, cap, cap - value], 11, Color.WHITE)
+		else:
+			_line(grid, "%s %d" % [stat.to_upper(), value], 11, Color.WHITE)
+	# A real, highlighted drop box below the stats -- dragging onto a line of text
 	# wasn't discoverable, so give the potion an obvious target.
 	var drop := CompanionStatDrop.new()
-	drop.setup(func(bag_slot: int) -> void: actions.consume_potion(uuid, bag_slot))
+	drop.setup(func(bag_slot: int) -> void: actions.consume_potion(uuid, bag_slot), _holds_stat_potion)
 	into.add_child(drop)
+
+
+func _holds_stat_potion(bag_slot: int) -> bool:
+	var item := state.local.inventory.item_at(bag_slot)
+	return Inventory.holds(item) \
+		and CompanionStatDrop.is_stat_potion(content.item_definition(int(item.get("itemId", -1))))
 
 
 ## Items the companion auto-looted (untiered gear + potions it couldn't use).
@@ -419,6 +481,8 @@ func _skills(into: Container, companion: Dictionary, uuid: String, class_id: int
 		row.add_child(icon)
 		var name_label := _line(row, str(definition.get("name", "")), 12, Color.WHITE)
 		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_hover_card(name_label, AbilityDescriber.ability_lines(content.abilities, ability_id, level, stats,
+			"Ability %d" % (slot + 1)))
 		_line(row, "%d/%d" % [level, cap], 12, MUTED)
 		var invest := InventoryLayout.button(row, "+", func() -> void: actions.invest(uuid, ability_id))
 		invest.disabled = not (points > 0 and level < cap)

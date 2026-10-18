@@ -117,7 +117,7 @@ func test_enchant_is_refused_by_the_rules_before_the_wire():
 	_bench()
 	_put(7, 310, {"stackCount": 3})
 	assert_false(actions.enchant())
-	assert_eq(actions.problem(), "Need 50 essence (have 3).")
+	assert_eq(actions.problem(), "Need 10 essence (have 3).")
 	state.forge.close()
 	_put(7, 310, {"stackCount": 50})
 	assert_false(actions.enchant(), "closed")
@@ -171,7 +171,7 @@ func test_a_full_bench_reads_green_and_arms_enchant():
 	assert_not_null(panel._zones["crystal"]._icon.texture)
 	assert_eq(panel._zones["essence"]._count.text, "x50")
 	assert_eq(panel._status.text, "Broken Wand - Common   Crystal slots: 0/1")
-	assert_eq(panel._cost.text, "Cost: 1 Vit Crystal + 50 Weapon Essence -> +1 VIT")
+	assert_eq(panel._cost.text, "Cost: 1 Vit Crystal + 10 Weapon Essence -> +1 VIT")
 	assert_false(panel._enchant.disabled)
 	assert_true(panel._disenchant.disabled, "nothing on it yet")
 

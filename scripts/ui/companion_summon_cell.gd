@@ -2,12 +2,12 @@ class_name CompanionSummonCell
 extends Control
 
 ## The companion-summon readout that sits at the right end of the hotbar: the C
-## key, and either READY, a draining summon-cooldown timer, or — while the
-## companion is out — its remaining deployed time (or NEXUS, where it never
-## expires). Hidden entirely for accounts that own no companion.
+## key, and either READY, a draining swap-cooldown timer, or Recall while the
+## companion is out (with its remaining time, should the server ever send an
+## expiry). Hidden entirely for accounts that own no companion.
 
 const SIZE_PX := 64.0
-const COOLDOWN_WINDOW_MS := 10 * 60 * 1000
+const COOLDOWN_WINDOW_MS := 60 * 1000
 const BG_READY := Color(0.16, 0.29, 0.16, 0.9)
 const BG_COOLDOWN := Color(0.18, 0.19, 0.22, 0.9)
 const BG_DEPLOYED := Color(0.16, 0.35, 0.40, 0.9)
@@ -49,10 +49,9 @@ func update_from(c: CompanionState) -> void:
 	visible = true
 	var fraction := 0.0
 	if c.is_deployed():
-		# C recalls a deployed companion. In the Nexus it never expires (just the
-		# action); in combat, the action plus the time left before it auto-returns.
+		# C recalls a deployed companion; an expiring deploy also shows its time left.
 		_bg.color = BG_DEPLOYED
-		if c.is_nexus_deploy():
+		if c.deploy_never_expires():
 			_text.text = "Recall\n(C)"
 		else:
 			_text.text = "Recall\n" + _mmss(c.deployed_remaining_ms())

@@ -36,6 +36,7 @@ var _add_chest_button: Button
 ## One add at a time -- rapid clicks each read a stale count, all pass the cap and
 ## fire concurrent creates, inflating the display past the cap (the web client's bug).
 var _adding_chest := false
+var _chest_confirm: ConfirmPopup
 
 
 func _init(service: DataService = null, content: GameData = null) -> void:
@@ -101,9 +102,13 @@ func _ready() -> void:
 	_vault_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vault_row.add_child(_vault_label)
 	_add_chest_button = Button.new()
-	_add_chest_button.text = "Add Chest"
-	_add_chest_button.pressed.connect(_on_add_chest)
+	_add_chest_button.text = VaultChestPurchase.button_text("Add Chest")
+	_add_chest_button.pressed.connect(func() -> void:
+		if not _adding_chest and data_service != null:
+			VaultChestPurchase.confirm(_chest_confirm, data_service, _on_add_chest))
 	vault_row.add_child(_add_chest_button)
+	_chest_confirm = ConfirmPopup.new()
+	add_child(_chest_confirm)
 
 	get_viewport().size_changed.connect(_fit)
 	_fit.call_deferred()

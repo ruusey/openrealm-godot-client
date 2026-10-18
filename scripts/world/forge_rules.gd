@@ -8,13 +8,15 @@ extends RefCounted
 ## nothing the client can see, so every reason is decided here first and
 ## the first one is what the panel says. A crystal spends one of the item's
 ## rarity-driven crystal slots; a gem takes the single socket that only Epic
-## and Legendary items carry; either costs fifty essence of the item's slot.
+## and Legendary items carry. Essence of the item's slot pays for it: a crystal
+## costs CRYSTAL_ESSENCE_COST, a gem GEM_ESSENCE_COST.
 
 ## forgeStatId order, the server's STAT_COLORS.
 const STAT_LABELS := ["VIT", "WIS", "HP", "MP", "STR", "DEF", "SPD", "DEX"]
 ## Equipment slots, as an essence's forgeSlotId names them.
 const SLOT_LABELS := ["Weapon", "Armor", "Gauntlet", "Boots", "Ring"]
-const ESSENCE_COST := 50
+const CRYSTAL_ESSENCE_COST := 10
+const GEM_ESSENCE_COST := 50
 ## Crystal slots by rarity: Mundane through Legendary.
 const CRYSTAL_SLOTS := [0, 1, 2, 3, 4, 5]
 const GEM_SOCKET_RARITY := 4
@@ -42,6 +44,10 @@ static func is_gem(item: Dictionary) -> bool:
 
 static func is_essence(item: Dictionary) -> bool:
 	return str(item.get("category", "")) == "essence"
+
+
+static func essence_cost(crystal: Dictionary) -> int:
+	return GEM_ESSENCE_COST if is_gem(crystal) else CRYSTAL_ESSENCE_COST
 
 
 static func rarity(item: Dictionary) -> int:
@@ -91,8 +97,9 @@ static func problem(target: Dictionary, crystal: Dictionary, essence: Dictionary
 		return "Pick Essence."
 	if int(essence.get("forgeSlotId", -1)) != int(target.get("targetSlot", -2)):
 		return "Essence type must be %s." % _slot_name(int(target.get("targetSlot", -1)))
-	if int(essence.get("stackCount", 0)) < ESSENCE_COST:
-		return "Need %d essence (have %d)." % [ESSENCE_COST, int(essence.get("stackCount", 0))]
+	var cost := essence_cost(crystal)
+	if int(essence.get("stackCount", 0)) < cost:
+		return "Need %d essence (have %d)." % [cost, int(essence.get("stackCount", 0))]
 	return ""
 
 

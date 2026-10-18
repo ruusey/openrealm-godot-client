@@ -3,17 +3,16 @@ extends RefCounted
 
 ## What the server and the other players have said.
 ##
-## One flat ring, oldest dropped first. Both references cap it at 50 -- the
-## web client's model and the native's PlayerChat -- and the cap is not
-## cosmetic: the web client's own comment records what an uncapped log cost
-## it, 1500-3000 retained lines after half an hour and 2-5 ms of layout per
-## frame, which lands as ack jitter and then as reconciliation desync.
+## One flat ring, oldest dropped first, capped at 150 lines of scrollback. The
+## cap is not cosmetic: the web client's own comment records what an uncapped
+## log cost it, 1500-3000 retained lines after half an hour and 2-5 ms of layout
+## per frame, which lands as ack jitter and then as reconciliation desync.
 ##
 ## The log survives a realm change, which is the web client's behaviour; the
 ## native wipes it per realm. It goes on disconnect, with the rest of the
 ## session.
 
-const MAX_LINES := 50
+const MAX_LINES := 150
 ## Not a flag on the wire: both references branch on the literal sender name.
 const SYSTEM := "SYSTEM"
 ## Minimap payload wearing a chat packet's clothes -- `ADD|id|boss|x|y|name`,

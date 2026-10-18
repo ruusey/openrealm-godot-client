@@ -84,6 +84,8 @@ func test_the_subtitle_affix_and_stack():
 	assert_eq(texts[1], "Uncommon - Tier 3 - Wizard")
 	assert_true("Affix: +2 VIT - -1 DEF" in texts, str(texts))
 	assert_eq(_texts(_item(104, {"targetClass": -4}))[1], "Mundane - Tier 0", "a negative class is no class")
+	assert_eq(_texts(_item(104, {"tier": -1, "targetClass": -4, "rarity": 3}))[1], "Rare - Untiered",
+		"untiered gear says so, so copies compare by rarity")
 	assert_true("Stack x4/10" in _texts(_item(105, {"stackable": true, "stackCount": 4, "maxStack": 10})))
 	assert_false(_texts(_item(105, {"stackable": true, "stackCount": 1, "maxStack": 10})).any(
 		func(t: String) -> bool: return t.begins_with("Stack")), "one is not a stack")

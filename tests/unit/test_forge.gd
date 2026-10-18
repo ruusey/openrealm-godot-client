@@ -53,7 +53,7 @@ func test_the_problems_in_the_web_clients_order():
 	assert_eq(_problem(wand, {}, essence), "Pick a Crystal or Gem.")
 	assert_eq(_problem(wand, crystal, {}), "Pick Essence.")
 	assert_eq(_problem(wand, crystal, _def(311, {"stackCount": 50})), "Essence type must be Weapon.")
-	assert_eq(_problem(wand, crystal, _def(310, {"stackCount": 12})), "Need 50 essence (have 12).")
+	assert_eq(_problem(wand, crystal, _def(310, {"stackCount": 3})), "Need 10 essence (have 3).")
 	assert_eq(_problem(wand, crystal, essence), "", "and then nothing is wrong")
 
 
@@ -78,6 +78,8 @@ func test_gems_need_a_socket_an_empty_one_and_a_fitting_slot():
 	assert_eq(_problem(_def(103), _def(320), _def(311, {"stackCount": 50})),
 		"Crit Gem can only socket into: Weapon.")
 	assert_eq(_problem(_def(103), _def(321), _def(311, {"stackCount": 50})), "", "thorns fit armour")
+	assert_eq(_problem(_def(103), _def(321), _def(311, {"stackCount": 12})), "Need 50 essence (have 12).",
+		"a gem costs more essence than a crystal")
 	# A gem the catalog knows nothing about defers to the server.
 	assert_eq(_problem(_def(103), {"itemId": 999, "category": "gem", "name": "Odd Gem"},
 		_def(311, {"stackCount": 50})), "")

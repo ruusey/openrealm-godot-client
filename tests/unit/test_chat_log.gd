@@ -47,7 +47,7 @@ func test_a_line_is_stored_whole():
 func test_the_cap_is_the_one_both_references_use():
 	# Spelled out: an uncapped log is what the web client's comment blames for
 	# 2-5 ms of layout per frame, which lands as reconciliation desync.
-	assert_eq(ChatLog.MAX_LINES, 50)
+	assert_eq(ChatLog.MAX_LINES, 150)
 
 
 func test_the_oldest_lines_go_first():
@@ -222,7 +222,7 @@ func test_the_next_wait_starts_unnamed():
 func test_an_event_marker_is_not_chat():
 	# A minimap payload in a chat packet's clothes, rebroadcast every three
 	# seconds while a realm event runs. Stored, it evicts real conversation
-	# from a 50-line log six lines at a time.
+	# from the log six lines at a time.
 	# The literal, not the constant: driven through ChatLog.EVENT_MARKER this
 	# passes whatever the constant says.
 	_said("EVENT_MARKER", "ADD|3|9987|4032|2176|Skull Shrine", "Ruu")

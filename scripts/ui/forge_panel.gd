@@ -12,8 +12,7 @@ extends CanvasLayer
 
 const TITLE := "FORGE"
 const ZONE_BASE := 3000
-const ZONE_CAPTIONS := {"target": "Equipment", "crystal": "Crystal or Gem",
-	"essence": "Essence (x%d)" % ForgeRules.ESSENCE_COST}
+const ZONE_CAPTIONS := {"target": "Equipment", "crystal": "Crystal or Gem", "essence": "Essence"}
 const STATUS_WIDTH := 380.0
 const GOOD := Color(0.5, 0.9, 0.5)
 const BAD := Color(1.0, 0.55, 0.45)
@@ -127,7 +126,7 @@ func refresh() -> void:
 	_cost.text = ""
 	if Inventory.holds(items["crystal"]) and Inventory.holds(items["essence"]):
 		_cost.text = "Cost: 1 %s + %d %s -> %s" % [items["crystal"].get("name", "?"),
-			ForgeRules.ESSENCE_COST, items["essence"].get("name", "essence"),
+			ForgeRules.essence_cost(items["crystal"]), items["essence"].get("name", "essence"),
 			ForgeRules.effect_preview(items["crystal"])]
 	_enchant.disabled = problem != ""
 	_disenchant.disabled = not ForgeRules.can_disenchant(items["target"])

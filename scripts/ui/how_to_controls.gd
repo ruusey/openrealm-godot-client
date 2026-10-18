@@ -32,6 +32,7 @@ static func rows() -> Array:
 		["Character sheet (skill points)", key("toggle_skills")],
 		["Masteries", key("toggle_masteries")],
 		["Quest log", key("toggle_quests")],
+		["Summon / recall companion", key("summon_companion")],
 		["Minimap", key("toggle_minimap")],
 		["Open chat", kbd("Enter")],
 		["Open menu / options", kbd("Esc")],
@@ -50,7 +51,8 @@ static func key_words() -> Dictionary:
 	return {"bag": key("toggle_inventory"), "shift": kbd("Shift"), "one": kbd("1"), "eight": kbd("8"),
 		"hp": key("drink_hp"), "mp": key("drink_mp"), "pick_up": key("pick_up"),
 		"a1": key("ability_1"), "a2": key("ability_2"), "a3": key("ability_3"),
-		"right": kbd("Right Mouse"), "sheet": key("toggle_skills"), "masteries": key("toggle_masteries")}
+		"right": kbd("Right Mouse"), "sheet": key("toggle_skills"), "masteries": key("toggle_masteries"),
+		"companion": key("summon_companion")}
 
 
 ## The key an action answers to now, as a keycap.

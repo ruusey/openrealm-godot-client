@@ -2,20 +2,34 @@ class_name CompanionStatDrop
 extends PanelContainer
 
 ## A visible, labelled drop target for feeding a companion a stat potion: drag one
-## from your bag onto this box (it highlights while a draggable item is over it).
-## The server validates the item is actually a stat potion that still raises a stat
-## (a maxed companion leaves it in your bag), so this just forwards the bag slot.
+## from your bag onto this box (it highlights only while a stat potion is over it).
+## The server still validates the potion raises a stat (a maxed companion leaves it
+## in your bag), so this just forwards the bag slot.
 
 const IDLE := Color(0.14, 0.17, 0.14, 0.90)
 const HOVER := Color(0.20, 0.34, 0.20, 0.95)
 const BORDER := Color(0.45, 0.72, 0.45)
 
 var _on_potion: Callable
+var _accepts: Callable
 var _style := StyleBoxFlat.new()
 
 
-func setup(on_potion: Callable) -> void:
+## `accepts(bag_slot) -> bool` filters what may land here; unset accepts any item.
+func setup(on_potion: Callable, accepts := Callable()) -> void:
 	_on_potion = on_potion
+	_accepts = accepts
+
+
+## A consumable that raises a stat: the eight stat potions (Life/Mana included).
+static func is_stat_potion(definition: Dictionary) -> bool:
+	if not bool(definition.get("consumable", false)):
+		return false
+	var stats: Dictionary = definition.get("stats", {})
+	for value in stats.values():
+		if int(value) > 0:
+			return true
+	return false
 
 
 func _ready() -> void:
@@ -35,16 +49,23 @@ func _ready() -> void:
 	add_child(label)
 
 
+## Any item is taken so a wrong one is a no-op rather than a throw to the floor;
+## only a stat potion lights the box and is forwarded.
 func _can_drop_data(_at: Vector2, data: Variant) -> bool:
-	var ok := ItemSlot.is_payload(data)
-	_style.bg_color = HOVER if ok else IDLE
-	return ok
+	_style.bg_color = HOVER if _accepted(data) else IDLE
+	return ItemSlot.is_payload(data)
 
 
 func _drop_data(_at: Vector2, data: Variant) -> void:
 	_style.bg_color = IDLE
-	if ItemSlot.is_payload(data) and _on_potion.is_valid():
+	if _accepted(data) and _on_potion.is_valid():
 		_on_potion.call(int(data["slot"]))
+
+
+func _accepted(data: Variant) -> bool:
+	if not ItemSlot.is_payload(data):
+		return false
+	return not _accepts.is_valid() or bool(_accepts.call(int(data["slot"])))
 
 
 ## Clear the highlight when any drag ends (including one that left this box).

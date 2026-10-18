@@ -7,7 +7,15 @@ extends RefCounted
 ## lookup: this is the only place that knows NetPlayer/NetEnemy/NetPortal
 ## field names, which is also the part that changes when the protocol does.
 
-static func apply(registry: EntityRegistry, data: Dictionary, now: float) -> void:
+const BROWN_BAG_TIER := 0
+const WHITE_BAG_TIER := 4
+const GRAVE_TIER := 5
+
+
+## Returns how many rare drops (untiered gear) came into sight for the first time
+## this map, so the caller can chime once per new one.
+static func apply(registry: EntityRegistry, data: Dictionary, now: float) -> int:
+	var rare_spotted := 0
 	for wire in data.get("players", []):
 		var player := registry.upsert(registry.players, int(wire.get("id", 0)), GameConstants.ENTITY_PLAYER)
 		player["name"] = wire.get("name", "")
@@ -35,6 +43,9 @@ static func apply(registry: EntityRegistry, data: Dictionary, now: float) -> voi
 		# Kept whole: the loot strip reads the bag at our feet straight off this.
 		container["items"] = wire.get("items", [])
 		registry.snapshot_from_wire(container, wire, now)
+		if not registry.rare_loot_seen.has(container["id"]) and is_rare_drop(wire):
+			registry.rare_loot_seen[container["id"]] = true
+			rare_spotted += 1
 
 	# portalId resolves the art out of portals.json -- it is the whole of what a
 	# portal looks like -- while the target fields summarise the realm on the
@@ -51,3 +62,21 @@ static func apply(registry: EntityRegistry, data: Dictionary, now: float) -> voi
 		portal["goal"] = int(wire.get("targetPurificationGoal", 0))
 		portal["modifiers"] = String(wire.get("targetModifiers", ""))
 		registry.snapshot_from_wire(portal, wire, now)
+	return rare_spotted
+
+
+## A dropped bag that is white, or holds untiered gear (a boosted bag can).
+## Chests, graves and player-dropped brown bags hold old loot, not a new drop.
+static func is_rare_drop(wire: Dictionary) -> bool:
+	if bool(wire.get("isChest", false)):
+		return false
+	var tier := int(wire.get("tier", 0))
+	if tier == BROWN_BAG_TIER or tier == GRAVE_TIER or tier < 0:
+		return false
+	if tier == WHITE_BAG_TIER:
+		return true
+	for item in wire.get("items", []):
+		if item is Dictionary and int(item.get("tier", 0)) == -1 and not bool(item.get("consumable", false)) \
+				and Inventory.is_equipment(int(item.get("targetSlot", -1))):
+			return true
+	return false

@@ -94,7 +94,8 @@ func apply_packet(name: String, data: Dictionary) -> void:
 		"LoadMapPacket":
 			transition.apply_load_map(data)
 		"LoadPacket":
-			entities.apply_load(data)
+			if entities.apply_load(data) > 0:
+				Sfx.event("loot_untiered")
 			projectiles.apply_load(data)
 			PlayerSync.local_class(self)
 		"UnloadPacket":

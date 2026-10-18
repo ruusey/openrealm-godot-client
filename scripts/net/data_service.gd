@@ -81,7 +81,7 @@ func chest_count() -> int:
 
 
 ## Adds a vault chest (POST /chest/new). The service enforces the cap (1 for a
-## guest, 10 otherwise) and returns the updated account, so the readout refreshes
+## guest, 50 otherwise) and returns the updated account, so the readout refreshes
 ## from it. Returns {success, result}; result is the service's reason on failure
 ## (e.g. "Vault chest limit reached (1 max)").
 func create_chest() -> Dictionary:

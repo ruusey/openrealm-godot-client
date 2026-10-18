@@ -2,9 +2,10 @@ class_name VaultPanel
 extends CanvasLayer
 
 ## A small control shown only while standing in the vault: the chest count and an
-## "Add Vault Chest" button. The chest is created through the data service, which
-## caps it (1 for a guest, 10 otherwise); it's written to the account and appears
-## on the next vault entry -- re-entering to use a just-added chest is standard.
+## "Add Vault Chest" button showing its fame price and confirming before it spends.
+## The chest is created through the data service, which caps it (1 for a guest, 50
+## otherwise); it's written to the account and appears on the next vault entry --
+## re-entering to use a just-added chest is standard.
 
 var state: RealmState
 var content: GameData
@@ -14,6 +15,7 @@ var _root: PanelContainer
 var _count: Label
 var _status: Label
 var _button: Button
+var _confirm: ConfirmPopup
 var _adding := false
 ## So the account is re-read once on each entry, not every frame.
 var _was_in_vault := false
@@ -41,13 +43,17 @@ func _ready() -> void:
 	_count.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(_count)
 	_button = Button.new()
-	_button.text = "Add Vault Chest"
-	_button.pressed.connect(_on_add)
+	_button.text = VaultChestPurchase.button_text("Add Vault Chest")
+	_button.pressed.connect(func() -> void:
+		if not _adding and data_service != null:
+			VaultChestPurchase.confirm(_confirm, data_service, _on_add))
 	column.add_child(_button)
 	_status = Label.new()
 	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_status.add_theme_color_override("font_color", Color(0.72, 0.8, 0.92))
 	column.add_child(_status)
+	_confirm = ConfirmPopup.new()
+	add_child(_confirm)
 
 
 func _process(_delta: float) -> void:

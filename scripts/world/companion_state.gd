@@ -7,10 +7,10 @@ extends RefCounted
 ## scoped, so RealmState keeps it across realms rather than clearing it on a
 ## transition.
 ##
-## Only one companion deploys at a time now, on a 10-min summon cooldown, and it
-## persists up to 5 min before auto-recalling (no limit while in the Nexus). The
-## cooldown/duration arrive as server epoch-millisecond deadlines, read against the
-## wall clock the same way party cooldowns are.
+## Only one companion deploys at a time, and it stays out until recalled; a short
+## summon cooldown gates swapping. The cooldown (and any deploy expiry, 0 = none)
+## arrive as server epoch-millisecond deadlines, read against the wall clock the
+## same way party cooldowns are.
 
 var roster: Array = []
 ## Owned/bench capacity: how many companions this account may save (1..20, bought
@@ -20,7 +20,7 @@ const MAX_OWNED_CAP := 20
 ## The one deployed companion's uuid ("" = none out).
 var deployed_uuid := ""
 ## Epoch ms the next summon is allowed (0 = ready), and the epoch ms the current
-## deploy auto-recalls (0 = none, or deployed in the Nexus with no expiry).
+## deploy auto-recalls (0 = no expiry).
 var summon_ready_at_ms := 0
 var deployed_until_ms := 0
 ## Which companion the summon hotkey (C) targets. Defaults to the deployed one,
@@ -78,8 +78,8 @@ func is_deployed() -> bool:
 	return deployed_uuid != ""
 
 
-## True while the deployed companion sits in the Nexus (no expiry).
-func is_nexus_deploy() -> bool:
+## True while the deployed companion has no expiry.
+func deploy_never_expires() -> bool:
 	return deployed_uuid != "" and deployed_until_ms == 0
 
 

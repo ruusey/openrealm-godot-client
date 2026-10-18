@@ -4,9 +4,9 @@ extends CanvasLayer
 ## The chat log the server and other players produce.
 ##
 ## Shows a compact tail by default (the last few lines, sitting on the bottom
-## margin), and EXPANDS into a scrollback of the whole 50-line ring when the
-## mouse is over it or the input line is open. The ring itself lives in ChatLog
-## (newest in, oldest out, capped at 50); this panel only renders it.
+## margin), and EXPANDS into a scrollback of the whole ring when the mouse is over
+## it, the input line is open, or (on a touchscreen) the log was touched. The ring
+## itself lives in ChatLog (newest in, oldest out); this panel only renders it.
 ##
 ## Enter opens a line to type into, under the log; while it is open the panel
 ## captures the keyboard, and Screens tells every polled input so -- without the
@@ -26,6 +26,10 @@ const FONT_SIZE := 12
 const MARGIN := 12
 const WIDTH := 420
 const INPUT_ROW := 28
+const SCROLLBAR_WIDTH := 10
+## A log collapsed while scrolled up holds its place this long before it returns
+## to the newest line, so a mouse slipping off it doesn't lose the reader's spot.
+const FOLLOW_RESUME_MS := 8000
 
 var state: RealmState
 var actions: ChatActions
@@ -34,11 +38,16 @@ var _box: VBoxContainer
 var _scroll: ScrollContainer
 var _list: VBoxContainer
 var _rows: Array = []
+## The line each row shows, by identity, so a new line repaints only what changed.
+var _row_lines: Array = []
 var _input: ChatInput
 var _shown := -1
 var _hovering := false
-## Stick to the newest line unless the user has scrolled up in the expanded view.
+## Opened by touching the log (no hover on a touchscreen); a touch elsewhere closes it.
+var _touch_open := false
+## Stick to the newest line unless the user has scrolled up.
 var _follow := true
+var _collapsed_at_ms := -1
 ## The chip that folds the log to its name; the input line stays.
 var fold: PanelFold
 
@@ -74,6 +83,8 @@ func _ready() -> void:
 	_scroll.mouse_filter = Control.MOUSE_FILTER_PASS
 	_scroll.mouse_entered.connect(func() -> void: _hovering = true)
 	_scroll.mouse_exited.connect(func() -> void: _hovering = false)
+	_scroll.gui_input.connect(_on_scroll_input)
+	_scroll.get_v_scroll_bar().custom_minimum_size.x = SCROLLBAR_WIDTH
 	_box.add_child(_scroll)
 
 	_list = VBoxContainer.new()
@@ -108,17 +119,28 @@ func is_typing() -> bool:
 	return _input.is_open()
 
 
-## Expanded while the mouse is over the log or the input line is open. Collapsing
-## back to the tail the instant the mouse leaves is deliberate: the log is an
-## overlay on the world, not a window to park open.
+## Expanded while the mouse is over the log, the input line is open, or the log
+## was touched. Collapsing back to the tail the instant the mouse leaves is
+## deliberate: the log is an overlay on the world, not a window to park open.
 func _is_expanded() -> bool:
-	return _hovering or _input.is_open()
+	return _hovering or _input.is_open() or _touch_open
 
 
-## Enter opens the line; a click anywhere it is not closes it.
+func _on_scroll_input(event: InputEvent) -> void:
+	if event is InputEventScreenTouch or event is InputEventScreenDrag:
+		_touch_open = true
+
+
+## Enter opens the line; a click anywhere it is not closes it, and a touch
+## anywhere off the log folds a touch-opened log back to its tail.
 func _unhandled_input(event: InputEvent) -> void:
 	if state == null or not state.local.is_present():
 		return
+	# The touch that opened the log falls through here too (the tail passes clicks to
+	# the world), so only a touch off the log closes it.
+	if event is InputEventScreenTouch and event.pressed and _touch_open \
+			and not _scroll.get_global_rect().has_point(_scroll.get_global_mouse_position()):
+		_touch_open = false
 	if event is InputEventMouseButton and event.pressed and _input.is_open():
 		_input.close()
 	elif event is InputEventKey and event.pressed and not event.echo \
@@ -151,13 +173,20 @@ func _process(_delta: float) -> void:
 	# Capture scroll only when expanded; otherwise let clicks fall through to the world.
 	_scroll.mouse_filter = Control.MOUSE_FILTER_STOP if expanded else Control.MOUSE_FILTER_PASS
 
-	# Follow the newest line unless the user has scrolled up in the expanded view.
-	# Collapsed always follows -- the tail shows the newest.
+	# Follow the newest line unless the user has scrolled up. A log collapsed while
+	# scrolled up keeps its place for FOLLOW_RESUME_MS, then shows the newest again.
 	var bar := _scroll.get_v_scroll_bar()
-	if not expanded:
-		_follow = true
-	elif bar != null:
-		_follow = bar.value >= bar.max_value - bar.page - 1.0
+	if expanded:
+		_collapsed_at_ms = -1
+		if bar != null:
+			_follow = bar.value >= bar.max_value - bar.page - 1.0
+	elif not _follow:
+		var now := Time.get_ticks_msec()
+		if _collapsed_at_ms < 0:
+			_collapsed_at_ms = now
+		elif now - _collapsed_at_ms >= FOLLOW_RESUME_MS:
+			_follow = true
+			_collapsed_at_ms = -1
 
 	# Rebuild only when something was said -- watches the ring's revision, not its
 	# size (size saturates at 50 once full, so newer lines would stop redrawing).
@@ -173,6 +202,7 @@ func _process(_delta: float) -> void:
 func blank() -> void:
 	for row in _rows:
 		row.blank()
+	_row_lines.fill(null)
 	_shown = -1
 
 
@@ -186,14 +216,39 @@ func refresh() -> void:
 		var row := ChatRow.new(WIDTH - MARGIN)
 		_list.add_child(row)
 		_rows.append(row)
+		_row_lines.append(null)
+	_recycle_dropped(lines)
 	for i in _rows.size():
-		var row: ChatRow = _rows[i]
-		if i < lines.size() and not fold.folded:
-			row.show_line(lines[i])
+		var line: Variant = lines[i] if i < lines.size() and not fold.folded else null
+		if is_same(line, _row_lines[i]):
+			continue
+		_row_lines[i] = line
+		if line == null:
+			_rows[i].blank()
 		else:
-			row.blank()
+			_rows[i].show_line(line)
 	if _follow:
 		_stick_bottom()
+
+
+## The rows of lines the ring dropped off its front move to the end to be
+## refilled: with a full ring every line shifts up one, and repainting all the
+## rows for each new line cost milliseconds.
+func _recycle_dropped(lines: Array) -> void:
+	if lines.is_empty():
+		return
+	var dropped := 0
+	while dropped < _row_lines.size() and _row_lines[dropped] != null \
+			and not is_same(_row_lines[dropped], lines[0]):
+		dropped += 1
+	if dropped == 0 or dropped >= _row_lines.size() or not is_same(_row_lines[dropped], lines[0]):
+		return
+	for i in dropped:
+		var row: ChatRow = _rows.pop_front()
+		_rows.append(row)
+		_list.move_child(row, -1)
+		_row_lines.pop_front()
+		_row_lines.append(null)
 
 
 ## Pin to the newest line. Deferred so the row layout has settled first; the

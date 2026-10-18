@@ -76,6 +76,8 @@ static func _subtitle(item: Dictionary, rarity: int, content: GameData) -> Array
 	var bits: Array = [ItemTooltip.RARITY_NAMES[rarity]]
 	if int(item.get("tier", -1)) >= 0:
 		bits.append("Tier %d" % int(item["tier"]))
+	elif not bool(item.get("consumable", false)) and Inventory.is_equipment(int(item.get("targetSlot", -1))):
+		bits.append("Untiered")
 	var target := int(item.get("targetClass", -1))
 	if content != null and content.library.classes.has(target):
 		bits.append(content.classes_art.display_name(target))

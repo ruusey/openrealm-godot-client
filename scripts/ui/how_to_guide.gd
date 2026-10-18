@@ -63,7 +63,8 @@ Hover any mastery to see its level, XP, and current bonus.
 	"Rarity, Gems & The Forge": """Gear now has a [b]rarity[/b] and can be upgraded:
 [ul]
 [b]Rarity[/b] runs Mundane → Common → Uncommon → Rare → Epic → Legendary. Higher rarity means stronger stats, more gem sockets, and (if you sell it) far more $REALM.
-[b]Gem sockets[/b] — slot stat-scaling and effect gems (Crit, Vampiric, Frost, Multishot, Thorns, Venom…) into sockets to shape your build. Gems come from the Fame Store and from drops.
+[b]Gem sockets[/b] — slot stat-scaling and effect gems (Crit, Vampiric, Frost, Multishot, Thorns, Venom…) into sockets to shape your build. Gems are rare: they only drop from bosses and tough enemies.
+[b]Essence cost[/b] — a crystal costs 10 essence of the item's slot; a gem costs 50.
 [b]The Forge[/b] (a nexus tile) — [b]enchant[/b] an item to add bonus modifiers, or [b]disenchant[/b] to recover materials. Use [b]essence[/b] and [b]crystals[/b] as the crafting inputs.
 [b]Advanced enchanting[/b] — a per-pixel picker lets you place a chosen enchant/gem effect onto a specific pixel of the item's icon, so your gear shows what it carries at a glance.
 [/ul]
@@ -75,14 +76,14 @@ Tooltips spell out rarity, sockets, modifiers, and gem effects — read them bef
 [b]Highlands[/b] → tier 5–7 gear
 [b]Summit / bosses[/b] → untiered legendary gear (signature weapons, Crown of Resurrection)
 [/ul]
-The bag color tells you what's inside:
-[indent][color=#8a5a2a][font_size=18]■[/font_size][/color] [b]Brown[/b] — HP/MP potions (public)
-[color=#4060c0][font_size=18]■[/font_size][/color] [b]Blue[/b] — stat potions
-[color=#9050c0][font_size=18]■[/font_size][/color] [b]Purple[/b] — low/mid-tier gear
-[color=#30c0c0][font_size=18]■[/font_size][/color] [b]Cyan[/b] — high-tier gear & Exalted rings
-[color=#e0e0e0][font_size=18]■[/font_size][/color] [b]White[/b] — untiered legendary items
-[color=#c04040][font_size=18]■[/font_size][/color] [b]Red[/b] — a tier-upgraded bonus drop from tougher enemies
-[color=#888888][font_size=18]■[/font_size][/color] [b]Grave[/b] — gear a fallen player left behind[/indent]
+The bag color tells you what's inside -- each kind of drop gets its own bag:
+[indent][color=#a07838][b]Brown[/b][/color] -- HP/MP potions (public)
+[color=#80c040][b]Green[/b][/color] -- stat potions
+[color=#b040d0][b]Purple[/b][/color] -- low/mid-tier gear, crystals, shards and essence
+[color=#40a0ff][b]Blue[/b][/color] -- high-tier gear (tier 5+) and high-tier rings
+[color=#9070b0][b]Black[/b][/color] -- untiered items (signature weapons, Crown)
+[color=#e04060][b]Red[/b][/color] -- a bonus drop from tougher (higher difficulty) enemies
+[color=#888888][b]Grave[/b][/color] -- gear a fallen player left behind[/indent]
 [b]Soulbound loot:[/b] deal at least 5% of an enemy's health and you earn your own private loot roll. You and your party can see and grab each other's soulbound bags, so the team can share drops; to everyone else they're invisible. Potions, dropped items, and graves are public.""",
 	"Dungeons, Portals & Difficulty": """[ul]
 Overworld islands are linked in a graph; [b]portals[/b] drop you into [b]dungeons[/b] — self-contained instances built from prefab rooms, each ending in a boss.
@@ -99,10 +100,17 @@ Fully purifying a realm takes roughly 20–30 minutes of coordinated effort.
 When a realm hits 100% purification, a short countdown begins and [b]everyone in that realm is pulled into a shared boss arena[/b] — a corrupted castle.
 Bring potions, a strong build, and invested skill points: defeating the boss yields the realm's best rewards, and difficulty scales with the realm.
 [/ul]""",
+	"Companions": """[ul]
+A [b]companion[/b] is an AI ally of another class that fights beside you. Create one from [b]Menu > Companion[/b] (pick any class you don't already have on the team); hover its abilities there to see what it does.
+Press {companion} to summon your companion and again to recall it. Only [b]one[/b] is out at a time, and it stays out until you recall it; swapping to another has a 60 second cooldown.
+Feed it [b]stat potions[/b] by dragging one from your bag onto the companion's stat box -- its stats show how far each is from max. Drag gear onto its equipment cells to equip it.
+Companions loot gear upgrades and potions near you on their own; spend their skill points with the [b]+[/b] buttons on their card.
+[/ul]""",
 	"Quests & Stars": "Take on [b]quests[/b] for goals that span a character or your whole account; completing them for the first time awards [b]stars[/b]. Your star total shows under your name and on the public scoreboard — a quick read of how far someone has come.",
 	"Fame & the Fame Store": """[ul]
 [b]Fame[/b] is a soft currency. You bank it when a character dies (based on its XP), and you can top it up by buying it with crypto via the [b]Add Fame[/b] button (SOL or $REALM, web build).
-Spend fame at the [b]Fame Store[/b] (a nexus tile): cosmetic [b]dyes[/b], [b]stat crystals[/b], [b]gems[/b], and the [b]Crown of Resurrection[/b].
+Spend fame at the [b]Fame Store[/b] (a nexus tile): cosmetic [b]dyes[/b], [b]stat crystals[/b] and [b]dungeon keys[/b]. Gems are not sold -- they only drop.
+[b]Vault chests[/b] cost 7,500 fame each; the button shows the price and asks before it spends.
 Fame is separate from the $REALM economy — the two don't convert into each other at a profit.
 [/ul]""",
 	"The Exchange Market": """A nexus tile opens the Exchange, with two tabs:
