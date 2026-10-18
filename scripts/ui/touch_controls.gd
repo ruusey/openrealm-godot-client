@@ -37,6 +37,7 @@ var _open_chat := Callable()   # the Chat button's; wired by `link`
 var _escape := Callable()      # the Nexus button's; wired by `set_escape`
 var _add_fame := Callable()    # the Add Fame button's; wired by `set_add_fame`
 var _economy := Callable()     # the Economy button's; wired by `set_economy`
+var _companion := Callable()   # the companion button's; wired by `set_companion`
 var _aim := TouchAim.new()
 
 
@@ -70,6 +71,7 @@ func _ready() -> void:
 	_cluster.nexus.connect(func() -> void: if _escape.is_valid(): _escape.call())
 	_cluster.add_fame.connect(func() -> void: if _add_fame.is_valid(): _add_fame.call())
 	_cluster.economy.connect(func() -> void: if _economy.is_valid(): _economy.call())
+	_cluster.companion.connect(func() -> void: if _companion.is_valid(): _companion.call())
 	add_child(_cluster)
 	add_child(_menu)
 	# Deferred: DisplayScale answers the same resize, and the canvas's own
@@ -111,9 +113,8 @@ func _process(_delta: float) -> void:
 
 ## Points, then the layer scales them to the screen.
 func _layout() -> void:
-	var canvas: float = get_window().content_scale_factor if get_window() != null else 1.0
 	# A thumb's size only with touch controls; a desktop's UI size otherwise.
-	scale = Vector2.ONE * maxf(1.0, (pixel_ratio if enabled else 1.0) / canvas)
+	scale = Vector2.ONE * TouchScale.factor(self, pixel_ratio if enabled else 1.0)
 	var area := get_viewport().get_visible_rect().size / scale.x
 	_move.position = area * MOVE_ZONE.position
 	_move.size = area * MOVE_ZONE.size
@@ -154,6 +155,10 @@ func set_add_fame(open: Callable) -> void:
 
 func set_economy(open: Callable) -> void:
 	_economy = open
+
+
+func set_companion(toggle: Callable) -> void:
+	_companion = toggle
 
 
 ## Where a basic shot goes: see the header.

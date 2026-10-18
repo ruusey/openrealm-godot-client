@@ -36,7 +36,7 @@ const SQUARE_WALL_TILE := 184
 
 static func names() -> Array:
 	return ["terrain", "entities", "ysort", "bullets", "collision", "overlap",
-		"walk_left", "walk_right", "walk_up", "walk_down", "walls", "feather", "effects", "walldepth", "shadows", "attack_left", "attack_right", "attack_up", "spin", "portals", "transition", "transition_named", "damage", "damage_fading", "chat", "death", "wading", "inventory", "abilities", "potion_storage", "fame_store", "forge", "minimap", "trails", "login", "exchange_market", "wall_bands", "effects_cast", "effects_generic", "effects_holy", "effects_dark", "effects_arcane", "effects_knight", "effects_rogue", "effects_trapper", "effects_heavy", "trade", "player_hud", "party", "nearby", "item_card", "options", "options_controls", "masteries", "dev_overlay", "blind", "dyes", "quests", "quest_stars", "login_delete", "login_stats", "terms", "how_to", "leaderboard", "loot_preview", "minimap_hop", "billboards", "chunk_seams", "shores", "vault", "touch_phone", "quest_complete"]
+		"walk_left", "walk_right", "walk_up", "walk_down", "walls", "feather", "effects", "walldepth", "shadows", "attack_left", "attack_right", "attack_up", "spin", "portals", "transition", "transition_named", "damage", "damage_fading", "chat", "death", "wading", "inventory", "abilities", "potion_storage", "fame_store", "forge", "minimap", "trails", "login", "exchange_market", "wall_bands", "effects_cast", "effects_generic", "effects_holy", "effects_dark", "effects_arcane", "effects_knight", "effects_rogue", "effects_trapper", "effects_heavy", "trade", "player_hud", "party", "nearby", "item_card", "options", "options_controls", "masteries", "dev_overlay", "blind", "dyes", "quests", "quest_stars", "login_delete", "login_stats", "terms", "how_to", "leaderboard", "loot_preview", "minimap_hop", "billboards", "chunk_seams", "shores", "vault", "touch_phone", "quest_complete", "companions", "companions_phone"]
 
 
 ## A second step, applied after the first rendered frame, for scenarios whose
@@ -112,6 +112,7 @@ static func apply(name: String, state: RealmState) -> void:
 		"loot_preview": _loot_preview(state)
 		"vault": _vault(state)
 		"touch_phone": _inventory(state)
+		"companions", "companions_phone": _companions(state)
 		"quest_complete": _quest_complete(state)
 		"trails": _trails(state)
 		"billboards": _billboards(state)
@@ -835,6 +836,20 @@ static func _party(state: RealmState) -> void:
 	]})
 	state.apply_packet("TextPacket", {"from": "SYSTEM", "to": "Ruu",
 		"message": "Zed invited you to a party. Type /party accept or /party decline."})
+
+
+## Two companions on the bench, one out, with gear, stats short of the caps
+## and points to spend.
+static func _companions(state: RealmState) -> void:
+	_inventory(state)
+	var companion := func(uuid: String, name: String, class_id: int, points: int) -> Dictionary:
+		return {"companionUuid": uuid, "companionName": name, "characterClass": class_id,
+			"stats": {"hp": 640, "mp": 200, "def": 25, "str": 61, "spd": 50, "dex": 44, "vit": 70, "wis": 30,
+				"availableSkillPoints": points, "abilitySkillPoints": {}},
+			"items": [{"slotIdx": 0, "itemId": 49}, {"slotIdx": 1, "itemId": 3010}]}
+	var roster := [companion.call("c1", "Brutus", 2, 3), companion.call("c2", "Sage", 1, 0)]
+	state.apply_packet("CompanionRosterPacket", {"json": JSON.stringify(roster), "ownedCap": 2,
+		"deployedUuid": "c1", "summonReadyAtMs": 0, "deployedUntilMs": 0})
 
 
 ## Who else is in view: Mingau, an admin and a demo account, the latter

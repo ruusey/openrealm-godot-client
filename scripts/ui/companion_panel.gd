@@ -28,7 +28,10 @@ var state: RealmState
 var content: GameData
 var actions: CompanionActions
 var shown := false
+## The device's pixel ratio with touch controls on (TouchScale), else one.
+var pixel_ratio := 1.0
 
+var _centre: CenterContainer
 var _root: PanelContainer
 var _title: Label
 var _header: HBoxContainer
@@ -55,10 +58,12 @@ func setup(realm_state: RealmState, game_data: GameData, companion_actions: Comp
 func _ready() -> void:
 	layer = 13
 	visible = false
+	# Sized by hand in _fit_to_viewport: the layer scales on a phone, and a
+	# full-rect anchor would size it to the unscaled screen.
 	var centre := CenterContainer.new()
-	centre.set_anchors_preset(Control.PRESET_FULL_RECT)
 	centre.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(centre)
+	_centre = centre
 	# A drop that misses a target inside the panel is a change of mind, not a throw.
 	_root = InventoryLayout.DropSink.new()
 	_root.custom_minimum_size = Vector2(340, 0)
@@ -163,10 +168,17 @@ static func _mmss(ms: int) -> String:
 ## viewport (centered), and cap the scrolling body to the room left under the
 ## pinned header. Short rosters size to content (no scrollbar); tall ones scroll.
 func _fit_to_viewport() -> void:
-	var vp := get_viewport().get_visible_rect().size
+	var factor := TouchScale.factor(self, pixel_ratio)
+	scale = Vector2.ONE * factor
+	_tooltip.layer_scale = factor
+	var vp := get_viewport().get_visible_rect().size / factor
+	_centre.position = Vector2.ZERO
+	_centre.size = vp
 	var m := 12.0
-	_root.custom_minimum_size.x = clampf(vp.x - 2.0 * m, 200.0, 360.0)
-	var avail := maxf(vp.y - 2.0 * m - _header.size.y - 16.0, 120.0)
+	_root.custom_minimum_size.x = clampf(vp.x - 2.0 * m, 200.0, 380.0)
+	# Everything around the scroll (header, status, margins) stays; the scroll gets the rest.
+	var around := _root.get_combined_minimum_size().y - _scroll.custom_minimum_size.y
+	var avail := maxf(vp.y - 2.0 * m - around, 120.0)
 	_scroll.custom_minimum_size.y = minf(_body.get_combined_minimum_size().y, avail)
 
 
@@ -229,15 +241,25 @@ func _preview_line(text: String, card: Array) -> void:
 	_hover_card(label, card)
 
 
-## Show `card` (ItemTooltip lines) while the mouse is over `control`.
+## Show `card` (ItemTooltip lines) while the mouse is over `control`, or on a
+## tap -- a touchscreen has no hover.
 func _hover_card(control: Control, card: Array) -> void:
 	control.mouse_filter = Control.MOUSE_FILTER_PASS
-	control.mouse_entered.connect(func() -> void:
+	var show_card := func() -> void:
 		if _tooltip != null and not card.is_empty():
-			_tooltip.show_lines(card, get_viewport().get_mouse_position()))
+			_tooltip.show_lines(card, _pointer())
+	control.mouse_entered.connect(show_card)
+	control.gui_input.connect(func(event: InputEvent) -> void:
+		if event is InputEventMouseButton and event.pressed:
+			show_card.call())
 	control.mouse_exited.connect(func() -> void:
 		if _tooltip != null:
 			_tooltip.hide_card())
+
+
+## The pointer in this layer's own (possibly scaled) points.
+func _pointer() -> Vector2:
+	return get_viewport().get_mouse_position() / scale.x
 
 
 func toggle() -> void:
@@ -316,10 +338,14 @@ func _card(companion: Dictionary) -> Control:
 	var head := HBoxContainer.new()
 	head.add_theme_constant_override("separation", 6)
 	box.add_child(head)
+	var controls := HBoxContainer.new()
+	controls.add_theme_constant_override("separation", 6)
+	box.add_child(controls)
 	var name_edit := LineEdit.new()
 	name_edit.text = str(companion.get("companionName", "Companion"))
 	name_edit.max_length = 16
 	name_edit.custom_minimum_size.x = 120
+	name_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_edit.focus_entered.connect(func() -> void: _typing = true)
 	name_edit.focus_exited.connect(func() -> void: _typing = false)
 	name_edit.text_submitted.connect(func(text: String) -> void: actions.rename(uuid, text))
@@ -327,27 +353,28 @@ func _card(companion: Dictionary) -> Control:
 	# Summon-hotkey marker. The companion C currently deploys shows a gold [C] badge;
 	# any other shows a "Set C" button that claims the hotkey WITHOUT summoning — so with
 	# several banked you choose which one C sends out.
-	if is_selected:
-		_line(head, "[C]", 13, TITLE_COLOUR)
-	else:
-		var set_hotkey := InventoryLayout.button(head, "Set C", func() -> void: _select(uuid))
-		set_hotkey.tooltip_text = "Make the C key summon this companion"
 	InventoryLayout.button(head, "Rename", func() -> void: actions.rename(uuid, name_edit.text))
-	var class_label := _line(head, content.classes_art.display_name(class_id), 12, MUTED)
-	class_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	class_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_line(head, content.classes_art.display_name(class_id), 12, MUTED)
+	if is_selected:
+		_line(controls, "[C]", 13, TITLE_COLOUR)
+	else:
+		var set_hotkey := InventoryLayout.button(controls, "Set C", func() -> void: _select(uuid))
+		set_hotkey.tooltip_text = "Make the C key summon this companion"
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	controls.add_child(spacer)
 	# One companion deploys at a time: this is Recall for the deployed one, Summon
 	# for any other. The server enforces the swap cooldown and floats a "ready in Xs"
 	# message if it's not time yet.
 	var deploy_text := "Recall" if is_deployed else "Summon"
-	InventoryLayout.button(head, deploy_text,
+	InventoryLayout.button(controls, deploy_text,
 		func() -> void:
 			_select(uuid)
 			if is_deployed: actions.recall(uuid)
 			else: actions.deploy(uuid))
 	# Delete is destructive (a companion is gear + invested skill points) — confirm first.
 	var display_name := str(companion.get("companionName", "this companion"))
-	InventoryLayout.button(head, "X", func() -> void:
+	InventoryLayout.button(controls, "Delete", func() -> void:
 		_confirm.request("Delete %s? This permanently removes the companion, its gear and skill points." % display_name,
 			"Delete", func() -> void: actions.delete(uuid)))
 
@@ -390,8 +417,8 @@ func _stats_row(into: Container, companion: Dictionary, uuid: String, class_id: 
 			maxed_count += 1
 	_line(into, "Stats  (%d/%d maxed)" % [maxed_count, STATS.size()], 11, MUTED)
 	var grid := GridContainer.new()
-	grid.columns = 4
-	grid.add_theme_constant_override("h_separation", 10)
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 16)
 	into.add_child(grid)
 	for stat in STATS:
 		var value := int(stats.get(stat, 0))
@@ -451,7 +478,7 @@ func _hover_item(item: Dictionary, over: bool) -> void:
 	if _tooltip == null:
 		return
 	if over and Inventory.holds(item):
-		_tooltip.show_for(item, get_viewport().get_mouse_position())
+		_tooltip.show_for(item, _pointer())
 	else:
 		_tooltip.hide_card()
 

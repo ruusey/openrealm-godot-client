@@ -22,6 +22,8 @@ const ABILITY_COLOUR := Color(0.15, 0.15, 0.2, 0.85)
 const HP_COLOUR := Color(0.6, 0.12, 0.12, 0.9)
 const MP_COLOUR := Color(0.15, 0.25, 0.65, 0.9)
 const NEXUS_COLOUR := Color(0.62, 0.46, 0.08, 0.9)
+const COMPANION_COLOUR := Color(0.16, 0.35, 0.40, 0.9)
+const COMPANION_FONT := 11
 const BUTTON_SIZE := Vector2(88.0, 40.0)
 
 signal cast(slot: int)
@@ -32,6 +34,7 @@ signal chat
 signal nexus
 signal add_fame
 signal economy
+signal companion
 
 ## True while the thumb is on Attack.
 var attacking := false
@@ -44,6 +47,9 @@ var _mp: Button
 ## The phone's escape to the nexus, on the bottom row; null elsewhere, where
 ## Nexus rides the top row.
 var _nexus: Button
+## Summon / recall, with touch controls only (the hotbar's cell otherwise).
+var _companion: Button
+var _companion_sweep: CooldownSweep
 var _panels: BoxContainer
 ## Economy entry points; kept so refresh() can hide them when the account's
 ## economy_enabled gate is off. Add Fame exists on web only.
@@ -85,6 +91,12 @@ func _init(mobile := is_phone()) -> void:
 		_nexus.add_theme_font_size_override("font_size", POTION_FONT)
 		_nexus.pressed.connect(func() -> void: nexus.emit())
 		add_child(_nexus)
+	_companion = TouchButtons.round(POTION_RADIUS, COMPANION_COLOUR)
+	_companion.add_theme_font_size_override("font_size", COMPANION_FONT)
+	_companion.pressed.connect(func() -> void: companion.emit())
+	add_child(_companion)
+	_companion_sweep = CooldownSweep.new()
+	_companion.add_child(_companion_sweep)
 	# Horizontal on desktop; a vertical dropdown on a phone, where the full row
 	# won't fit across the screen.
 	_panels = VBoxContainer.new() if _mobile else HBoxContainer.new()
@@ -139,8 +151,8 @@ func place(area: Vector2, panels_at: Vector2) -> void:
 	# the corner itself when there is no Attack beside them.
 	var x := centre.x - reach - ABILITY_RADIUS - GAP - POTION_RADIUS if _attack.visible \
 		else area.x - MARGIN - POTION_RADIUS
-	for potion in [_hp, _mp, _nexus]:
-		if potion == null:
+	for potion in [_hp, _mp, _nexus, _companion]:
+		if potion == null or not potion.visible:
 			continue
 		potion.position = Vector2(x, centre.y) - Vector2.ONE * POTION_RADIUS
 		x -= POTION_RADIUS * 2.0 + GAP
@@ -168,6 +180,8 @@ func refresh(content: GameData, state: RealmState) -> void:
 			_add_fame_btn.visible = state.progress.economy_enabled
 		if _nexus != null and content != null:
 			_nexus.disabled = content.maps.is_nexus(state.tiles.map_id)
+		if _companion.visible:
+			_show_companion(state.companions)
 	if content == null or content.abilities == null or state == null:
 		return
 	var key := "%d:%d" % [state.local.class_id, state.abilities.version]
@@ -193,12 +207,13 @@ func show_combat(on: bool) -> void:
 	_attack.visible = on
 	for button in _abilities:
 		button.visible = on
+	_companion.visible = on and CompanionPanel.ENABLED
 	place(_area, _row)
 
 
 ## Whether a shown button holds the point.
 func holds(point: Vector2) -> bool:
-	for button in [_attack, _hp, _mp, _nexus, _panels] + _abilities:
+	for button in [_attack, _hp, _mp, _nexus, _companion, _panels] + _abilities:
 		if button != null and button.is_visible_in_tree() and button.get_global_rect().has_point(point):
 			return true
 	if _hamburger != null and _hamburger.is_visible_in_tree() and _hamburger.get_global_rect().has_point(point):
@@ -236,6 +251,22 @@ func _on_backdrop_input(event: InputEvent) -> void:
 	if (event is InputEventMouseButton and event.pressed) \
 			or (event is InputEventScreenTouch and event.pressed):
 		_collapse_menu()
+
+
+## Ally (none owned yet: opens the panel), Recall, the swap cooldown, or Summon.
+func _show_companion(companions: CompanionState) -> void:
+	var fraction := 0.0
+	if companions == null or companions.count() == 0:
+		_companion.text = "Ally"
+	elif companions.is_deployed():
+		_companion.text = "Recall"
+	elif not companions.summon_ready():
+		var remaining := companions.summon_cooldown_remaining_ms()
+		_companion.text = "%ds" % ceili(remaining / 1000.0)
+		fraction = clampf(float(remaining) / CompanionSummonCell.COOLDOWN_WINDOW_MS, 0.0, 1.0)
+	else:
+		_companion.text = "Summon"
+	_companion_sweep.fraction = fraction
 
 
 static func _show_count(button: Button, name: String, count: int) -> void:

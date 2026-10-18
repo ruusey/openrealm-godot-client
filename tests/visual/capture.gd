@@ -115,6 +115,15 @@ func capture(scenario: String, output: String, content: GameData) -> bool:
 		stage.add_child(layer)
 		cluster.place(Vector2(get_viewport().get_visible_rect().size), Vector2(TouchCluster.MARGIN, 8.0))
 		cluster.refresh(content, state)
+	# A phone's canvas: device pixels over the 1.5x mobile UI, at a 2x pixel ratio.
+	if scenario.begins_with("companions"):
+		var companions := CompanionPanel.new()
+		companions.setup(state, content, CompanionActions.new(null))
+		companions.shown = true
+		if scenario == "companions_phone":
+			get_window().content_scale_factor = 1.5
+			companions.pixel_ratio = 2.0
+		stage.add_child(companions)
 	var bar := AbilityBar.new()
 	bar.setup(state, content, null)
 	bar.shown = scenario == "abilities"
@@ -294,6 +303,7 @@ func capture(scenario: String, output: String, content: GameData) -> bool:
 		camera.make_current()
 
 	var image := get_tree().root.get_texture().get_image()
+	get_window().content_scale_factor = 1.0
 	stage.queue_free()
 	await get_tree().process_frame
 	if image == null:

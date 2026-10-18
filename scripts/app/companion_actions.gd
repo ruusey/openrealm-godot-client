@@ -41,6 +41,19 @@ func recall(uuid: String) -> void:
 	_send(RECALL, uuid, 0, 0, "")
 
 
+## Recall the companion that is out, otherwise summon the selected one. False
+## when there is none to summon. The server owns the cooldown.
+func toggle_summon(companions: CompanionState) -> bool:
+	if companions.is_deployed():
+		recall(companions.deployed_uuid)
+		return true
+	var target := companions.target_uuid()
+	if target == "":
+		return false
+	deploy(target)
+	return true
+
+
 ## Equip the player's inventory item at `inventory_slot` into the companion's
 ## equipment `companion_slot` (0-4).
 func equip(uuid: String, inventory_slot: int, companion_slot: int) -> void:

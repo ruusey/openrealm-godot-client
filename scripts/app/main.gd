@@ -134,6 +134,8 @@ func _ready() -> void:
 	var touchscreen := DisplayServer.is_touchscreen_available()
 	screens.touch.pixel_ratio = display.device_scale if mobile else DisplayServer.screen_get_scale()
 	screens.touch.enable(TouchControls.wanted(config.touch, touchscreen, OS.has_feature), not touchscreen)
+	if screens.touch.enabled:
+		screens.companions.pixel_ratio = screens.touch.pixel_ratio
 	# The on-screen Nexus button escapes to safety -- a phone has no portal to stand on.
 	screens.touch.set_escape(portals.to_nexus)
 	input.touch_aim = screens.touch.aim_point

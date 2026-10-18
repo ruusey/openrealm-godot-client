@@ -50,15 +50,8 @@ func tick(_delta: float) -> void:
 		actions.drink(true)
 	if _pressed("drink_mp"):
 		actions.drink(false)
-	# C toggles your one companion: recall it if it's out, otherwise summon the
-	# selected one. The server owns the cooldown and floats "ready in Xs" if early.
 	if _pressed("summon_companion") and companion_actions != null and companions != null:
-		if companions.is_deployed():
-			companion_actions.recall(companions.deployed_uuid)
-		else:
-			var target := companions.target_uuid()
-			if target != "":
-				companion_actions.deploy(target)
+		companion_actions.toggle_summon(companions)
 	for n in QUICK_SLOTS:
 		if _pressed("quick_slot_%d" % (n + 1)):
 			actions.activate(Inventory.BACKPACK_START + n)
