@@ -130,6 +130,11 @@ func top() -> float:
 	return maxf(below.call() + InventoryLayout.MARGIN, floor_top)
 
 
+## The screen the open bag covers, in the panels' points; empty when put away.
+func covered() -> Rect2:
+	return _root.get_global_rect() if visible and _root != null else Rect2()
+
+
 ## Just right of where the bag sits, level with its top, whether it is open
 ## or put away: the loot window's corner (LootWindow.at).
 func beside() -> Vector2:

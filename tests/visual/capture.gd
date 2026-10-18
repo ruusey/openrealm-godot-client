@@ -106,6 +106,7 @@ func capture(scenario: String, output: String, content: GameData) -> bool:
 	bag.setup(state, content, InventoryActions.new(state, null, content))
 	bag.shown = scenario in ["inventory", "item_card", "vault"]
 	stage.add_child(bag)
+	chat.avoid = bag.covered
 	# The chest at our feet: only for its scenario, as the bag is.
 	if scenario == "vault":
 		var loot := LootWindow.new()

@@ -50,6 +50,9 @@ var _follow := true
 var _collapsed_at_ms := -1
 ## The chip that folds the log to its name; the input line stays.
 var fold: PanelFold
+## The screen another panel covers (empty for none): the log steps right of it
+## rather than drawing over it -- the open bag reaches this corner on a phone.
+var avoid: Callable = func() -> Rect2: return Rect2()
 
 
 func setup(realm_state: RealmState, chat_actions: ChatActions = null) -> void:
@@ -151,6 +154,20 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 
+## Step the log right of `covered` when its home corner, chip included, would
+## sit under it; back home when it is clear.
+func _clear_of(covered: Rect2) -> void:
+	var box := _box.get_global_rect()
+	var home := Rect2(MARGIN, box.position.y - PanelFold.CHIP_HEIGHT - 2.0,
+		WIDTH - MARGIN, box.size.y + PanelFold.CHIP_HEIGHT + 2.0)
+	var left := float(MARGIN)
+	if covered.has_area() and covered.intersects(home):
+		left = covered.end.x + MARGIN
+	if not is_equal_approx(_box.offset_left, left):
+		_box.offset_left = left
+		_box.offset_right = left + WIDTH - MARGIN
+
+
 func _on_sent(text: String) -> void:
 	if actions != null:
 		actions.say(text)
@@ -158,7 +175,8 @@ func _on_sent(text: String) -> void:
 
 func _process(_delta: float) -> void:
 	fold.chip.visible = state != null and state.local.is_present()
-	fold.place(Vector2(MARGIN, _box.get_global_rect().position.y - PanelFold.CHIP_HEIGHT - 2.0))
+	_clear_of(avoid.call())
+	fold.place(Vector2(_box.offset_left, _box.get_global_rect().position.y - PanelFold.CHIP_HEIGHT - 2.0))
 	if state == null:
 		blank()
 		return
