@@ -1,9 +1,10 @@
 class_name ExchangeMarket
 extends RefCounted
 
-## The exchange market: hand in N of one consumable, get N-1 of another of
-## the same kind. The one lost is the market's tax, so the smallest trade
-## is two for one.
+## The exchange market: hand in N of one consumable, get another of the
+## same kind. One given is the market's tax; the rest convert by each item's
+## exchangeValue (default 1), so equal-worth items trade N for N-1 and the
+## smallest trade is two for one.
 ##
 ## Which items are of a kind is the server's rule (ServerExchangeMarketHelper,
 ## which both references copy so their lists only offer legal swaps): a
@@ -114,9 +115,27 @@ func ready(held: int) -> bool:
 	return source >= 0 and target >= 0 and held >= MIN_QUANTITY and quantity <= held
 
 
-## What comes back for a quantity given.
-static func output(given: int) -> int:
-	return given - 1
+## An item's worth within its kind -- the server's exchangeValue.
+static func value_of(definition: Dictionary) -> int:
+	return maxi(1, int(definition.get("exchangeValue", 1)))
+
+
+## What comes back for a quantity given, at the two items' worths.
+static func output(given: int, source_value := 1, target_value := 1) -> int:
+	return (given - 1) * source_value / target_value
+
+
+## The smallest hand-in that returns at least one.
+static func minimum(source_value: int, target_value: int) -> int:
+	return maxi(MIN_QUANTITY, 1 + ceili(float(target_value) / source_value))
+
+
+## What the current choice returns.
+func received(content: GameData) -> int:
+	if content == null or source < 0 or target < 0:
+		return 0
+	return output(quantity, value_of(content.item_definition(source)),
+		value_of(content.item_definition(target)))
 
 
 func _reset_choice() -> void:

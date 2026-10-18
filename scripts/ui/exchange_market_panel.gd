@@ -203,14 +203,20 @@ func refresh() -> void:
 	var held := int(owned.get(market.source, 0))
 	_count.text = str(market.quantity)
 	_summary.text = summary(market, held)
-	_confirm.disabled = not market.ready(held)
+	_confirm.disabled = not market.ready(held) or market.received(content) < 1
 
 
 ## The web client's three lines.
 func summary(market: ExchangeMarket, held: int) -> String:
 	if market.ready(held):
+		var received := market.received(content)
+		if received < 1:
+			var needed := ExchangeMarket.minimum(
+				ExchangeMarket.value_of(content.item_definition(market.source)),
+				ExchangeMarket.value_of(content.item_definition(market.target)))
+			return "Give at least %d for one %s." % [needed, content.item_name(market.target)]
 		return "%d %s -> %d %s" % [market.quantity, content.item_name(market.source),
-			ExchangeMarket.output(market.quantity), content.item_name(market.target)]
+			received, content.item_name(market.target)]
 	if market.source >= 0 and held < ExchangeMarket.MIN_QUANTITY:
 		return "Need at least 2 to exchange."
 	return "Select an item to give and one to receive."

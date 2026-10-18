@@ -116,6 +116,15 @@ func test_a_request_needs_both_sides_and_enough_held():
 	assert_eq(ExchangeMarket.output(9), 8, "one lost")
 
 
+func test_worth_converts_after_the_tax():
+	assert_eq(ExchangeMarket.output(6, 1, 5), 1, "five regular potions buy one life")
+	assert_eq(ExchangeMarket.output(5, 1, 5), 0, "the tax leaves too few")
+	assert_eq(ExchangeMarket.output(2, 5, 1), 5, "one life is worth five")
+	assert_eq(ExchangeMarket.minimum(1, 5), 6)
+	assert_eq(ExchangeMarket.minimum(5, 1), 2)
+	assert_eq(ExchangeMarket.minimum(1, 1), 2)
+
+
 # --- opening and closing -----------------------------------------------------
 
 func test_the_server_opens_it_for_us_and_not_for_anyone_else():
