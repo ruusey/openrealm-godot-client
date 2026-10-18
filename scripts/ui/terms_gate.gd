@@ -98,7 +98,7 @@ func ask() -> bool:
 func _fit() -> void:
 	if panel == null or body == null:
 		return
-	var view := get_viewport_rect().size
+	var view := TouchScale.view_size(self)
 	var w := minf(float(WIDTH), view.x - 32.0)
 	var h := clampf(view.y - CHROME_PX, MIN_BODY, float(BODY_HEIGHT))
 	panel.custom_minimum_size = Vector2(w, 0)

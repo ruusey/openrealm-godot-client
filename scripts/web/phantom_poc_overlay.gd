@@ -46,6 +46,7 @@ func _ready() -> void:
 		_show("Phantom detected. Click Connect.")
 	else:
 		_show("Phantom NOT detected. Install the extension and reload (web build only).")
+	TouchFrame.adopt(self)
 
 
 func _on_connect() -> void:

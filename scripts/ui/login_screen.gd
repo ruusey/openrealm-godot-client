@@ -110,6 +110,7 @@ func _ready() -> void:
 	# Every field and button a thumb's height: a phone signs in here too.
 	for part in [_form, _account, _how_to, _terms]:
 		TouchSize.grow_all(part)
+	TouchFrame.adopt(self)
 
 
 func _process(_delta: float) -> void:

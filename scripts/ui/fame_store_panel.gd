@@ -61,6 +61,7 @@ func _ready() -> void:
 	scroll.add_child(_list)
 	_tooltip = ItemTooltip.of(state, content)
 	add_child(_tooltip)
+	TouchFrame.adopt(self)
 
 
 func _process(_delta: float) -> void:

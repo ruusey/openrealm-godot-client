@@ -141,6 +141,14 @@ func _exit_tree() -> void:
 		window.size_changed.disconnect(_on_resized)
 
 
+## The UI scale this device gets when the player hasn't picked one.
+func default_ui() -> float:
+	if mobile:
+		return MOBILE_UI
+	var size := window.size if window != null else BASE
+	return factor_for(size, 0.0, web)
+
+
 ## The player's chosen UI scale, or the phone default when they haven't picked one.
 func _effective_ui() -> float:
 	if chosen > 0.0:

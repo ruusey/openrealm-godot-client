@@ -69,6 +69,7 @@ func _ready() -> void:
 	_edit_hall = InventoryLayout.button(footer, "Edit Hall", func() -> void: if actions != null: actions.edit_hall())
 	_leave = InventoryLayout.button(footer, "Leave Guild", func() -> void: if actions != null: actions.leave())
 	_disband = InventoryLayout.button(footer, "Disband", func() -> void: if actions != null: actions.disband())
+	TouchFrame.adopt(self)
 
 
 func _process(_delta: float) -> void:

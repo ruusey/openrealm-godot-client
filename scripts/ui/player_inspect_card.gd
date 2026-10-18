@@ -130,7 +130,7 @@ func show_player(data: Dictionary) -> void:
 
 ## Pin the card near a screen point, kept inside the viewport.
 func show_at(screen_pos: Vector2) -> void:
-	var view := get_viewport_rect().size
+	var view := TouchScale.view_size(self)
 	position = Vector2(
 		clampf(screen_pos.x, 0.0, maxf(0.0, view.x - size.x)),
 		clampf(screen_pos.y, 0.0, maxf(0.0, view.y - size.y)))

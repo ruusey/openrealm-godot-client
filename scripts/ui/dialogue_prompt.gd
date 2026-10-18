@@ -58,6 +58,7 @@ func _ready() -> void:
 	_panel.add_child(column)
 	_header = _line(column, HEADER_SIZE, Color(1.0, 0.9, 0.55))
 	_body = _line(column, BODY_SIZE, Color(0.9, 0.92, 0.98))
+	TouchFrame.adopt(self)
 
 
 func _line(into: VBoxContainer, size: int, colour: Color) -> Label:

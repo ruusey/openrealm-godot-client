@@ -133,9 +133,10 @@ func _ready() -> void:
 	# A phone's sticks, or --touch to try them here with the mouse as a finger.
 	var touchscreen := DisplayServer.is_touchscreen_available()
 	screens.touch.pixel_ratio = display.device_scale if mobile else DisplayServer.screen_get_scale()
-	screens.touch.enable(TouchControls.wanted(config.touch, touchscreen, OS.has_feature), not touchscreen)
-	if screens.touch.enabled:
-		screens.companions.pixel_ratio = screens.touch.pixel_ratio
+	var touch_on := TouchControls.wanted(config.touch, touchscreen, OS.has_feature)
+	if touch_on:
+		TouchScale.panel_factor = TouchScale.panel_factor_for(screens.touch.pixel_ratio, display.default_ui())
+	screens.touch.enable(touch_on, not touchscreen)
 	# The on-screen Nexus button escapes to safety -- a phone has no portal to stand on.
 	screens.touch.set_escape(portals.to_nexus)
 	input.touch_aim = screens.touch.aim_point

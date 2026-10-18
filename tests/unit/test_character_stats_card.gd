@@ -173,7 +173,7 @@ func test_the_x_escape_and_the_dim_all_close_it():
 	var click := InputEventMouseButton.new()
 	click.pressed = true
 	click.button_index = MOUSE_BUTTON_LEFT
-	card.get_child(0).gui_input.emit(click)
+	card.get_child(0).get_child(0).gui_input.emit(click)   # the dim, first under the TouchFrame
 	assert_false(card.visible)
 
 

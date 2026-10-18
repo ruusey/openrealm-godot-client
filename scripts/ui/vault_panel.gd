@@ -54,6 +54,7 @@ func _ready() -> void:
 	column.add_child(_status)
 	_confirm = ConfirmPopup.new()
 	add_child(_confirm)
+	TouchFrame.adopt(self)
 
 
 func _process(_delta: float) -> void:

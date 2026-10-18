@@ -32,6 +32,11 @@ func _ready() -> void:
 		var scenario: String = args[0] if args.size() > 0 else "entities"
 		jobs.append([scenario, args[1] if args.size() > 1 else "reports/visual/%s.png" % scenario])
 
+	# CAPTURE_PHONE: a phone's canvas, device pixels over the 1.5x mobile UI at a
+	# 2x pixel ratio, with the panels' TouchScale boost.
+	if OS.get_environment("CAPTURE_PHONE") == "1":
+		get_window().content_scale_factor = DisplayScale.MOBILE_UI
+		TouchScale.panel_factor = TouchScale.panel_factor_for(2.0, DisplayScale.MOBILE_UI)
 	var config := ClientConfig.new()
 	# A checkout laid out differently from the default names its data here.
 	if OS.has_environment("OPENREALM_DATA_ROOT"):
@@ -115,14 +120,10 @@ func capture(scenario: String, output: String, content: GameData) -> bool:
 		stage.add_child(layer)
 		cluster.place(Vector2(get_viewport().get_visible_rect().size), Vector2(TouchCluster.MARGIN, 8.0))
 		cluster.refresh(content, state)
-	# A phone's canvas: device pixels over the 1.5x mobile UI, at a 2x pixel ratio.
-	if scenario.begins_with("companions"):
+	if scenario == "companions":
 		var companions := CompanionPanel.new()
 		companions.setup(state, content, CompanionActions.new(null))
 		companions.shown = true
-		if scenario == "companions_phone":
-			get_window().content_scale_factor = 1.5
-			companions.pixel_ratio = 2.0
 		stage.add_child(companions)
 	var bar := AbilityBar.new()
 	bar.setup(state, content, null)
@@ -303,7 +304,6 @@ func capture(scenario: String, output: String, content: GameData) -> bool:
 		camera.make_current()
 
 	var image := get_tree().root.get_texture().get_image()
-	get_window().content_scale_factor = 1.0
 	stage.queue_free()
 	await get_tree().process_frame
 	if image == null:

@@ -62,6 +62,7 @@ func _ready() -> void:
 	# already rides the trade packet as full NetGameItems. Added last so it draws on top.
 	_tooltip = ItemTooltip.of(state, content)
 	add_child(_tooltip)
+	TouchFrame.adopt(self)
 
 
 func _side(into: Container, ours: bool) -> Label:

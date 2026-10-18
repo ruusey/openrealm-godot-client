@@ -94,6 +94,7 @@ func _ready() -> void:
 	_disenchant = InventoryLayout.button(buttons, "Disenchant", _press.bind(false))
 	_tooltip = ItemTooltip.of(state, content)
 	add_child(_tooltip)
+	TouchFrame.adopt(self)
 
 
 func _process(_delta: float) -> void:

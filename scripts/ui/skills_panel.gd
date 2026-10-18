@@ -77,6 +77,7 @@ func _ready() -> void:
 		_buttons.append(button)
 	# Menu opens it on a phone, where there is no K to shut it again.
 	close_button = TouchSize.grow(InventoryLayout.button(column, "Close", close), 16)
+	TouchFrame.adopt(self)
 
 
 func _process(_delta: float) -> void:

@@ -43,6 +43,7 @@ func _ready() -> void:
 	column.add_child(buttons)
 	_confirm_button = InventoryLayout.button(buttons, "Confirm", func() -> void: _answer(true))
 	InventoryLayout.button(buttons, "Cancel", func() -> void: _answer(false))
+	TouchFrame.adopt(self)
 
 
 ## Show the prompt with `message`, a confirm button reading `confirm_label`, and

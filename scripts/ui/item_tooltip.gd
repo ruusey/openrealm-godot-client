@@ -21,8 +21,6 @@ const CURSOR_GAP := Vector2(16, 12)
 const BACKGROUND := Color(0.05, 0.04, 0.07, 0.96)
 const EDGE := Color(0.45, 0.38, 0.55)
 
-## The scale of the layer the card sits in, so it flips at that layer's edges.
-var layer_scale := 1.0
 ## Set by the panel that owns the card, for the viewer-dependent lines.
 var content: GameData
 var state: RealmState
@@ -104,7 +102,7 @@ func show_lines(lines: Array, at: Vector2) -> void:
 
 ## Beside the cursor, flipped back inside the viewport at the edges.
 func follow(at: Vector2) -> void:
-	var bounds := get_viewport_rect().size / layer_scale
+	var bounds := TouchScale.view_size(self)
 	var wanted := at + CURSOR_GAP
 	if wanted.x + size.x > bounds.x:
 		wanted.x = at.x - CURSOR_GAP.x - size.x

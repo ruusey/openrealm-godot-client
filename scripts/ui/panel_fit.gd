@@ -19,9 +19,15 @@ const MARGIN := 12.0
 static func shrink(panel: Control, pivot := Vector2(0.5, 0.5), margin := MARGIN) -> void:
 	if panel.size.x <= 0.0 or panel.size.y <= 0.0:
 		return
-	var room := panel.get_viewport().get_visible_rect().size - Vector2.ONE * margin * 2.0
+	var room := TouchScale.view_size(panel) - Vector2.ONE * margin * 2.0
 	panel.pivot_offset = panel.size * pivot
 	panel.scale = Vector2.ONE * factor(panel.size, room)
+	# A centring parent outgrown by the panel spreads both ways, or it grows down
+	# off the screen and the shrink centres on a point below the middle.
+	var centre := panel.get_parent() as CenterContainer
+	if centre != null and centre.grow_vertical != Control.GROW_DIRECTION_BOTH:
+		centre.grow_horizontal = Control.GROW_DIRECTION_BOTH
+		centre.grow_vertical = Control.GROW_DIRECTION_BOTH
 
 
 ## The largest scale, up to one, at which `panel_size` fits `room`.

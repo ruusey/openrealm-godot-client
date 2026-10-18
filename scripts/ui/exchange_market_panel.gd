@@ -115,6 +115,7 @@ func _ready() -> void:
 	_tooltip = ItemTooltip.of(state, content)
 	add_child(_tooltip)
 	_show_tab("swap")
+	TouchFrame.adopt(self)
 
 
 func _process(_delta: float) -> void:

@@ -76,6 +76,7 @@ func _ready() -> void:
 		_cells[stat] = HudWidgets.stat_cell(_grid, stat.to_upper())
 	fold = PanelFold.new(self, "Stats", "stats", state.settings if state != null else null,
 		func(folded: bool) -> void: _grid.visible = not folded)
+	TouchFrame.adopt(self)
 
 
 func _process(_delta: float) -> void:
@@ -84,7 +85,7 @@ func _process(_delta: float) -> void:
 		return
 	_root.offset_top = below.call() + MARGIN
 	_root.offset_bottom = _root.offset_top + (_root.get_combined_minimum_size().y if fold.folded else float(HEIGHT))
-	fold.place_right(_root.offset_top + 2.0, get_viewport().get_visible_rect().size.x - MinimapPanel.MARGIN - 2.0)
+	fold.place_right(_root.offset_top + 2.0, get_viewport().get_visible_rect().size.x / scale.x - MinimapPanel.MARGIN - 2.0)
 	var key := "%s|%d|%d|%d|%d|%d" % [state.local.stats, state.local.health, state.local.mana,
 		state.local.inventory.experience, state.local.inventory.version, state.local.class_id]
 	if key != _drawn:

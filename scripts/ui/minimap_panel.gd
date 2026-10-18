@@ -59,13 +59,14 @@ func _ready() -> void:
 	_root.add_child(_canvas)
 	fold = PanelFold.new(self, "Map", "minimap", state.settings if state != null else null,
 		func(folded: bool) -> void: _root.visible = not folded)
+	TouchFrame.adopt(self)
 
 
 func _process(_delta: float) -> void:
 	visible = state != null and shown and state.local.is_present() and state.minimap.image != null
 	if not visible:
 		return
-	fold.place_right(MARGIN, get_viewport().get_visible_rect().size.x - MARGIN)
+	fold.place_right(MARGIN, get_viewport().get_visible_rect().size.x / scale.x - MARGIN)
 	if fold.folded:
 		return
 	var map_size := Vector2i(state.minimap.width, state.minimap.height)

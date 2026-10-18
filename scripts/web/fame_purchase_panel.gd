@@ -37,6 +37,7 @@ var _pending := false
 func _ready() -> void:
 	layer = 55
 	_build_modal()
+	TouchFrame.adopt(self)
 
 
 func _build_modal() -> void:

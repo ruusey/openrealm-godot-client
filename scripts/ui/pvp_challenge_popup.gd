@@ -41,6 +41,7 @@ func _ready() -> void:
 	column.add_child(buttons)
 	InventoryLayout.button(buttons, "Accept", func() -> void: _answer("/pvpaccept"))
 	InventoryLayout.button(buttons, "Decline", func() -> void: _answer("/pvpdecline"))
+	TouchFrame.adopt(self)
 
 
 func _process(_delta: float) -> void:

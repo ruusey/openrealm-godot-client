@@ -103,6 +103,7 @@ func _ready() -> void:
 	# Never hidden as a layer (the sign-in screen just covers it), so the chip
 	# hides itself until there is a player to have a chat.
 	fold.chip.visible = false
+	TouchFrame.adopt(self)
 
 
 ## The chat line, opened as Enter opens it: the phone's Chat button.
@@ -166,7 +167,7 @@ func _process(_delta: float) -> void:
 	# Height: compact tail, or expanded viewport capped to a slice of the screen.
 	var want_h := float(COMPACT_LINES * ROW_HEIGHT)
 	if expanded:
-		var cap := get_viewport().get_visible_rect().size.y * EXPANDED_SCREEN_FRACTION
+		var cap := get_viewport().get_visible_rect().size.y / scale.y * EXPANDED_SCREEN_FRACTION
 		want_h = minf(EXPANDED_LINES * ROW_HEIGHT, cap)
 	if not is_equal_approx(_scroll.custom_minimum_size.y, want_h):
 		_scroll.custom_minimum_size.y = want_h

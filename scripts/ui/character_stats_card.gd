@@ -57,6 +57,7 @@ func _ready() -> void:
 	columns = HBoxContainer.new()
 	columns.add_theme_constant_override("separation", 28)
 	column.add_child(columns)
+	TouchFrame.adopt(self)
 
 
 func _unhandled_input(event: InputEvent) -> void:

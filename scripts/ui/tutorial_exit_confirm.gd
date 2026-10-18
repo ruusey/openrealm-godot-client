@@ -42,6 +42,7 @@ func _ready() -> void:
 	column.add_child(buttons)
 	InventoryLayout.button(buttons, "Exit anyway", func() -> void: _answer(true))
 	InventoryLayout.button(buttons, "Keep playing", func() -> void: _answer(false))
+	TouchFrame.adopt(self)
 
 
 ## Show the prompt and remember who to tell. A second request while one stands

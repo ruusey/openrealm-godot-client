@@ -71,9 +71,14 @@ func _ready() -> void:
 	column.add_child(_rows_box)
 	fold = PanelFold.new(self, "Party", "party", state.settings if state != null else null,
 		func(folded: bool) -> void: _root.visible = not folded)
+	# The fold chip sits over the heading's right end; keep Leave clear of it.
+	var chip_room := Control.new()
+	chip_room.custom_minimum_size.x = fold.chip.get_combined_minimum_size().x + 4.0
+	heading.add_child(chip_room)
 	_inspect = PlayerInspectCard.new()
 	_inspect.setup(content)
 	add_child(_inspect)
+	TouchFrame.adopt(self)
 
 
 func _process(_delta: float) -> void:

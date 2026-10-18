@@ -28,10 +28,7 @@ var state: RealmState
 var content: GameData
 var actions: CompanionActions
 var shown := false
-## The device's pixel ratio with touch controls on (TouchScale), else one.
-var pixel_ratio := 1.0
 
-var _centre: CenterContainer
 var _root: PanelContainer
 var _title: Label
 var _header: HBoxContainer
@@ -58,12 +55,10 @@ func setup(realm_state: RealmState, game_data: GameData, companion_actions: Comp
 func _ready() -> void:
 	layer = 13
 	visible = false
-	# Sized by hand in _fit_to_viewport: the layer scales on a phone, and a
-	# full-rect anchor would size it to the unscaled screen.
 	var centre := CenterContainer.new()
+	centre.set_anchors_preset(Control.PRESET_FULL_RECT)
 	centre.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(centre)
-	_centre = centre
 	# A drop that misses a target inside the panel is a change of mind, not a throw.
 	_root = InventoryLayout.DropSink.new()
 	_root.custom_minimum_size = Vector2(340, 0)
@@ -131,6 +126,7 @@ func _ready() -> void:
 	# Confirmation for the destructive delete ('X') on a companion card.
 	_confirm = ConfirmPopup.new()
 	add_child(_confirm)
+	TouchFrame.adopt(self)
 
 
 func _process(_delta: float) -> void:
@@ -168,12 +164,7 @@ static func _mmss(ms: int) -> String:
 ## viewport (centered), and cap the scrolling body to the room left under the
 ## pinned header. Short rosters size to content (no scrollbar); tall ones scroll.
 func _fit_to_viewport() -> void:
-	var factor := TouchScale.factor(self, pixel_ratio)
-	scale = Vector2.ONE * factor
-	_tooltip.layer_scale = factor
-	var vp := get_viewport().get_visible_rect().size / factor
-	_centre.position = Vector2.ZERO
-	_centre.size = vp
+	var vp := TouchScale.view_size(_root)
 	var m := 12.0
 	_root.custom_minimum_size.x = clampf(vp.x - 2.0 * m, 200.0, 380.0)
 	# Everything around the scroll (header, status, margins) stays; the scroll gets the rest.
@@ -259,7 +250,7 @@ func _hover_card(control: Control, card: Array) -> void:
 
 ## The pointer in this layer's own (possibly scaled) points.
 func _pointer() -> Vector2:
-	return get_viewport().get_mouse_position() / scale.x
+	return _root.get_global_mouse_position()
 
 
 func toggle() -> void:

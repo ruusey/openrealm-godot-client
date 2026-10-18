@@ -39,6 +39,7 @@ func _ready() -> void:
 	style.set_content_margin_all(12)
 	panel.add_theme_stylebox_override("panel", style)
 	TouchSize.grow(InventoryLayout.button(panel.head, "Close", close), 14).custom_minimum_size.x = 72
+	TouchFrame.adopt(self)
 
 
 ## The layer itself polls, as every panel's does; nothing under it runs.

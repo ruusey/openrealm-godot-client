@@ -101,6 +101,7 @@ func _ready() -> void:
 	_cards = VBoxContainer.new()
 	_cards.add_theme_constant_override("separation", 10)
 	scroll.add_child(_cards)
+	TouchFrame.adopt(self)
 
 
 func _process(_delta: float) -> void:
@@ -133,7 +134,7 @@ func refresh() -> void:
 		_cards.add_child(QuestCard.new(quest, content, act))
 	var scroll := _cards.get_parent() as ScrollContainer
 	scroll.custom_minimum_size.y = minf(_cards.get_combined_minimum_size().y,
-		get_viewport().get_visible_rect().size.y * HEIGHT_SHARE - 60.0)
+		get_viewport().get_visible_rect().size.y / scale.y * HEIGHT_SHARE - 60.0)
 
 
 ## Completed tab = COMPLETE; Active tab = everything still in play (active or

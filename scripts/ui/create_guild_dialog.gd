@@ -53,6 +53,7 @@ func _ready() -> void:
 	column.add_child(buttons)
 	_create = InventoryLayout.button(buttons, "Create (10,000 Fame)", _submit)
 	InventoryLayout.button(buttons, "Cancel", func() -> void: state.guild.close_create())
+	TouchFrame.adopt(self)
 
 
 func _process(_delta: float) -> void:

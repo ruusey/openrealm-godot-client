@@ -142,7 +142,7 @@ func _on_add_chest() -> void:
 ## stays on screen instead of running off the right.
 func _fit() -> void:
 	if _columns != null:
-		_columns.vertical = get_viewport_rect().size.x < STACK_BELOW_PX
+		_columns.vertical = TouchScale.view_size(self).x < STACK_BELOW_PX
 
 
 func show_account(characters: Array) -> void:

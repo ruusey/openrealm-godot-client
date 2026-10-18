@@ -58,7 +58,7 @@ func _ready() -> void:
 
 func _fit() -> void:
 	if not get_parent() is Control:
-		size = get_viewport_rect().size
+		size = TouchScale.view_size(self)
 
 
 func _layer(blend: CanvasItemMaterial.BlendMode) -> Control:

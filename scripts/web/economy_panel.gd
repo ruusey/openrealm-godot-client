@@ -38,6 +38,7 @@ var _drawn := -1
 func _ready() -> void:
 	layer = 56
 	_build_modal()
+	TouchFrame.adopt(self)
 
 
 func _build_modal() -> void:

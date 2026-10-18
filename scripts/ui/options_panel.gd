@@ -84,6 +84,7 @@ func _ready() -> void:
 	column.add_child(buttons)
 	leave_button = InventoryLayout.button(buttons, "Leave game", leave)
 	close_button = InventoryLayout.button(buttons, "Close", close)
+	TouchFrame.adopt(self)
 
 
 func _process(_delta: float) -> void:

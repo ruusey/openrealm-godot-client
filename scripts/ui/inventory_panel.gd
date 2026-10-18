@@ -26,7 +26,7 @@ var _mp: Button
 var _tooltip: ItemTooltip
 var _drawn_version := -1
 ## Where the left column above it ends, and the least top a phone's Bag
-## row leaves it, both in the canvas's pixels.
+## row leaves it, both in the panels' points (TouchScale).
 var below: Callable = func() -> float: return float(PartyPanel.TOP)
 var floor_top := 0.0
 
@@ -54,6 +54,7 @@ func _ready() -> void:
 		_wire(slot)
 	_tooltip = ItemTooltip.of(state, content)
 	add_child(_tooltip)
+	TouchFrame.adopt(self)
 
 
 func _process(_delta: float) -> void:

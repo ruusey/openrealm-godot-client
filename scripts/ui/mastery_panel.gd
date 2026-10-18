@@ -60,6 +60,7 @@ func _ready() -> void:
 	buttons.alignment = BoxContainer.ALIGNMENT_CENTER
 	column.add_child(buttons)
 	InventoryLayout.button(buttons, "Close", close)
+	TouchFrame.adopt(self)
 
 
 func _process(_delta: float) -> void:

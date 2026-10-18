@@ -39,6 +39,7 @@ func _ready() -> void:
 	_label = Label.new()
 	_label.add_theme_font_size_override("font_size", 12)
 	_panel.add_child(_label)
+	TouchFrame.adopt(self)
 
 
 func _process(delta: float) -> void:
