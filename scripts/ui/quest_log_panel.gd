@@ -53,6 +53,10 @@ func _ready() -> void:
 	chip.tooltip_text = "Open the quest log (L)"
 	chip.pressed.connect(toggle)
 	add_child(chip)
+	# Under the map on a phone, where left of it are Menu, Bag and Chat.
+	if PhoneLayout.on:
+		chip.offset_right = -PhoneLayout.MARGIN
+		chip.offset_top = PhoneLayout.under_map()
 	var centre := CenterContainer.new()
 	centre.set_anchors_preset(Control.PRESET_FULL_RECT)
 	centre.mouse_filter = Control.MOUSE_FILTER_IGNORE

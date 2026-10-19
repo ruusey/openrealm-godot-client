@@ -71,6 +71,11 @@ func _process(_delta: float) -> void:
 	visible = shown and state != null and state.local.is_present() and not state.transition_pending and name != ""
 	if not visible:
 		return
+	if PhoneLayout.on:
+		var width := _column.get_combined_minimum_size().x
+		_column.set_anchors_preset(Control.PRESET_TOP_LEFT)
+		_column.position = PhoneLayout.banner_at(TouchScale.view_size(_column), width)
+		_column.size = Vector2(width, _column.size.y)
 	var realm: Dictionary = state.minimap.realm
 	var difficulty := float(realm.get("difficulty", 0.0))
 	var goal := int(realm.get("goal", 0))

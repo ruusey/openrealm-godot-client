@@ -123,6 +123,9 @@ func _process(_delta: float) -> void:
 			_phone_menu.close()
 		return
 	_cluster.refresh(content, state)
+	if _phone:
+		var bounds := _cluster.bounds()
+		PhoneLayout.thumbs = Rect2(bounds.position * scale.x, bounds.size * scale.x)
 	if enabled:
 		TouchAim.lock(state)
 

@@ -65,6 +65,9 @@ func toggle() -> void:
 
 
 func open() -> void:
+	# Two across on a phone held upright, where three would not fit.
+	var three := COLUMNS * (BUTTON_SIZE.x + 8.0) + 40.0
+	_grid.columns = COLUMNS if TouchScale.panel_view(_grid).x >= three else 2
 	for i in _items.size():
 		var item: Array = _items[i]
 		_grid.get_child(i).visible = item.size() < 3 or (item[2] as Callable).call()

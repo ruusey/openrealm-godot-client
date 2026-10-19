@@ -43,6 +43,21 @@ func _ready() -> void:
 		TouchScale.panel_factor = 2.0
 		PhoneLayout.on = true
 		PanelFold.short_screen = true
+	# CAPTURE_DPR: a phone exactly as Main sets one up -- the window its device
+	# pixels, the canvas at the mobile UI scale, the panels boosted by this
+	# pixel ratio over it.
+	if OS.has_environment("CAPTURE_DPR"):
+		DisplayScale.apply(get_window(), DisplayScale.MOBILE_UI, true)
+		TouchScale.panel_factor = TouchScale.panel_factor_for(
+			OS.get_environment("CAPTURE_DPR").to_float(), DisplayScale.MOBILE_UI)
+		PhoneLayout.on = true
+		PanelFold.short_screen = true
+	# CAPTURE_FACTOR: the panels' boost for a smaller window standing in for a
+	# phone, e.g. 1 at --resolution 390x844 for a phone held upright.
+	if OS.has_environment("CAPTURE_FACTOR"):
+		TouchScale.panel_factor = OS.get_environment("CAPTURE_FACTOR").to_float()
+		PhoneLayout.on = true
+		PanelFold.short_screen = true
 	var config := ClientConfig.new()
 	# A checkout laid out differently from the default names its data here.
 	if OS.has_environment("OPENREALM_DATA_ROOT"):
@@ -167,10 +182,10 @@ func capture(scenario: String, output: String, content: GameData) -> bool:
 	stage.add_child(dev)
 	# Only asked for by name: its chip would otherwise be up in every scenario
 	# with a player, and move every golden that has one.
-	if scenario == "quests":
+	if scenario == "quests" or scenario.begins_with("phone_"):
 		var log := QuestLogPanel.new()
 		log.setup(state, content, null)
-		log.shown = true
+		log.shown = scenario == "quests"
 		stage.add_child(log)
 	var masteries := MasteryPanel.new()
 	masteries.setup(state)
@@ -184,13 +199,11 @@ func capture(scenario: String, output: String, content: GameData) -> bool:
 	nearby.setup(state, content, TradeActions.new(state, null), PartyActions.new(state, null), null, null, party)
 	nearby.shown = scenario == "nearby" or phone
 	stage.add_child(nearby)
-	if phone:
-		chat.below = nearby.bottom
 	# Named after the map, so it would be up in every scenario that has a
 	# player; asked for by name instead, like the bag and the bar.
 	var banner := RealmBanner.new()
 	banner.setup(state, content)
-	banner.shown = scenario == "portals"
+	banner.shown = scenario == "portals" or phone
 	stage.add_child(banner)
 	# Up whenever there is a player, and asked for by name like the bag.
 	var hud := PlayerHud.new()

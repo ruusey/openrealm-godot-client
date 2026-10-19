@@ -27,6 +27,12 @@ static func panel_factor_for(pixel_ratio: float, default_ui: float) -> float:
 	return maxf(1.0, pixel_ratio / maxf(default_ui, 0.01))
 
 
+## The screen in points at the full panel boost, whatever a frame has
+## given up to fit: what a panel lays itself out for.
+static func panel_view(item: CanvasItem) -> Vector2:
+	return item.get_viewport().get_visible_rect().size / panel_factor
+
+
 ## The screen in an item's own canvas units: a scaled layer's points.
 static func view_size(item: CanvasItem) -> Vector2:
 	return item.get_viewport().get_visible_rect().size / item.get_canvas_transform().get_scale().x

@@ -2,11 +2,12 @@ class_name PhoneLayout
 extends RefCounted
 
 ## Where the HUD goes with touch controls, in the panels' points
-## (TouchFrame): the vitals top-left with the party, nearby and chat
-## stacked under them, the map top-right with Menu, Bag and Chat in a
-## column beside it, and the bottom left to the thumbs -- the move stick
-## and the touch layer's Attack cluster. Main turns it on with the touch
-## controls, before the layers are built.
+## (TouchFrame): the vitals top-left with the party and nearby lists under
+## them, the map top-right with Menu, Bag and Chat in a column beside it and
+## the quest stars under it, the realm's name between the two where it fits
+## (under the stars where it does not), the chat bottom-left over the move
+## stick, and the touch layer's Attack cluster bottom-right. Main turns it
+## on with the touch controls, before the layers are built.
 
 const MARGIN := 8.0
 const GAP := 6.0
@@ -16,18 +17,20 @@ const BUTTON_FONT := 13
 const VITALS_WIDTH := 200.0
 const CHAT_WIDTH := 300.0
 const CHAT_LINES := 3
+## A row under the map: the quest stars' chip.
+const CHIP_ROW := 30.0
 
 static var on := false
 ## Where the vitals end; PlayerHud keeps it up to date as it draws.
 static var vitals_bottom := MARGIN
-## The open bag and the open chat each fill the left column; the party and
-## nearby lists give way to them.
+## The open bag fills the left column; the party and nearby lists give way.
 static var bag_open := false
-static var chat_open := false
+## The touch buttons' extent in the canvas's pixels, for the chat to clear.
+static var thumbs := Rect2()
 
 
 static func column_taken() -> bool:
-	return on and (bag_open or chat_open)
+	return on and bag_open
 
 
 ## Where the left column starts, under the vitals.
@@ -39,6 +42,21 @@ static func column_top() -> float:
 ## column's edge once folded, where the panel it would sit on is gone.
 static func chip_x(panel_right: float, chip_width: float, folded: bool) -> float:
 	return MARGIN if on and folded else panel_right - chip_width - 2.0
+
+
+## Under the map, where the right column carries on.
+static func under_map() -> float:
+	return MARGIN + MAP_SIDE + GAP
+
+
+## Where the realm's name sits, `width` wide: centred between the vitals and
+## the buttons when it fits there, else right-aligned under the stars.
+static func banner_at(screen: Vector2, width: float) -> Vector2:
+	var left := MARGIN + VITALS_WIDTH + GAP
+	var right := buttons_at(screen).x - GAP
+	if width <= right - left:
+		return Vector2((left + right - width) * 0.5, MARGIN)
+	return Vector2(screen.x - MARGIN - width, under_map() + CHIP_ROW + GAP)
 
 
 ## The map's square in the top-right corner of `screen`.

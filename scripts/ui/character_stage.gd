@@ -156,7 +156,10 @@ func _on_add_chest() -> void:
 ## stays on screen instead of running off the right.
 func _fit() -> void:
 	if _columns != null:
-		_columns.vertical = TouchScale.view_size(self).x < STACK_BELOW_PX
+		var view := TouchScale.panel_view(self)
+		# A landscape phone keeps them side by side, shrunk a little to fit,
+		# rather than stacked and shrunk by half.
+		_columns.vertical = view.y > view.x if PhoneLayout.on else view.x < STACK_BELOW_PX
 
 
 func show_account(characters: Array) -> void:

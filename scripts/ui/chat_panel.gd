@@ -30,6 +30,9 @@ const SCROLLBAR_WIDTH := 10
 ## A log collapsed while scrolled up holds its place this long before it returns
 ## to the newest line, so a mouse slipping off it doesn't lose the reader's spot.
 const FOLLOW_RESUME_MS := 8000
+## A phone's log narrows beside the touch buttons down to this, then rises
+## over them instead.
+const PHONE_MIN_WIDTH := 200.0
 
 var state: RealmState
 var actions: ChatActions
@@ -53,8 +56,6 @@ var fold: PanelFold
 ## The screen another panel covers (empty for none): the log steps right of it
 ## rather than drawing over it -- the open bag reaches this corner on a phone.
 var avoid: Callable = func() -> Rect2: return Rect2()
-## With the phone layout the log hangs from the top-left column, under this.
-var below: Callable = func() -> float: return PhoneLayout.vitals_bottom
 ## The log's left edge and width when nothing covers it.
 var _home_left := float(MARGIN)
 var _width := float(WIDTH - MARGIN)
@@ -73,15 +74,11 @@ func _ready() -> void:
 		_width = PhoneLayout.CHAT_WIDTH
 	_box = VBoxContainer.new()
 	# Pinned by its bottom edge, growing upward: the log sits on the margin and
-	# the input row, when shown, lifts it by its own height. The phone's hangs
-	# down from the left column instead, clear of the move stick.
-	if PhoneLayout.on:
-		_box.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	else:
-		_box.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-		_box.grow_vertical = Control.GROW_DIRECTION_BEGIN
-		_box.offset_top = -MARGIN
-		_box.offset_bottom = -MARGIN
+	# the input row, when shown, lifts it by its own height.
+	_box.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	_box.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_box.offset_top = -MARGIN
+	_box.offset_bottom = -MARGIN
 	_box.offset_left = _home_left
 	_box.offset_right = _home_left + _width
 	_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -112,9 +109,6 @@ func _ready() -> void:
 	_input.custom_minimum_size.y = INPUT_ROW
 	_input.sent.connect(_on_sent)
 	_box.add_child(_input)
-	# Over the log on a phone, so the keyboard coming up never covers it.
-	if PhoneLayout.on:
-		_box.move_child(_input, 0)
 
 	fold = PanelFold.new(self, "Chat", "chat", state.settings if state != null else null,
 		func(folded: bool) -> void: _scroll.visible = not folded)
@@ -178,6 +172,35 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 
+## Clear of the touch buttons (`thumbs`, in the canvas's pixels): beside
+## them, narrowed, where there is room; above them where there is not -- a
+## phone held upright.
+func _lift_over(thumbs: Rect2) -> void:
+	var points := Rect2(thumbs.position / scale.x, thumbs.size / scale.x)
+	var width := PhoneLayout.CHAT_WIDTH
+	var bottom := -float(MARGIN)
+	if points.has_area():
+		var room := points.position.x - PhoneLayout.GAP - _home_left
+		if room >= PHONE_MIN_WIDTH:
+			width = minf(width, room)
+		else:
+			bottom = points.position.y - PhoneLayout.GAP - TouchScale.view_size(_box).y
+	_set_width(width)
+	if not is_equal_approx(_box.offset_bottom, bottom):
+		_box.offset_bottom = bottom
+		_box.offset_top = bottom
+
+
+func _set_width(width: float) -> void:
+	if is_equal_approx(width, _width):
+		return
+	_width = width
+	_box.offset_right = _box.offset_left + width
+	_scroll.custom_minimum_size.x = width
+	for row in _rows:
+		row.custom_minimum_size.x = width
+
+
 ## Step the log right of `covered` when its home corner, chip included, would
 ## sit under it; back home when it is clear.
 func _clear_of(covered: Rect2) -> void:
@@ -200,8 +223,7 @@ func _on_sent(text: String) -> void:
 func _process(_delta: float) -> void:
 	if PhoneLayout.on:
 		fold.chip.visible = false
-		PhoneLayout.chat_open = _input.is_open()
-		_box.offset_top = PhoneLayout.column_top() if PhoneLayout.column_taken() else below.call() + PhoneLayout.GAP
+		_lift_over(PhoneLayout.thumbs)
 	else:
 		fold.chip.visible = state != null and state.local.is_present()
 	_clear_of(avoid.call())
@@ -215,8 +237,10 @@ func _process(_delta: float) -> void:
 	var want_h := float(_lines() * ROW_HEIGHT)
 	if expanded:
 		var cap := TouchScale.view_size(_box).y * EXPANDED_SCREEN_FRACTION
+		# Never up over a phone's vitals, however high the log has risen.
 		if PhoneLayout.on:
-			cap = TouchScale.view_size(_box).y - _box.offset_top - INPUT_ROW - MARGIN
+			var under := TouchScale.view_size(_box).y + _box.offset_bottom - PhoneLayout.vitals_bottom
+			cap = minf(cap, under - INPUT_ROW - PhoneLayout.GAP * 2.0)
 		want_h = minf(EXPANDED_LINES * ROW_HEIGHT, cap)
 	if not is_equal_approx(_scroll.custom_minimum_size.y, want_h):
 		_scroll.custom_minimum_size.y = want_h

@@ -142,7 +142,6 @@ func build(state: RealmState, game_data: GameData, client: OpenRealmClient,
 	add_child(nearby)
 	inventory.below = nearby.bottom
 	chat.avoid = inventory.covered
-	chat.below = nearby.bottom
 	touch = TouchControls.new()
 	touch.setup(state, caster, game_data, inventory, options, abilities)
 	add_child(touch)

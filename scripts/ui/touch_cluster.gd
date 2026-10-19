@@ -128,13 +128,18 @@ func place(area: Vector2, panels_at: Vector2) -> void:
 			- Vector2.ONE * ABILITY_RADIUS
 	# The bottom row, left of the leftmost ability, nearest the thumb; in
 	# the corner itself when there is no Attack beside them.
-	var x := centre.x - reach - ABILITY_RADIUS - GAP - POTION_RADIUS if _attack.visible \
+	var start := centre.x - reach - ABILITY_RADIUS - GAP - POTION_RADIUS if _attack.visible \
 		else area.x - MARGIN - POTION_RADIUS
+	# A row that would run off the left edge (a phone held upright) carries on
+	# in a row above, from the same right end.
+	var at := Vector2(start, centre.y)
 	for potion in [_hp, _mp, _nexus, _companion]:
 		if potion == null or not potion.visible:
 			continue
-		potion.position = Vector2(x, centre.y) - Vector2.ONE * POTION_RADIUS
-		x -= POTION_RADIUS * 2.0 + GAP
+		if at.x - POTION_RADIUS < MARGIN and at.x < start:
+			at = Vector2(start, at.y - POTION_RADIUS * 2.0 - GAP)
+		potion.position = at - Vector2.ONE * POTION_RADIUS
+		at.x -= POTION_RADIUS * 2.0 + GAP
 	if _panels != null:
 		_panels.position = panels_at
 
@@ -183,6 +188,16 @@ func show_combat(on: bool) -> void:
 		button.visible = on
 	_companion.visible = on and CompanionPanel.ENABLED
 	place(_area, _row)
+
+
+## The round buttons' extent, in the cluster's points.
+func bounds() -> Rect2:
+	var all := Rect2()
+	for button in [_attack, _hp, _mp, _nexus, _companion] + _abilities:
+		if button != null and button.visible:
+			var rect := Rect2(button.position, button.size)
+			all = rect if not all.has_area() else all.merge(rect)
+	return all
 
 
 ## Whether a shown button holds the point.

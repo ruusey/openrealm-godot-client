@@ -48,26 +48,36 @@ func _init(service: DataService = null, content: GameData = null) -> void:
 func _ready() -> void:
 	layer = 20
 	_backdrop = LoginBackdrop.attach(self, game_data)
-	# A ScrollContainer so a phone can reach the whole panel when it is taller
-	# than a short landscape screen; the panel still centres across the width.
-	var scroll := ScrollContainer.new()
-	scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	add_child(scroll)
-	var holder := VBoxContainer.new()
-	holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	holder.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	holder.alignment = BoxContainer.ALIGNMENT_CENTER
-	scroll.add_child(holder)
 	_panel = PanelContainer.new()
 	_panel.custom_minimum_size = Vector2(PHONE_WIDTH if PhoneLayout.on else 420.0, 0)
 	_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	holder.add_child(_panel)
+	# Centred on a phone, shrunk to fit (PanelFit) rather than run off an edge.
+	# Elsewhere a ScrollContainer, so a short window can reach the whole panel;
+	# the panel still centres across the width.
+	if PhoneLayout.on:
+		var centre := CenterContainer.new()
+		centre.set_anchors_preset(Control.PRESET_FULL_RECT)
+		add_child(centre)
+		centre.add_child(_panel)
+	else:
+		var scroll := ScrollContainer.new()
+		scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
+		scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		add_child(scroll)
+		var holder := VBoxContainer.new()
+		holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		holder.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		holder.alignment = BoxContainer.ALIGNMENT_CENTER
+		scroll.add_child(holder)
+		holder.add_child(_panel)
 
 	var column := InventoryLayout.column(_panel)
 
-	var header := HBoxContainer.new()
-	header.add_theme_constant_override("separation", 12)
+	# On a phone a row that wraps: held upright, the server and the account
+	# drop under the logo.
+	var header: Container = HFlowContainer.new() if PhoneLayout.on else HBoxContainer.new()
+	for gap in ["separation", "h_separation", "v_separation"]:
+		header.add_theme_constant_override(gap, 12)
 	column.add_child(header)
 	var spacer := Control.new()
 	spacer.custom_minimum_size = Vector2(HOW_TO_BUTTON, 0)
@@ -131,7 +141,7 @@ func _ready() -> void:
 
 ## The server and the signed-in account move up into the header beside the
 ## logo, the form narrows to a column under it, centred.
-func _phone_header(header: HBoxContainer, spacer: Control) -> void:
+func _phone_header(header: Container, spacer: Control) -> void:
 	_server_select.compact()
 	_server_select.custom_minimum_size.x = PHONE_SERVER_WIDTH
 	_server_select.reparent(header)
@@ -146,8 +156,13 @@ func _phone_header(header: HBoxContainer, spacer: Control) -> void:
 
 
 func _process(_delta: float) -> void:
-	if visible:
-		PanelFit.shrink(_panel)   # a short window shrinks it rather than losing the bottom
+	if not visible:
+		return
+	if PhoneLayout.on:
+		var room := TouchScale.panel_view(_panel).x - PanelFit.MARGIN * 2.0
+		_panel.custom_minimum_size.x = minf(PHONE_WIDTH, room)
+		_form.custom_minimum_size.x = minf(PHONE_FORM_WIDTH, room - 24.0)
+	PanelFit.shrink(_panel)   # a short window shrinks it rather than losing the bottom
 
 
 func prefill(email: String, password: String) -> void:
