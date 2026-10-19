@@ -1,7 +1,7 @@
 extends GutTest
 
 ## On a phone Nexus is a hot button on the bottom row beside the potions,
-## not inside the hamburger menu.
+## and the top row is PhoneBar's.
 
 
 func _row_labels(cluster: TouchCluster) -> Array:
@@ -11,7 +11,7 @@ func _row_labels(cluster: TouchCluster) -> Array:
 func test_a_phone_puts_nexus_beside_the_potions_not_in_the_menu():
 	var cluster: TouchCluster = autofree(TouchCluster.new(true))
 	assert_not_null(cluster._nexus)
-	assert_false(_row_labels(cluster).has("Nexus"))
+	assert_null(cluster._panels, "no top row")
 	cluster.place(Vector2(800, 400), Vector2(20, 8))
 	assert_eq(cluster._nexus.position.y, cluster._mp.position.y, "on the potions' row")
 	assert_lt(cluster._nexus.position.x, cluster._mp.position.x, "left of MP")

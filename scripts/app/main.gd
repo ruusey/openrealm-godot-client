@@ -49,6 +49,14 @@ func _ready() -> void:
 	# the default is process-wide, and one Main would fold every panel after it.
 	if DisplayServer.get_name() != "headless":
 		PanelFold.short_screen = PanelFold.default_folded(float(get_window().size.y) / display.device_scale)
+	# A phone's sticks, or --touch to try them here with the mouse as a finger;
+	# decided before the screens are built, which lay out for them.
+	var touchscreen := DisplayServer.is_touchscreen_available()
+	var pixel_ratio := display.device_scale if mobile else DisplayServer.screen_get_scale()
+	var touch_on := TouchControls.wanted(config.touch, touchscreen, OS.has_feature)
+	PhoneLayout.on = touch_on
+	if touch_on:
+		TouchScale.panel_factor = TouchScale.panel_factor_for(pixel_ratio, display.default_ui())
 
 	game_data = GameData.new()
 	state = RealmState.new(game_data)
@@ -130,12 +138,7 @@ func _ready() -> void:
 	# And a key typed into the chat line is a letter, not a move or a cast.
 	for ticker in [input, portals, inventory_input, ability_input]:
 		ticker.keyboard_captured = screens.captures_keyboard
-	# A phone's sticks, or --touch to try them here with the mouse as a finger.
-	var touchscreen := DisplayServer.is_touchscreen_available()
-	screens.touch.pixel_ratio = display.device_scale if mobile else DisplayServer.screen_get_scale()
-	var touch_on := TouchControls.wanted(config.touch, touchscreen, OS.has_feature)
-	if touch_on:
-		TouchScale.panel_factor = TouchScale.panel_factor_for(screens.touch.pixel_ratio, display.default_ui())
+	screens.touch.pixel_ratio = pixel_ratio
 	screens.touch.enable(touch_on, not touchscreen)
 	# The on-screen Nexus button escapes to safety -- a phone has no portal to stand on.
 	screens.touch.set_escape(portals.to_nexus)

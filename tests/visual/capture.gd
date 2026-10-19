@@ -37,9 +37,12 @@ func _ready() -> void:
 	if OS.get_environment("CAPTURE_PHONE") == "1":
 		get_window().content_scale_factor = DisplayScale.MOBILE_UI
 		TouchScale.panel_factor = TouchScale.panel_factor_for(2.0, DisplayScale.MOBILE_UI)
-	# CAPTURE_PHONE=3 at --resolution 1688x780: an iPhone's 844x390 points (3x ratio).
+	# CAPTURE_PHONE=3 at --resolution 1688x780: an iPhone's 844x390 points (3x
+	# ratio), laid out for touch.
 	if OS.get_environment("CAPTURE_PHONE") == "3":
 		TouchScale.panel_factor = 2.0
+		PhoneLayout.on = true
+		PanelFold.short_screen = true
 	var config := ClientConfig.new()
 	# A checkout laid out differently from the default names its data here.
 	if OS.has_environment("OPENREALM_DATA_ROOT"):
@@ -176,10 +179,13 @@ func capture(scenario: String, output: String, content: GameData) -> bool:
 	var options := OptionsPanel.new()
 	options.setup(state.settings, null)
 	stage.add_child(options)
+	var phone := scenario.begins_with("phone_")
 	var nearby := NearbyPanel.new()
 	nearby.setup(state, content, TradeActions.new(state, null), PartyActions.new(state, null), null, null, party)
-	nearby.shown = scenario == "nearby"
+	nearby.shown = scenario == "nearby" or phone
 	stage.add_child(nearby)
+	if phone:
+		chat.below = nearby.bottom
 	# Named after the map, so it would be up in every scenario that has a
 	# player; asked for by name instead, like the bag and the bar.
 	var banner := RealmBanner.new()
@@ -189,13 +195,25 @@ func capture(scenario: String, output: String, content: GameData) -> bool:
 	# Up whenever there is a player, and asked for by name like the bag.
 	var hud := PlayerHud.new()
 	hud.setup(state, content)
-	hud.shown = scenario == "player_hud"
+	hud.shown = scenario == "player_hud" or phone
 	stage.add_child(hud)
 	# Up whenever there is a map, like the bar, and asked for by name like it.
 	var map := MinimapPanel.new()
 	map.setup(state, null)
-	map.shown = scenario in ["minimap", "minimap_hop"]
+	map.shown = scenario in ["minimap", "minimap_hop"] or phone
 	stage.add_child(map)
+	# The whole phone screen: the touch layer over the HUD, as Main builds it.
+	var touch: TouchControls = null
+	if phone:
+		touch = TouchControls.new()
+		touch.setup(state, null, content, bag, null, null)
+		stage.add_child(touch)
+		touch.pixel_ratio = 2.0
+		touch.enable(true)
+		bag.shown = scenario == "phone_bag"
+		var none := func() -> void: pass
+		touch.link([["Character", none], ["Skills", none], ["Quests", none], ["Leaderboard", none],
+			["Options", none], ["Companion", none]], chat.toggle_line)
 
 	# The sign-in screen, torches burning: only for its own scenario, since
 	# in the client it covers everything until a character is chosen.
@@ -221,6 +239,11 @@ func capture(scenario: String, output: String, content: GameData) -> bool:
 	if scenario == "chat_typing":
 		chat._input.open()
 		chat._input.text = "on my way, hold the portal"
+	if scenario == "phone_chat":
+		chat.toggle_line()
+		chat._input.text = "on my way, hold the portal"
+	if scenario == "phone_menu":
+		touch._phone_menu.open()
 	if scenario == "death":
 		grave.fell("Ruu")
 	# The card over the second cell, pinned where a cursor would be: the bar

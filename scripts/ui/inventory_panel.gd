@@ -54,15 +54,19 @@ func _ready() -> void:
 		_wire(slot)
 	_tooltip = ItemTooltip.of(state, content)
 	add_child(_tooltip)
+	TouchFrame.adopt(self)
 
 
 func _process(_delta: float) -> void:
 	visible = state != null and shown and state.local.is_present()
+	PhoneLayout.bag_open = visible
 	if not visible:
 		_tooltip.hide_card()
 		return
 	_root.offset_top = top()
-	PanelFit.shrink(_root, Vector2.ZERO)
+	var screen := TouchScale.view_size(_root)
+	PanelFit.shrink(_root, Vector2.ZERO, PanelFit.MARGIN,
+		Vector2(screen.x - PanelFit.MARGIN * 2.0, screen.y - top() - InventoryLayout.MARGIN))
 	if state.local.inventory.version != _drawn_version:
 		refresh()
 	if _tooltip.visible:
@@ -126,6 +130,8 @@ func _on_hover(index: int, over: bool) -> void:
 
 ## Where the bag's top sits, shown or not.
 func top() -> float:
+	if PhoneLayout.on:
+		return PhoneLayout.column_top()
 	return maxf(below.call() + InventoryLayout.MARGIN, floor_top)
 
 

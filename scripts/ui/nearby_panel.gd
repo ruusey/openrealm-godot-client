@@ -79,10 +79,11 @@ func _ready() -> void:
 	_inspect = PlayerInspectCard.new()
 	_inspect.setup(content)
 	add_child(_inspect)
+	TouchFrame.adopt(self)
 
 
 func _process(_delta: float) -> void:
-	visible = shown and state != null and content != null and state.local.is_present()
+	visible = shown and state != null and content != null and state.local.is_present() 		and not PhoneLayout.column_taken()
 	if not visible:
 		menu.close()
 		if _inspect != null:
@@ -91,7 +92,7 @@ func _process(_delta: float) -> void:
 		return
 	var top := above.top() if above != null else float(PartyPanel.TOP)
 	_root.offset_top = top + (above.height() + GAP if above != null and above.visible else 0.0)
-	fold.place(Vector2(MARGIN + WIDTH - fold.chip.size.x - 2.0, _root.offset_top + 2.0))
+	fold.place(Vector2(PhoneLayout.chip_x(MARGIN + WIDTH, fold.chip.size.x, fold.folded), _root.offset_top + 2.0))
 	var players := NearbyPlayers.list(state.entities, state.local.id, state.party.member_ids())
 	var listed := ",".join(players.map(func(p: Dictionary) -> String:
 		return "%d:%s:%d:%s" % [int(p["id"]), p.get("name", ""), int(p.get("class_id", 0)), p.get("chat_role", "")]))

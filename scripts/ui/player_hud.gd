@@ -76,15 +76,32 @@ func _ready() -> void:
 		_cells[stat] = HudWidgets.stat_cell(_grid, stat.to_upper())
 	fold = PanelFold.new(self, "Stats", "stats", state.settings if state != null else null,
 		func(folded: bool) -> void: _grid.visible = not folded)
+	if PhoneLayout.on:
+		_compact()
+	TouchFrame.adopt(self)
+
+
+## The phone's vitals: top-left, the bars alone -- the stats are on the sheet.
+func _compact() -> void:
+	_root.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_root.offset_left = PhoneLayout.MARGIN
+	_root.offset_right = PhoneLayout.MARGIN + PhoneLayout.VITALS_WIDTH
+	_root.offset_top = PhoneLayout.MARGIN
+	_grid.visible = false
+	fold.chip.visible = false
 
 
 func _process(_delta: float) -> void:
 	visible = shown and state != null and content != null and state.local.is_present()
 	if not visible:
 		return
-	_root.offset_top = below.call() + MARGIN
-	_root.offset_bottom = _root.offset_top + (_root.get_combined_minimum_size().y if fold.folded else float(HEIGHT))
-	fold.place_right(_root.offset_top + 2.0, get_viewport().get_visible_rect().size.x / scale.x - MinimapPanel.MARGIN - 2.0)
+	if PhoneLayout.on:
+		_root.offset_bottom = _root.offset_top + _root.get_combined_minimum_size().y
+		PhoneLayout.vitals_bottom = _root.offset_bottom
+	else:
+		_root.offset_top = below.call() + MARGIN
+		_root.offset_bottom = _root.offset_top + (_root.get_combined_minimum_size().y if fold.folded else float(HEIGHT))
+		fold.place_right(_root.offset_top + 2.0, TouchScale.view_size(_root).x - MinimapPanel.MARGIN - 2.0)
 	var key := "%s|%d|%d|%d|%d|%d" % [state.local.stats, state.local.health, state.local.mana,
 		state.local.inventory.experience, state.local.inventory.version, state.local.class_id]
 	if key != _drawn:

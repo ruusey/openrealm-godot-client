@@ -59,15 +59,31 @@ func _ready() -> void:
 	_root.add_child(_canvas)
 	fold = PanelFold.new(self, "Map", "minimap", state.settings if state != null else null,
 		func(folded: bool) -> void: _root.visible = not folded)
+	if PhoneLayout.on:
+		_compact()
+	TouchFrame.adopt(self)
+
+
+## The phone's map: always open, shrunk into PhoneLayout's corner.
+func _compact() -> void:
+	_root.offset_left = -SIDE - PhoneLayout.MARGIN
+	_root.offset_right = -PhoneLayout.MARGIN
+	_root.offset_top = PhoneLayout.MARGIN
+	_root.offset_bottom = PhoneLayout.MARGIN + SIDE
+	_root.pivot_offset = Vector2(SIDE, 0.0)
+	_root.scale = Vector2.ONE * PhoneLayout.MAP_SIDE / SIDE
+	_root.visible = true
+	fold.chip.visible = false
 
 
 func _process(_delta: float) -> void:
 	visible = state != null and shown and state.local.is_present() and state.minimap.image != null
 	if not visible:
 		return
-	fold.place_right(MARGIN, get_viewport().get_visible_rect().size.x / scale.x - MARGIN)
-	if fold.folded:
-		return
+	if not PhoneLayout.on:
+		fold.place_right(MARGIN, TouchScale.view_size(_root).x - MARGIN)
+		if fold.folded:
+			return
 	var map_size := Vector2i(state.minimap.width, state.minimap.height)
 	# A new map starts at the zoom that shows it best, not the one the last
 	# map was left at.

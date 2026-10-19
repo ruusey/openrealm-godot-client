@@ -5,9 +5,9 @@ extends Control
 ## to shoot at what AutoAim finds, and the three hotbar abilities in an arc
 ## over it, each a tap -- the arrangement every phone action game settles
 ## on -- with the HP and MP potions on the bottom row beside them, their
-## counts on them, and on a phone Nexus beside those, one tap from safety;
-## Bag and Menu top-left, over where the bag opens, so nothing on the right
-## is ever covered by a panel. Laid out in points; the layer scales.
+## counts on them, and on a phone Nexus beside those, one tap from safety.
+## Without a phone layout Bag and Menu sit top-left, over where the bag
+## opens; with one they are PhoneBar's. Laid out in points; the layer scales.
 
 const ATTACK_RADIUS := 52.0
 const ABILITY_RADIUS := 26.0
@@ -55,10 +55,8 @@ var _panels: BoxContainer
 ## economy_enabled gate is off. Add Fame exists on web only.
 var _add_fame_btn: Button
 var _economy_btn: Button
-## On a phone the top row collapses into a hamburger with a tap-to-close dim.
+## A phone layout: Nexus on the bottom row and no top row (PhoneBar has it).
 var _mobile: bool
-var _hamburger: Button
-var _backdrop: ColorRect
 var _drawn := ""
 var _area := Vector2.ZERO
 var _row := Vector2.ZERO
@@ -66,7 +64,7 @@ var _row := Vector2.ZERO
 
 ## Built when made, not when it enters the tree, so the buttons can be
 ## shown or hidden before then -- a scripted capture enables first.
-func _init(mobile := is_phone()) -> void:
+func _init(mobile := PhoneLayout.on) -> void:
 	_mobile = mobile
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_attack = TouchButtons.round(ATTACK_RADIUS, ATTACK_COLOUR)
@@ -97,42 +95,23 @@ func _init(mobile := is_phone()) -> void:
 	add_child(_companion)
 	_companion_sweep = CooldownSweep.new()
 	_companion.add_child(_companion_sweep)
-	# Horizontal on desktop; a vertical dropdown on a phone, where the full row
-	# won't fit across the screen.
-	_panels = VBoxContainer.new() if _mobile else HBoxContainer.new()
+	if not _mobile:
+		_build_panels()
+
+
+func _build_panels() -> void:
+	_panels = HBoxContainer.new()
 	_panels.add_theme_constant_override("separation", 8)
 	_panels.add_child(_panel_button("Bag", bag))
-	# "Menu" is the mobile hamburger's own label; this button opens the panel list
-	# (Character/Skills/Quests/…), so call it "More" to avoid two nested "Menu"s.
+	# Opens the panel list (Character/Skills/Quests/...).
 	_panels.add_child(_panel_button("More", menu))
 	_panels.add_child(_panel_button("Chat", chat))
-	if not _mobile:
-		_panels.add_child(_panel_button("Nexus", nexus))
+	_panels.add_child(_panel_button("Nexus", nexus))
 	# Add Fame pays via Phantom in-page (web only); Economy shows on all builds.
 	if OS.has_feature("web"):
 		_add_fame_btn = _panel_button("Add Fame", add_fame); _panels.add_child(_add_fame_btn)
 	_economy_btn = _panel_button("Economy", economy); _panels.add_child(_economy_btn)
 	add_child(_panels)
-	# On a phone the row hides behind a hamburger, with a tap-anywhere dim behind
-	# the open menu that darkens the game and closes on a tap.
-	if _mobile:
-		_backdrop = ColorRect.new()
-		_backdrop.color = Color(0, 0, 0, 0.6)
-		_backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
-		_backdrop.visible = false
-		_backdrop.gui_input.connect(_on_backdrop_input)
-		add_child(_backdrop)
-		move_child(_backdrop, 0)   # behind the buttons, over the game
-		_panels.visible = false
-		# Plain ASCII, not a ☰ glyph — the web-export font has no hamburger glyph,
-		# so it rendered as a tofu box (missing-glyph codepoint) on mobile.
-		_hamburger = TouchButtons.flat("Menu", BUTTON_SIZE, _toggle_menu)
-		add_child(_hamburger)
-
-
-static func is_phone() -> bool:
-	return OS.has_feature("web_android") or OS.has_feature("web_ios") \
-		or OS.has_feature("android") or OS.has_feature("ios")
 
 
 ## Attack and the abilities in the bottom-right corner of `area`, Bag and
@@ -156,12 +135,7 @@ func place(area: Vector2, panels_at: Vector2) -> void:
 			continue
 		potion.position = Vector2(x, centre.y) - Vector2.ONE * POTION_RADIUS
 		x -= POTION_RADIUS * 2.0 + GAP
-	if _mobile:
-		_hamburger.position = panels_at
-		_panels.position = panels_at + Vector2(0.0, BUTTON_SIZE.y + GAP)
-		_backdrop.position = Vector2.ZERO
-		_backdrop.size = area
-	else:
+	if _panels != null:
 		_panels.position = panels_at
 
 
@@ -216,41 +190,11 @@ func holds(point: Vector2) -> bool:
 	for button in [_attack, _hp, _mp, _nexus, _companion, _panels] + _abilities:
 		if button != null and button.is_visible_in_tree() and button.get_global_rect().has_point(point):
 			return true
-	if _hamburger != null and _hamburger.is_visible_in_tree() and _hamburger.get_global_rect().has_point(point):
-		return true
-	# While the menu is open the dim covers the screen: a tap anywhere is the
-	# menu's (to close it), never a shot at the world.
-	if _backdrop != null and _backdrop.visible and _backdrop.get_global_rect().has_point(point):
-		return true
 	return false
 
 
 func _panel_button(label: String, sig: Signal) -> Button:
-	return TouchButtons.flat(label, BUTTON_SIZE, _on_panel_pressed.bind(sig))
-
-
-func _on_panel_pressed(sig: Signal) -> void:
-	sig.emit()
-	if _mobile:
-		_collapse_menu()
-
-
-func _toggle_menu() -> void:
-	var show_menu := not _panels.visible
-	_panels.visible = show_menu
-	_backdrop.visible = show_menu
-
-
-func _collapse_menu() -> void:
-	_panels.visible = false
-	if _backdrop != null:
-		_backdrop.visible = false
-
-
-func _on_backdrop_input(event: InputEvent) -> void:
-	if (event is InputEventMouseButton and event.pressed) \
-			or (event is InputEventScreenTouch and event.pressed):
-		_collapse_menu()
+	return TouchButtons.flat(label, BUTTON_SIZE, func() -> void: sig.emit())
 
 
 ## Ally (none owned yet: opens the panel), Recall, the swap cooldown, or Summon.

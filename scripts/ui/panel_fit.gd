@@ -15,11 +15,13 @@ extends RefCounted
 const MARGIN := 12.0
 
 
-## Called from the panel's own _process while it shows.
-static func shrink(panel: Control, pivot := Vector2(0.5, 0.5), margin := MARGIN) -> void:
+## Called from the panel's own _process while it shows. `room` is the
+## screen less the margins unless the panel has less to fill.
+static func shrink(panel: Control, pivot := Vector2(0.5, 0.5), margin := MARGIN, room := Vector2.ZERO) -> void:
 	if panel.size.x <= 0.0 or panel.size.y <= 0.0:
 		return
-	var room := TouchScale.view_size(panel) - Vector2.ONE * margin * 2.0
+	if room == Vector2.ZERO:
+		room = TouchScale.view_size(panel) - Vector2.ONE * margin * 2.0
 	panel.pivot_offset = panel.size * pivot
 	panel.scale = Vector2.ONE * factor(panel.size, room)
 	# A centring parent outgrown by the panel spreads both ways, or it grows down

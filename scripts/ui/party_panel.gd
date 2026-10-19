@@ -78,17 +78,18 @@ func _ready() -> void:
 	_inspect = PlayerInspectCard.new()
 	_inspect.setup(content)
 	add_child(_inspect)
+	TouchFrame.adopt(self)
 
 
 func _process(_delta: float) -> void:
-	visible = shown and state != null and content != null and state.local.is_present() and state.party.in_party()
+	visible = shown and state != null and content != null and state.local.is_present() and state.party.in_party() 		and not PhoneLayout.column_taken()
 	if not visible:
 		if _inspect != null:
 			_inspect.hide_card()
 		_shape = ""
 		return
 	_root.offset_top = top()
-	fold.place(Vector2(MARGIN + WIDTH - fold.chip.size.x - 2.0, top() + 2.0))
+	fold.place(Vector2(PhoneLayout.chip_x(MARGIN + WIDTH, fold.chip.size.x, fold.folded), top() + 2.0))
 	# The synthetic AI-companion party (partyId == your own id) can't be "left" —
 	# hide the button there so it doesn't read as broken.
 	_leave.visible = state.party.party_id != state.local.id
@@ -113,6 +114,8 @@ var buttons_bottom: Callable = func() -> float: return 0.0
 
 ## Where the left column starts: under the buttons, or under the diagnostics.
 func top() -> float:
+	if PhoneLayout.on:
+		return PhoneLayout.column_top()
 	var under := hud.bottom() if hud != null else 0.0
 	var buttons: float = buttons_bottom.call()
 	return maxf(under + MARGIN if under > 0.0 else float(TOP), buttons + MARGIN if buttons > 0.0 else 0.0)

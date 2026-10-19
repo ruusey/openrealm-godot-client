@@ -33,6 +33,10 @@ var pixel_ratio := 1.0:
 var _move := TouchButtons.stick(STICK_SIZE, TIP_SIZE)
 var _cluster := TouchCluster.new()
 var _menu := TouchMenu.new()
+## With the phone layout Menu, Bag and Chat sit by the map and Menu opens a grid.
+var _phone := PhoneLayout.on
+var _bar: PhoneBar
+var _phone_menu: PhoneMenu
 var _open_chat := Callable()   # the Chat button's; wired by `link`
 var _escape := Callable()      # the Nexus button's; wired by `set_escape`
 var _add_fame := Callable()    # the Add Fame button's; wired by `set_add_fame`
@@ -74,6 +78,14 @@ func _ready() -> void:
 	_cluster.companion.connect(func() -> void: if _companion.is_valid(): _companion.call())
 	add_child(_cluster)
 	add_child(_menu)
+	if _phone:
+		_bar = PhoneBar.new()
+		_phone_menu = PhoneMenu.new()
+		_bar.menu.connect(_phone_menu.toggle)
+		_bar.bag.connect(func() -> void: inventory.toggle())
+		_bar.chat.connect(func() -> void: if _open_chat.is_valid(): _open_chat.call())
+		add_child(_bar)
+		add_child(_phone_menu)
 	# Deferred: DisplayScale answers the same resize, and the canvas's own
 	# scale has to be settled before the layer's is worked out against it.
 	get_viewport().size_changed.connect(_layout.call_deferred)
@@ -103,8 +115,12 @@ func enable(on: bool, emulate_with_mouse := false) -> void:
 ## touch controls -- on a desktop the cursor's (PlayerInput).
 func _process(_delta: float) -> void:
 	visible = shown and state != null and state.local.is_present()
+	if _bar != null:
+		_bar.visible = visible
 	if not visible:
 		_menu.visible = false
+		if _phone_menu != null:
+			_phone_menu.close()
 		return
 	_cluster.refresh(content, state)
 	if enabled:
@@ -122,12 +138,12 @@ func _layout() -> void:
 	_cluster.place(area, row)
 	_menu.place(row + Vector2(0.0, TouchCluster.BUTTON_SIZE.y + 8.0), scale)
 	# The bag opens under Bag and Menu, on the left, in the canvas's pixels.
-	if enabled and inventory != null:
+	if enabled and inventory != null and not _phone:
 		inventory.floor_top = (row.y + TouchCluster.BUTTON_SIZE.y + 8.0) * scale.x
 
 
-## Where the row of Bag, Menu and Chat ends, in the canvas's pixels:
-## the left column of panels starts under it.
+## Where the row of Bag, Menu and Chat ends, in the panels' points: the
+## left column of panels starts under it.
 func row_bottom() -> float:
 	return (PANELS_TOP + TouchCluster.BUTTON_SIZE.y) * scale.x
 
@@ -135,13 +151,22 @@ func row_bottom() -> float:
 ## A click on a button is not a shot at the world.
 func captures_mouse() -> bool:
 	return visible and (_cluster.holds(_cluster.get_global_mouse_position())
-		or _menu.holds(_menu._list.get_global_mouse_position()))
+		or _menu.holds(_menu._list.get_global_mouse_position())
+		or _bar != null and _bar.captures_mouse()
+		or _phone_menu != null and _phone_menu.captures_mouse())
 
 
 ## The panels Menu lists, as [label, Callable], and what the Chat button opens.
 func link(panels: Array, open_chat: Callable) -> void:
 	_menu.set_items(panels)
 	_open_chat = open_chat
+	if _phone_menu != null:
+		var economy_on := func() -> bool: return state != null and state.progress.economy_enabled
+		_phone_menu.set_items(panels + [
+			["Economy", func() -> void: if _economy.is_valid(): _economy.call(),
+				func() -> bool: return _economy.is_valid() and economy_on.call()],
+			["Add Fame", func() -> void: if _add_fame.is_valid(): _add_fame.call(),
+				func() -> bool: return _add_fame.is_valid() and economy_on.call()]])
 
 
 ## What the Nexus (escape to safety) button runs -- PortalInput.to_nexus.

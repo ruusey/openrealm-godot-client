@@ -53,6 +53,11 @@ var fold: PanelFold
 ## The screen another panel covers (empty for none): the log steps right of it
 ## rather than drawing over it -- the open bag reaches this corner on a phone.
 var avoid: Callable = func() -> Rect2: return Rect2()
+## With the phone layout the log hangs from the top-left column, under this.
+var below: Callable = func() -> float: return PhoneLayout.vitals_bottom
+## The log's left edge and width when nothing covers it.
+var _home_left := float(MARGIN)
+var _width := float(WIDTH - MARGIN)
 
 
 func setup(realm_state: RealmState, chat_actions: ChatActions = null) -> void:
@@ -63,15 +68,22 @@ func setup(realm_state: RealmState, chat_actions: ChatActions = null) -> void:
 func _ready() -> void:
 	# Over the world and the debug overlay, under the transition cover.
 	layer = 12
+	if PhoneLayout.on:
+		_home_left = PhoneLayout.MARGIN
+		_width = PhoneLayout.CHAT_WIDTH
 	_box = VBoxContainer.new()
 	# Pinned by its bottom edge, growing upward: the log sits on the margin and
-	# the input row, when shown, lifts it by its own height.
-	_box.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	_box.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	_box.offset_left = MARGIN
-	_box.offset_right = WIDTH
-	_box.offset_top = -MARGIN
-	_box.offset_bottom = -MARGIN
+	# the input row, when shown, lifts it by its own height. The phone's hangs
+	# down from the left column instead, clear of the move stick.
+	if PhoneLayout.on:
+		_box.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	else:
+		_box.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+		_box.grow_vertical = Control.GROW_DIRECTION_BEGIN
+		_box.offset_top = -MARGIN
+		_box.offset_bottom = -MARGIN
+	_box.offset_left = _home_left
+	_box.offset_right = _home_left + _width
 	_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_box)
 
@@ -82,7 +94,7 @@ func _ready() -> void:
 	_scroll = ScrollContainer.new()
 	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	_scroll.custom_minimum_size = Vector2(WIDTH - MARGIN, COMPACT_LINES * ROW_HEIGHT)
+	_scroll.custom_minimum_size = Vector2(_width, _lines() * ROW_HEIGHT)
 	_scroll.mouse_filter = Control.MOUSE_FILTER_PASS
 	_scroll.mouse_entered.connect(func() -> void: _hovering = true)
 	_scroll.mouse_exited.connect(func() -> void: _hovering = false)
@@ -100,17 +112,30 @@ func _ready() -> void:
 	_input.custom_minimum_size.y = INPUT_ROW
 	_input.sent.connect(_on_sent)
 	_box.add_child(_input)
+	# Over the log on a phone, so the keyboard coming up never covers it.
+	if PhoneLayout.on:
+		_box.move_child(_input, 0)
 
 	fold = PanelFold.new(self, "Chat", "chat", state.settings if state != null else null,
 		func(folded: bool) -> void: _scroll.visible = not folded)
 	# Never hidden as a layer (the sign-in screen just covers it), so the chip
 	# hides itself until there is a player to have a chat.
 	fold.chip.visible = false
+	_scroll.visible = not _folded()
+	TouchFrame.adopt(self)
 
 
 ## The chat line, opened as Enter opens it: the phone's Chat button.
 func open_line() -> void:
 	if not _input.is_open():
+		_input.open()
+
+
+## The Chat button: opens the line, or shuts an open one.
+func toggle_line() -> void:
+	if _input.is_open():
+		_input.close()
+	else:
 		_input.open()
 
 
@@ -157,14 +182,14 @@ func _unhandled_input(event: InputEvent) -> void:
 ## sit under it; back home when it is clear.
 func _clear_of(covered: Rect2) -> void:
 	var box := _box.get_global_rect()
-	var home := Rect2(MARGIN, box.position.y - PanelFold.CHIP_HEIGHT - 2.0,
-		WIDTH - MARGIN, box.size.y + PanelFold.CHIP_HEIGHT + 2.0)
-	var left := float(MARGIN)
+	var home := Rect2(_home_left, box.position.y - PanelFold.CHIP_HEIGHT - 2.0,
+		_width, box.size.y + PanelFold.CHIP_HEIGHT + 2.0)
+	var left := _home_left
 	if covered.has_area() and covered.intersects(home):
 		left = covered.end.x + MARGIN
 	if not is_equal_approx(_box.offset_left, left):
 		_box.offset_left = left
-		_box.offset_right = left + WIDTH - MARGIN
+		_box.offset_right = left + _width
 
 
 func _on_sent(text: String) -> void:
@@ -173,7 +198,12 @@ func _on_sent(text: String) -> void:
 
 
 func _process(_delta: float) -> void:
-	fold.chip.visible = state != null and state.local.is_present()
+	if PhoneLayout.on:
+		fold.chip.visible = false
+		PhoneLayout.chat_open = _input.is_open()
+		_box.offset_top = PhoneLayout.column_top() if PhoneLayout.column_taken() else below.call() + PhoneLayout.GAP
+	else:
+		fold.chip.visible = state != null and state.local.is_present()
 	_clear_of(avoid.call())
 	fold.place(Vector2(_box.offset_left, _box.get_global_rect().position.y - PanelFold.CHIP_HEIGHT - 2.0))
 	if state == null:
@@ -182,14 +212,20 @@ func _process(_delta: float) -> void:
 
 	var expanded := _is_expanded()
 	# Height: compact tail, or expanded viewport capped to a slice of the screen.
-	var want_h := float(COMPACT_LINES * ROW_HEIGHT)
+	var want_h := float(_lines() * ROW_HEIGHT)
 	if expanded:
-		var cap := get_viewport().get_visible_rect().size.y / scale.y * EXPANDED_SCREEN_FRACTION
+		var cap := TouchScale.view_size(_box).y * EXPANDED_SCREEN_FRACTION
+		if PhoneLayout.on:
+			cap = TouchScale.view_size(_box).y - _box.offset_top - INPUT_ROW - MARGIN
 		want_h = minf(EXPANDED_LINES * ROW_HEIGHT, cap)
 	if not is_equal_approx(_scroll.custom_minimum_size.y, want_h):
 		_scroll.custom_minimum_size.y = want_h
-	# Capture scroll only when expanded; otherwise let clicks fall through to the world.
-	_scroll.mouse_filter = Control.MOUSE_FILTER_STOP if expanded else Control.MOUSE_FILTER_PASS
+	# Capture scroll only when expanded; otherwise let clicks fall through to the
+	# world -- and on a phone, past the tail to the move stick under it.
+	var resting := Control.MOUSE_FILTER_IGNORE if PhoneLayout.on else Control.MOUSE_FILTER_PASS
+	_scroll.mouse_filter = Control.MOUSE_FILTER_STOP if expanded else resting
+	if PhoneLayout.on:
+		_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO if expanded 			else ScrollContainer.SCROLL_MODE_SHOW_NEVER
 
 	# Follow the newest line unless the user has scrolled up. A log collapsed while
 	# scrolled up keeps its place for FOLLOW_RESUME_MS, then shows the newest again.
@@ -215,6 +251,15 @@ func _process(_delta: float) -> void:
 		_stick_bottom()
 
 
+## The phone's log has no chip, so it is never folded.
+func _folded() -> bool:
+	return fold.folded and not PhoneLayout.on
+
+
+func _lines() -> int:
+	return PhoneLayout.CHAT_LINES if PhoneLayout.on else COMPACT_LINES
+
+
 ## Nothing to show without a log. Blanking rather than returning keeps the guard
 ## testable (an exception leaves the rows as-is and GUT scores that as passing).
 func blank() -> void:
@@ -231,13 +276,13 @@ func refresh() -> void:
 	var lines: Array = state.chat.lines
 	while _rows.size() < lines.size():
 		# Wrapped rather than run off the edge: a long line is the normal case.
-		var row := ChatRow.new(WIDTH - MARGIN)
+		var row := ChatRow.new(_width)
 		_list.add_child(row)
 		_rows.append(row)
 		_row_lines.append(null)
 	_recycle_dropped(lines)
 	for i in _rows.size():
-		var line: Variant = lines[i] if i < lines.size() and not fold.folded else null
+		var line: Variant = lines[i] if i < lines.size() and not _folded() else null
 		if is_same(line, _row_lines[i]):
 			continue
 		_row_lines[i] = line
