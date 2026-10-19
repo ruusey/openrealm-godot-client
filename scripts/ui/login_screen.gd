@@ -11,6 +11,12 @@ extends CanvasLayer
 signal character_chosen(email: String, password: String, character_uuid: String)
 
 const HOW_TO_BUTTON := int(TouchSize.ROW)
+## The phone's card: as wide as a landscape phone, the logo, the server and
+## the account in one header row so the form or the characters get the rest.
+const PHONE_WIDTH := 800.0
+const PHONE_LOGO := Vector2(132, 44)
+const PHONE_FORM_WIDTH := 380.0
+const PHONE_SERVER_WIDTH := 210.0
 
 var data_service: DataService
 var game_data: GameData
@@ -54,17 +60,19 @@ func _ready() -> void:
 	holder.alignment = BoxContainer.ALIGNMENT_CENTER
 	scroll.add_child(holder)
 	_panel = PanelContainer.new()
-	_panel.custom_minimum_size = Vector2(420, 0)
+	_panel.custom_minimum_size = Vector2(PHONE_WIDTH if PhoneLayout.on else 420.0, 0)
 	_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	holder.add_child(_panel)
 
 	var column := InventoryLayout.column(_panel)
 
 	var header := HBoxContainer.new()
+	header.add_theme_constant_override("separation", 12)
 	column.add_child(header)
 	var spacer := Control.new()
 	spacer.custom_minimum_size = Vector2(HOW_TO_BUTTON, 0)
-	header.add_child(spacer)
+	if not PhoneLayout.on:
+		header.add_child(spacer)
 	var title := TextureRect.new()
 	var logo := HudWidgets.logo_texture()
 	if logo != null:
@@ -75,6 +83,9 @@ func _ready() -> void:
 	title.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title)
+	if PhoneLayout.on:
+		title.custom_minimum_size = PHONE_LOGO
+		title.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	_how_to_button = HowToPanel.badge(header, HOW_TO_BUTTON, func() -> void: _how_to.open())
 
 	# Server picker above the sign-in fields; applies the choice to the config
@@ -92,6 +103,9 @@ func _ready() -> void:
 		forget_characters("Signed out."))
 	column.add_child(_account)
 
+	if PhoneLayout.on:
+		_phone_header(header, spacer)
+
 	_stage = CharacterStage.new(data_service, game_data)
 	_stage.status_changed.connect(set_status)
 	_stage.chosen.connect(func(uuid: String) -> void:
@@ -100,7 +114,7 @@ func _ready() -> void:
 
 	_status = Label.new()
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_status.custom_minimum_size = Vector2(0, 40)
+	_status.custom_minimum_size = Vector2(0, 24.0 if PhoneLayout.on else 40.0)
 	column.add_child(_status)
 
 	_how_to = HowToPanel.new()
@@ -110,6 +124,25 @@ func _ready() -> void:
 	# Every field and button a thumb's height: a phone signs in here too.
 	for part in [_form, _account, _how_to, _terms]:
 		TouchSize.grow_all(part)
+	if PhoneLayout.on:
+		TouchSize.grow_all(_server_select)
+	TouchFrame.adopt(self)
+
+
+## The server and the signed-in account move up into the header beside the
+## logo, the form narrows to a column under it, centred.
+func _phone_header(header: HBoxContainer, spacer: Control) -> void:
+	_server_select.compact()
+	_server_select.custom_minimum_size.x = PHONE_SERVER_WIDTH
+	_server_select.reparent(header)
+	header.move_child(_server_select, 1)
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(spacer)
+	header.move_child(spacer, 2)
+	_account.reparent(header)
+	header.move_child(_account, 3)
+	_form.custom_minimum_size.x = PHONE_FORM_WIDTH
+	_form.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 
 
 func _process(_delta: float) -> void:

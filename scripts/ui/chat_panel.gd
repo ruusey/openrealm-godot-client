@@ -225,7 +225,8 @@ func _process(_delta: float) -> void:
 	var resting := Control.MOUSE_FILTER_IGNORE if PhoneLayout.on else Control.MOUSE_FILTER_PASS
 	_scroll.mouse_filter = Control.MOUSE_FILTER_STOP if expanded else resting
 	if PhoneLayout.on:
-		_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO if expanded 			else ScrollContainer.SCROLL_MODE_SHOW_NEVER
+		_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO if expanded \
+			else ScrollContainer.SCROLL_MODE_SHOW_NEVER
 
 	# Follow the newest line unless the user has scrolled up. A log collapsed while
 	# scrolled up keeps its place for FOLLOW_RESUME_MS, then shows the newest again.

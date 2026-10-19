@@ -52,7 +52,7 @@ func _ready() -> void:
 	_columns.add_theme_constant_override("separation", 16)
 	add_child(_columns)
 	_characters = VBoxContainer.new()
-	_characters.custom_minimum_size.x = 340
+	_characters.custom_minimum_size.x = 300 if PhoneLayout.on else 340
 	_characters.add_theme_constant_override("separation", 8)
 	_columns.add_child(_characters)
 	picker = CharacterPicker.new()
@@ -70,7 +70,14 @@ func _ready() -> void:
 	play_button.text = "Enter realm"
 	play_button.visible = false
 	play_button.pressed.connect(play)
-	_characters.add_child(TouchSize.grow(play_button, 20))
+	# Enter realm and Delete share a row on a phone, Delete's question taking it
+	# over while it is asked.
+	var actions: BoxContainer = HBoxContainer.new() if PhoneLayout.on else _characters
+	if PhoneLayout.on:
+		actions.add_theme_constant_override("separation", 8)
+		_characters.add_child(actions)
+		play_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	actions.add_child(TouchSize.grow(play_button, 20))
 
 	deleter = CharacterDeleter.new()
 	deleter.data_service = data_service
@@ -78,8 +85,12 @@ func _ready() -> void:
 	deleter.deleted.connect(_on_deleted)
 	deleter.failed.connect(func(reason: String) -> void:
 		status_changed.emit("Could not delete the character: %s" % reason, true))
-	_characters.add_child(deleter)
+	actions.add_child(deleter)
 	deleter.delete_button.pressed.connect(ask_delete)
+	if PhoneLayout.on:
+		deleter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		deleter.question.visibility_changed.connect(func() -> void:
+			play_button.visible = not deleter.is_asking() and picker.alive_count() > 0)
 	# A question asked about one character is put away when the pick moves.
 	picker.tabs.tab_changed.connect(func(_page: int) -> void: _offer_delete())
 	picker.list.item_selected.connect(func(_index: int) -> void: _offer_delete())
@@ -94,10 +105,11 @@ func _ready() -> void:
 	_columns.add_child(creator)
 
 	# Account-wide vault chest control (shown whenever signed in, even with no
-	# characters): a count readout and an add button, capped server-side.
+	# characters): a count readout and an add button, capped server-side. Under
+	# the characters on a phone, where a row of its own would run off the bottom.
 	var vault_row := HBoxContainer.new()
 	vault_row.add_theme_constant_override("separation", 12)
-	add_child(vault_row)
+	(_characters if PhoneLayout.on else self).add_child(vault_row)
 	_vault_label = Label.new()
 	_vault_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vault_row.add_child(_vault_label)
@@ -109,6 +121,8 @@ func _ready() -> void:
 	vault_row.add_child(_add_chest_button)
 	_chest_confirm = ConfirmPopup.new()
 	add_child(_chest_confirm)
+	if PhoneLayout.on:
+		TouchSize.tighten(self)
 
 	get_viewport().size_changed.connect(_fit)
 	_fit.call_deferred()
@@ -153,10 +167,12 @@ func show_account(characters: Array) -> void:
 	picker.show_characters(characters)
 	creator.game_data = game_data
 	creator.fill()
+	if PhoneLayout.on:
+		TouchSize.tighten(creator)
 	creator.visible = true
 	# Nothing to play, but a graveyard is still worth a look.
 	picker.visible = picker.alive_count() > 0 or picker.dead_count() > 0
-	_characters.visible = picker.visible
+	_characters.visible = picker.visible or PhoneLayout.on
 	play_button.visible = picker.alive_count() > 0
 	deleter.game_data = game_data
 	_offer_delete()

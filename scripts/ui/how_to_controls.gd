@@ -15,8 +15,11 @@ const KEY_BACK := "#2a2430"
 const REBIND := "Keys can be rebound under [b]Esc → Options → Controls[/b]."
 
 
-## [what, keys] in the order the table lists them.
+## [what, keys] in the order the table lists them: the touch buttons with
+## the phone layout.
 static func rows() -> Array:
+	if PhoneLayout.on:
+		return touch_rows()
 	return [
 		["Move", keys(["move_up", "move_left", "move_down", "move_right"])],
 		["Shoot (aim with cursor)", "Hold " + kbd("Left Mouse")],
@@ -39,11 +42,25 @@ static func rows() -> Array:
 	]
 
 
+static func touch_rows() -> Array:
+	return [
+		["Move", "Drag on the left of the screen"],
+		["Shoot", "Hold " + kbd("Attack") + " -- it aims at the nearest enemy"],
+		["Cast ability 1 / 2 / 3", "Tap the round buttons over " + kbd("Attack")],
+		["Drink HP / MP potion", kbd("HP") + "  /  " + kbd("MP")],
+		["Pick up loot / use a portal", "Tap the button that comes up"],
+		["Return to the nexus", kbd("Nexus")],
+		["Summon / recall companion", kbd("Summon") + "  /  " + kbd("Recall")],
+		["Bag, chat", kbd("Bag") + "  /  " + kbd("Chat") + " beside the map"],
+		["Character sheet, skills, quests, options", kbd("Menu") + " beside the map"],
+	]
+
+
 static func table() -> String:
 	var out := "[table=2]"
 	for row in rows():
 		out += "[cell padding=0,2,24,2]%s[/cell][cell padding=0,2,0,2]%s[/cell]" % row
-	return out + "[/table]\n" + REBIND
+	return out + "[/table]" + ("" if PhoneLayout.on else "\n" + REBIND)
 
 
 ## The keys the guide's prose names, for String.format.

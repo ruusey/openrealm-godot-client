@@ -12,10 +12,14 @@ extends Control
 
 const WIDTH := 640
 const BODY_HEIGHT := 520
+## The title row and the panel's padding around the body.
+const CHROME_PX := 96.0
+const MIN_BODY := 110.0
 
 var body: RichTextLabel
 var close_button: Button
 var _dim: ColorRect
+var _panel: PanelContainer
 
 
 func _ready() -> void:
@@ -32,11 +36,11 @@ func _ready() -> void:
 	centre.set_anchors_preset(Control.PRESET_FULL_RECT)
 	centre.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(centre)
-	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(WIDTH, 0)
-	panel.add_theme_stylebox_override("panel", _box(Color(0.12, 0.10, 0.14), 4))
-	centre.add_child(panel)
-	var column := InventoryLayout.column(panel)
+	_panel = PanelContainer.new()
+	_panel.custom_minimum_size = Vector2(WIDTH, 0)
+	_panel.add_theme_stylebox_override("panel", _box(Color(0.12, 0.10, 0.14), 4))
+	centre.add_child(_panel)
+	var column := InventoryLayout.column(_panel)
 
 	var header := HBoxContainer.new()
 	column.add_child(header)
@@ -63,12 +67,22 @@ func _ready() -> void:
 func open() -> void:
 	body.text = HowToGuide.bbcode()
 	body.scroll_to_line(0)
+	_fit()
 	visible = true
 	body.grab_focus.call_deferred()
 
 
 func close() -> void:
 	visible = false
+
+
+## The box and its scrolling body sized to the screen: a short landscape
+## phone keeps the close button on it.
+func _fit() -> void:
+	var view := TouchScale.view_size(self)
+	var w := minf(float(WIDTH), view.x - 32.0)
+	_panel.custom_minimum_size = Vector2(w, 0)
+	body.custom_minimum_size = Vector2(w - 24.0, clampf(view.y - CHROME_PX, MIN_BODY, float(BODY_HEIGHT)))
 
 
 func toggle() -> void:

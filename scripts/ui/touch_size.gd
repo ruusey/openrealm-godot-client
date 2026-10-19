@@ -9,6 +9,8 @@ extends RefCounted
 
 const ROW := 48.0
 const FONT := 18
+## A landscape phone's 390 rows fit the character select only a little tighter.
+const PHONE_ROW := 40.0
 
 
 static func grow(control: Control, font := FONT) -> Control:
@@ -16,6 +18,14 @@ static func grow(control: Control, font := FONT) -> Control:
 	control.custom_minimum_size = control.custom_minimum_size.max(Vector2(ROW, ROW))
 	control.add_theme_font_size_override("font_size", font)
 	return control
+
+
+## Every button and tab bar under `root` brought down to `row`: a phone's
+## character select, which fits its screen only that much shorter.
+static func tighten(root: Node, row := PHONE_ROW) -> void:
+	for node in root.find_children("*", "", true, false):
+		if node is Button or node is TabBar:
+			node.custom_minimum_size.y = minf(node.custom_minimum_size.y, row)
 
 
 ## Every Button and LineEdit under `root` grown, as the sign-in's controls

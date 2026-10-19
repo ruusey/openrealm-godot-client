@@ -146,7 +146,8 @@ func test_the_login_screen_puts_the_hall_behind_everything():
 	var screen := LoginScreen.new()
 	screen.game_data = data
 	add_child_autofree(screen)
-	assert_eq(screen.get_child(0), screen._backdrop)
+	assert_eq(screen._backdrop.get_index(), 0, "first under the layer's TouchFrame")
+	assert_eq(screen._backdrop.get_parent().get_index(), 0)
 	assert_same(screen._backdrop.game_data, data)
 
 

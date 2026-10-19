@@ -17,8 +17,12 @@ const MUTED := Color(0.53, 0.47, 0.41)
 
 var data_service: DataService
 
+## Beyond the screen's height the columns scroll, chrome kept clear.
+const CHROME_PX := 90.0
+
 var title: Label
 var columns: HBoxContainer
+var _scroll: ScrollContainer
 var message: Label
 var close_button: Button
 
@@ -54,9 +58,12 @@ func _ready() -> void:
 	close_button.pressed.connect(close)
 	header.add_child(close_button)
 	message = _label(column, "", MUTED)
+	_scroll = ScrollContainer.new()
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	column.add_child(_scroll)
 	columns = HBoxContainer.new()
 	columns.add_theme_constant_override("separation", 28)
-	column.add_child(columns)
+	_scroll.add_child(columns)
 	TouchFrame.adopt(self)
 
 
@@ -92,6 +99,7 @@ func show_message(text: String) -> void:
 	message.text = text
 	message.visible = true
 	columns.visible = false
+	_scroll.custom_minimum_size = Vector2.ZERO
 
 
 func show_report(metrics: Dictionary) -> void:
@@ -109,6 +117,15 @@ func show_report(metrics: Dictionary) -> void:
 		_label(right, LifetimeStats.NONE_YET, MUTED)
 	message.visible = false
 	columns.visible = true
+	_fit()
+
+
+## As tall as the report, up to the screen less the title and padding.
+func _fit() -> void:
+	var content := columns.get_combined_minimum_size()
+	var room := TouchScale.view_size(columns).y - CHROME_PX
+	var bar := 12.0 if content.y > room else 0.0
+	_scroll.custom_minimum_size = Vector2(content.x + bar, minf(content.y, room))
 
 
 func _column() -> VBoxContainer:

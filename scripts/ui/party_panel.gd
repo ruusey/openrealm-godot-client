@@ -82,7 +82,8 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
-	visible = shown and state != null and content != null and state.local.is_present() and state.party.in_party() 		and not PhoneLayout.column_taken()
+	visible = shown and state != null and content != null and state.local.is_present() and state.party.in_party() \
+		and not PhoneLayout.column_taken()
 	if not visible:
 		if _inspect != null:
 			_inspect.hide_card()

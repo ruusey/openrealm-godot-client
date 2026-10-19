@@ -219,8 +219,14 @@ func capture(scenario: String, output: String, content: GameData) -> bool:
 	# in the client it covers everything until a character is chosen.
 	var login: LoginScreen = null
 	if scenario.begins_with("login") or scenario in ["terms", "how_to", "leaderboard"]:
-		login = LoginScreen.new()
-		login.game_data = content
+		# A service that answers from a script: the server list, then nothing,
+		# so the picker shows and nothing reaches the network.
+		var service := DataService.new()
+		var http := FakeHttpBackend.new()
+		http.push_json(200, VisualScenarios.servers())
+		service.backend = http
+		stage.add_child(service)
+		login = LoginScreen.new(service, content)
 		stage.add_child(login)
 
 	var camera := Camera2D.new()
@@ -271,6 +277,9 @@ func capture(scenario: String, output: String, content: GameData) -> bool:
 		for frame in 90:
 			login._backdrop.step(1.0 / 60.0)
 		login._backdrop.set_process(false)
+	# Signed in, the list as it first opens.
+	if scenario == "login_account":
+		login._listed({"success": true, "characters": VisualScenarios.account()})
 	# Signed in, the second character picked and Delete pressed once.
 	if scenario == "login_delete":
 		login._listed({"success": true, "characters": VisualScenarios.account()})

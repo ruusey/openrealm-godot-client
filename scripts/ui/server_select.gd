@@ -25,6 +25,7 @@ var data_service: DataService
 var apply_server: Callable
 
 var _dropdown: OptionButton
+var _heading: Label
 var _servers: Array = []
 # Parallel to _servers: {state: "pending"|"done"|"fail", socket, start_ms, ms}.
 var _pings: Array = []
@@ -37,7 +38,8 @@ func _init(service: DataService, on_apply: Callable) -> void:
 
 func _ready() -> void:
 	add_theme_constant_override("separation", 4)
-	add_child(HudWidgets.label("Server", 12, PlayerHud.GOLD))
+	_heading = HudWidgets.label("Server", 12, PlayerHud.GOLD)
+	add_child(_heading)
 	_dropdown = OptionButton.new()
 	_dropdown.item_selected.connect(_on_selected)
 	add_child(_dropdown)
@@ -45,6 +47,11 @@ func _ready() -> void:
 	set_process(false)
 	_load()
 
+
+
+## The dropdown alone: its entries already say they are servers.
+func compact() -> void:
+	_heading.visible = false
 
 func _load() -> void:
 	var response: Dictionary = await data_service.send(HTTPClient.METHOD_GET, "/servers", "", false)
