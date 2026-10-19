@@ -59,7 +59,6 @@ func _ready() -> void:
 	_root.add_child(_canvas)
 	fold = PanelFold.new(self, "Map", "minimap", state.settings if state != null else null,
 		func(folded: bool) -> void: _root.visible = not folded)
-	TouchFrame.adopt(self)
 
 
 func _process(_delta: float) -> void:

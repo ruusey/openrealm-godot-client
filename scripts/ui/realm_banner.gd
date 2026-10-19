@@ -52,7 +52,6 @@ func _ready() -> void:
 	_name = _line(NAME_SIZE)
 	_detail = _line(DETAIL_SIZE)
 	_detail.add_theme_color_override("font_color", Color(0.85, 0.85, 0.9))
-	TouchFrame.adopt(self)
 
 
 func _line(size: int) -> Label:

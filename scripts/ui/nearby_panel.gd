@@ -79,7 +79,6 @@ func _ready() -> void:
 	_inspect = PlayerInspectCard.new()
 	_inspect.setup(content)
 	add_child(_inspect)
-	TouchFrame.adopt(self)
 
 
 func _process(_delta: float) -> void:

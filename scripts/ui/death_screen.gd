@@ -60,7 +60,6 @@ func _ready() -> void:
 		visible = false
 		quit.emit())
 	column.add_child(_quit)
-	TouchFrame.adopt(self)
 
 
 ## Shows the screen for a named character.

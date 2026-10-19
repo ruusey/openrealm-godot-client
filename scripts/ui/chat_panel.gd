@@ -106,7 +106,6 @@ func _ready() -> void:
 	# Never hidden as a layer (the sign-in screen just covers it), so the chip
 	# hides itself until there is a player to have a chat.
 	fold.chip.visible = false
-	TouchFrame.adopt(self)
 
 
 ## The chat line, opened as Enter opens it: the phone's Chat button.

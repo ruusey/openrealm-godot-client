@@ -76,7 +76,6 @@ func _ready() -> void:
 		_cells[stat] = HudWidgets.stat_cell(_grid, stat.to_upper())
 	fold = PanelFold.new(self, "Stats", "stats", state.settings if state != null else null,
 		func(folded: bool) -> void: _grid.visible = not folded)
-	TouchFrame.adopt(self)
 
 
 func _process(_delta: float) -> void:

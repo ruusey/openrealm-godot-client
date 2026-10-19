@@ -98,7 +98,6 @@ func _ready() -> void:
 		button.add_theme_font_size_override("font_size", 20)
 	_tooltip = ItemTooltip.of(state, content)
 	add_child(_tooltip)
-	TouchFrame.adopt(self)
 
 
 func _process(delta: float) -> void:

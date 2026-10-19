@@ -48,7 +48,6 @@ func _ready() -> void:
 	_button.add_theme_constant_override("outline_size", 4)
 	_button.pressed.connect(use)
 	add_child(_button)
-	TouchFrame.adopt(self)
 
 
 func _process(_delta: float) -> void:

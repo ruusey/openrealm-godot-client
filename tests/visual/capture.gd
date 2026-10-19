@@ -37,6 +37,9 @@ func _ready() -> void:
 	if OS.get_environment("CAPTURE_PHONE") == "1":
 		get_window().content_scale_factor = DisplayScale.MOBILE_UI
 		TouchScale.panel_factor = TouchScale.panel_factor_for(2.0, DisplayScale.MOBILE_UI)
+	# CAPTURE_PHONE=3 at --resolution 1688x780: an iPhone's 844x390 points (3x ratio).
+	if OS.get_environment("CAPTURE_PHONE") == "3":
+		TouchScale.panel_factor = 2.0
 	var config := ClientConfig.new()
 	# A checkout laid out differently from the default names its data here.
 	if OS.has_environment("OPENREALM_DATA_ROOT"):

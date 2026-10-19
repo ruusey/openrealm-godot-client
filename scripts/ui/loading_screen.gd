@@ -49,7 +49,6 @@ func _ready() -> void:
 	_progress = _line(column, "", 14)
 	_progress.modulate = Color(0.7, 0.7, 0.75)
 	_refresh()
-	TouchFrame.adopt(self)
 
 
 func _line(into: Container, text: String, size: int) -> Label:

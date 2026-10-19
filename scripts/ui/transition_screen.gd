@@ -77,7 +77,6 @@ func _ready() -> void:
 	_difficulty = HudWidgets.label("", 13, Color(0.8, 0.75, 0.75))
 	_difficulty.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(_difficulty)
-	TouchFrame.adopt(self)
 
 
 ## The line the splash shows.

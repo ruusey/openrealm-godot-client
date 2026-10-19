@@ -123,13 +123,13 @@ func _layout() -> void:
 	_menu.place(row + Vector2(0.0, TouchCluster.BUTTON_SIZE.y + 8.0), scale)
 	# The bag opens under Bag and Menu, on the left, in the canvas's pixels.
 	if enabled and inventory != null:
-		inventory.floor_top = (row.y + TouchCluster.BUTTON_SIZE.y + 8.0) * scale.x / TouchScale.panel_factor
+		inventory.floor_top = (row.y + TouchCluster.BUTTON_SIZE.y + 8.0) * scale.x
 
 
-## Where the row of Bag, Menu and Chat ends, in the panels' points
-## (TouchScale): the left column of panels starts under it.
+## Where the row of Bag, Menu and Chat ends, in the canvas's pixels:
+## the left column of panels starts under it.
 func row_bottom() -> float:
-	return (PANELS_TOP + TouchCluster.BUTTON_SIZE.y) * scale.x / TouchScale.panel_factor
+	return (PANELS_TOP + TouchCluster.BUTTON_SIZE.y) * scale.x
 
 
 ## A click on a button is not a shot at the world.

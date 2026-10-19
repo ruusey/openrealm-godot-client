@@ -58,7 +58,6 @@ func _ready() -> void:
 	row.add_child(_companion_cell)
 	_tooltip = ItemTooltip.new()
 	add_child(_tooltip)
-	TouchFrame.adopt(self)
 
 
 func _process(_delta: float) -> void:
