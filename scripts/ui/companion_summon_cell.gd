@@ -3,11 +3,10 @@ extends Control
 
 ## The companion-summon readout that sits at the right end of the hotbar: the C
 ## key, and either READY, a draining swap-cooldown timer, or Recall while the
-## companion is out (with its remaining time, should the server ever send an
-## expiry). Hidden entirely for accounts that own no companion.
+## companion is out, with the time left before it returns home (none in the
+## Nexus). Hidden entirely for accounts that own no companion.
 
 const SIZE_PX := 64.0
-const COOLDOWN_WINDOW_MS := 60 * 1000
 const BG_READY := Color(0.16, 0.29, 0.16, 0.9)
 const BG_COOLDOWN := Color(0.18, 0.19, 0.22, 0.9)
 const BG_DEPLOYED := Color(0.16, 0.35, 0.40, 0.9)
@@ -54,12 +53,12 @@ func update_from(c: CompanionState) -> void:
 		if c.deploy_never_expires():
 			_text.text = "Recall\n(C)"
 		else:
-			_text.text = "Recall\n" + _mmss(c.deployed_remaining_ms())
+			_text.text = "Recall\n" + CompanionState.clock_text(c.deployed_remaining_ms())
 	elif not c.summon_ready():
 		_bg.color = BG_COOLDOWN
 		var remaining := c.summon_cooldown_remaining_ms()
-		_text.text = "Summon\n" + _mmss(remaining)
-		fraction = clampf(float(remaining) / float(COOLDOWN_WINDOW_MS), 0.0, 1.0)
+		_text.text = "Summon\n" + CompanionState.clock_text(remaining)
+		fraction = clampf(float(remaining) / float(CompanionState.SUMMON_COOLDOWN_MS), 0.0, 1.0)
 	else:
 		_bg.color = BG_READY
 		_text.text = "Summon\n(C)"
@@ -67,7 +66,3 @@ func update_from(c: CompanionState) -> void:
 	_shade.position = Vector2(0, 0)
 	_shade.size = Vector2(SIZE_PX, covered)
 
-
-static func _mmss(ms: int) -> String:
-	var total := int(ceil(ms / 1000.0))
-	return "%d:%02d" % [total / 60, total % 60]

@@ -146,18 +146,14 @@ func _update_status() -> void:
 	var c := state.companions
 	if c.is_deployed():
 		if c.deploy_never_expires():
-			_status.text = "Deployed - no time limit"
+			_status.text = "Deployed in the Nexus - no time limit here"
 		else:
-			_status.text = "Deployed - %s until it returns home" % _mmss(c.deployed_remaining_ms())
+			_status.text = "Deployed - %s until it returns home" % CompanionState.clock_text(c.deployed_remaining_ms())
 	elif not c.summon_ready():
-		_status.text = "Summon cooldown - ready in %s" % _mmss(c.summon_cooldown_remaining_ms())
+		_status.text = "Summon cooldown - ready in %s" % CompanionState.clock_text(c.summon_cooldown_remaining_ms())
 	else:
 		_status.text = "Summon ready (press C)"
 
-
-static func _mmss(ms: int) -> String:
-	var total := int(ceil(ms / 1000.0))
-	return "%d:%02d" % [total / 60, total % 60]
 
 
 ## Keep the panel inside the screen on any size/orientation: cap the width to the

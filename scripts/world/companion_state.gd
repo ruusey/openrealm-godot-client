@@ -12,6 +12,10 @@ extends RefCounted
 ## arrive as server epoch-millisecond deadlines, read against the wall clock the
 ## same way party cooldowns are.
 
+## The server's CompanionManager.SUMMON_COOLDOWN_MS: how long a summon gates the
+## next one, the full sweep of the cooldown veil.
+const SUMMON_COOLDOWN_MS := 10 * 60 * 1000
+
 var roster: Array = []
 ## Owned/bench capacity: how many companions this account may save (1..20, bought
 ## with fame). Deploy-at-once cap is always 1. Defaults to 1 until the first roster.
@@ -97,6 +101,12 @@ func deployed_remaining_ms() -> int:
 	if deployed_uuid == "" or deployed_until_ms == 0:
 		return 0
 	return max(0, deployed_until_ms - int(wall_clock.call()))
+
+
+## A countdown as m:ss, rounded up so it reads 0:00 only once it is over.
+static func clock_text(ms: int) -> String:
+	var total := int(ceil(ms / 1000.0))
+	return "%d:%02d" % [total / 60, total % 60]
 
 
 func clear() -> void:

@@ -212,17 +212,21 @@ func _panel_button(label: String, sig: Signal) -> Button:
 	return TouchButtons.flat(label, BUTTON_SIZE, func() -> void: sig.emit())
 
 
-## Ally (none owned yet: opens the panel), Recall, the swap cooldown, or Summon.
+## Ally (none owned yet: opens the panel), Recall with the time left out, the
+## summon cooldown, or Summon.
 func _show_companion(companions: CompanionState) -> void:
 	var fraction := 0.0
 	if companions == null or companions.count() == 0:
 		_companion.text = "Ally"
 	elif companions.is_deployed():
-		_companion.text = "Recall"
+		if companions.deploy_never_expires():
+			_companion.text = "Recall"
+		else:
+			_companion.text = "Recall\n" + CompanionState.clock_text(companions.deployed_remaining_ms())
 	elif not companions.summon_ready():
 		var remaining := companions.summon_cooldown_remaining_ms()
-		_companion.text = "%ds" % ceili(remaining / 1000.0)
-		fraction = clampf(float(remaining) / CompanionSummonCell.COOLDOWN_WINDOW_MS, 0.0, 1.0)
+		_companion.text = CompanionState.clock_text(remaining)
+		fraction = clampf(float(remaining) / CompanionState.SUMMON_COOLDOWN_MS, 0.0, 1.0)
 	else:
 		_companion.text = "Summon"
 	_companion_sweep.fraction = fraction

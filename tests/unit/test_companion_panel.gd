@@ -38,12 +38,31 @@ func test_stats_read_against_the_class_caps():
 	assert_true("Stats  (1/8 maxed)" in texts)
 
 
-func test_a_deploy_without_expiry_says_so():
-	assert_eq(_open()._status.text, "Deployed - no time limit")
+func test_a_nexus_deploy_has_no_time_limit():
+	assert_eq(_open()._status.text, "Deployed in the Nexus - no time limit here")
 	var cell := CompanionSummonCell.new()
 	add_child_autofree(cell)
 	cell.update_from(state.companions)
 	assert_eq(cell._text.text, "Recall\n(C)")
+
+
+func test_a_deploy_counts_down_to_its_return_and_then_the_cooldown():
+	state.companions.wall_clock = func() -> int: return 1_000_000
+	state.companions.deployed_until_ms = 1_000_000 + 272_000
+	state.companions.summon_ready_at_ms = 1_000_000 + 572_000
+	assert_eq(_open()._status.text, "Deployed - 4:32 until it returns home")
+	var cell := CompanionSummonCell.new()
+	add_child_autofree(cell)
+	cell.update_from(state.companions)
+	assert_eq(cell._text.text, "Recall\n4:32")
+	var phone: TouchCluster = autofree(TouchCluster.new(true))
+	phone._show_companion(state.companions)
+	assert_eq(phone._companion.text, "Recall\n4:32")
+	state.companions.deployed_uuid = ""
+	cell.update_from(state.companions)
+	assert_eq(cell._text.text, "Summon\n9:32")
+	phone._show_companion(state.companions)
+	assert_eq(phone._companion.text, "9:32")
 
 
 func test_the_class_preview_lists_the_kit():
