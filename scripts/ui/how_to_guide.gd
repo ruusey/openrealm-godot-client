@@ -11,12 +11,12 @@ extends RefCounted
 ## reference menus/tiles by name in prose otherwise. No literal braces in bodies.
 
 const TITLE := "How to Play OpenRealm"
-const INTRO := "A fast-paced top-down bullet-hell RPG with a real player-driven economy. Pick a class, grow stronger, cleanse the realm — and, if you choose, earn and cash out $REALM for the loot you find."
+const INTRO := "A fast-paced top-down bullet-hell RPG. Pick a class, grow stronger, team up with other players, and cleanse the realm of its corruption."
 const HEADING := "#ffd96b"
 
 ## Section -> body, in reading order; "Controls" is built from HowToControls.
 const SECTIONS := {
-	"The Goal": "Pick a class, dive into the corrupted overworld, and fight your way outward through ever-tougher zones. Kill enemies to earn XP, level up, and collect better gear. Working with others, purge each island of corruption to trigger its climactic boss fight. Everything you loot has value — keep it, or sell it for $REALM.",
+	"The Goal": "Pick a class, dive into the corrupted overworld, and fight your way outward through ever-tougher zones. Kill enemies to earn XP, level up, and collect better gear. Working with others, purge each island of corruption to trigger its climactic boss fight. Everything you loot has value -- equip it, trade it, or break it down at the Forge.",
 	"Controls": "",
 	"Classes & Weapons": """[ul]
 Each class is built around a [b]weapon archetype[/b] that decides how you deal damage:
@@ -62,13 +62,13 @@ Hover any mastery to see its level, XP, and current bonus.
 [/ul]""",
 	"Rarity, Gems & The Forge": """Gear now has a [b]rarity[/b] and can be upgraded:
 [ul]
-[b]Rarity[/b] runs Mundane → Common → Uncommon → Rare → Epic → Legendary. Higher rarity means stronger stats, more gem sockets, and (if you sell it) far more $REALM.
+[b]Rarity[/b] runs Mundane → Common → Uncommon → Rare → Epic → Legendary. Higher rarity means stronger stats and more gem sockets.
 [b]Gem sockets[/b] — slot stat-scaling and effect gems (Crit, Vampiric, Frost, Multishot, Thorns, Venom…) into sockets to shape your build. Gems are rare: they only drop from bosses and tough enemies.
 [b]Essence cost[/b] — a crystal costs 10 essence of the item's slot; a gem costs 50.
 [b]The Forge[/b] (a nexus tile) — [b]enchant[/b] an item to add bonus modifiers, or [b]disenchant[/b] to recover materials. Use [b]essence[/b] and [b]crystals[/b] as the crafting inputs.
 [b]Advanced enchanting[/b] — a per-pixel picker lets you place a chosen enchant/gem effect onto a specific pixel of the item's icon, so your gear shows what it carries at a glance.
 [/ul]
-Tooltips spell out rarity, sockets, modifiers, and gem effects — read them before you equip or sell.""",
+Tooltips spell out rarity, sockets, modifiers, and gem effects — read them before you equip or trade.""",
 	"Loot Progression": """Zones get harder the farther out you go, and gear tiers climb with them:
 [ul]
 [b]Beach[/b] → tier 0–2 gear
@@ -108,24 +108,11 @@ Companions loot gear upgrades and potions near you on their own; spend their ski
 [/ul]""",
 	"Quests & Stars": "Take on [b]quests[/b] for goals that span a character or your whole account; completing them for the first time awards [b]stars[/b]. Your star total shows under your name and on the public scoreboard — a quick read of how far someone has come.",
 	"Fame & the Fame Store": """[ul]
-[b]Fame[/b] is a soft currency. You bank it when a character dies (based on its XP), and you can top it up by buying it with crypto via the [b]Add Fame[/b] button (SOL or $REALM, web build).
+[b]Fame[/b] is a soft currency. You bank it when a character dies (based on its XP).
 Spend fame at the [b]Fame Store[/b] (a nexus tile): cosmetic [b]dyes[/b], [b]stat crystals[/b] and [b]dungeon keys[/b]. Gems are not sold -- they only drop.
 [b]Vault chests[/b] cost 7,500 fame each; the button shows the price and asks before it spends.
-Fame is separate from the $REALM economy — the two don't convert into each other at a profit.
 [/ul]""",
-	"The Exchange Market": """A nexus tile opens the Exchange, with two tabs:
-[ul]
-[b]Item Swap[/b] — trade consumables of the same kind (shards, crystals, essence, stat potions). You hand in N and get back N−1; the market keeps one as tax.
-[b]Item Exchange[/b] — [b]sell backpack items for $REALM[/b]. Each item shows its $REALM value; click Sell to bank it. Gear, gems, rings, and uniques pay out; consumables don't. Rarer and higher-tier items are worth far more — a signature weapon or a Crown is a jackpot.
-[/ul]""",
-	"Membership & The $REALM Economy": """OpenRealm has a real, one-token economy built on [b]$REALM[/b] (a Solana token). It's optional — you can play and progress entirely for free — but if you want to earn:
-[ul]
-[b]Link a wallet[/b] — open the [b]Economy[/b] menu (web build) and connect your Phantom wallet. You sign a one-time challenge to prove ownership; the game never holds your keys.
-[b]Membership[/b] — a weekly pass costs [b]$REALM[/b], paid from your wallet. It unlocks [b]cashing out[/b] (you can earn points without it, but you need an active membership to withdraw).
-[b]Earn[/b] — sell items in the [b]Item Exchange[/b] to bank $REALM.
-[b]Cash out[/b] — with an active membership and a linked wallet, request a payout from the Economy menu. Your $REALM is sent straight to your wallet.
-[/ul]
-It's a gamble on your own play: a strong week — or a lucky jackpot drop — can out-earn your membership, while a quiet week won't. Play fair; everything is verified on-chain and server-side.""",
+	"The Exchange Market": "A nexus tile opens the [b]Exchange Market[/b]: trade consumables of the same kind (shards, crystals, essence, stat potions). You hand in N and get back N-1; the market keeps one as tax.",
 	"Graphics & Options": """Open [b]Options[/b] (gear/menu) to tune your experience:
 [ul]
 [b]Graphics[/b] — toggle dynamic lighting and quality settings for smoother play on weaker machines.

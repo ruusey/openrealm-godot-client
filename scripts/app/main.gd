@@ -162,36 +162,7 @@ func _ready() -> void:
 	var updater := UpdateChecker.new()
 	add_child(updater)
 	updater.check()
-	# POC: Phantom wallet connect/sign demo, opt-in via ?phantom=1 on the web build.
-	if OS.has_feature("web") and _url_wants_phantom():
-		add_child(PhantomPocOverlay.new())
-	# Buy fame with SOL via Phantom (web only). Opened from the top-row "Add Fame"
-	# button; the data service verifies the payment on-chain and credits fame.
-	if OS.has_feature("web"):
-		var fame_panel := FamePurchasePanel.new()
-		fame_panel.data_service = _data_service
-		add_child(fame_panel)
-		screens.touch.set_add_fame(fame_panel.open)
-		# REALM economy hub: link wallet, buy membership, cash out points.
-		var economy_panel := EconomyPanel.new()
-		economy_panel.data_service = _data_service
-		economy_panel.state = state
-		add_child(economy_panel)
-		screens.touch.set_economy(economy_panel.open)
-	else:
-		# Desktop export: Phantom can't run in-app, so Economy opens the web economy
-		# page (membership, cash out, fame) in the system browser.
-		screens.touch.set_economy(_open_economy_page)
 	_load_content()
-
-
-## Opens the data-service economy page in the system browser for desktop players,
-## where Phantom can't run in-app. The session rides in the URL fragment.
-func _open_economy_page() -> void:
-	if _data_service == null:
-		return
-	var frag := "#token=" + _data_service.token.uri_encode() + "&accountGuid=" + _data_service.account_guid.uri_encode()
-	OS.shell_open(_data_service.base_url + "/game-data/economy/index.html" + frag)
 
 
 ## The web virtual keyboard rides on a transparent DOM <input> Godot overlays
@@ -216,11 +187,6 @@ func _hide_web_input_caret() -> void:
 func _url_wants_3d() -> bool:
 	var search: Variant = JavaScriptBridge.eval("location.search")
 	return search is String and "3d=1" in search
-
-
-func _url_wants_phantom() -> bool:
-	var search: Variant = JavaScriptBridge.eval("location.search")
-	return search is String and "phantom=1" in search
 
 
 ## Swaps the 2D world for the 3D one: hide and stop the flat renderer so it is

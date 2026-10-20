@@ -94,11 +94,6 @@ var projectile_groups: Dictionary:
 	get: return library.projectile_groups
 
 
-## Estimated REALM an item sells for on the Item Exchange (0 = not cashable).
-func realm_price_for(item: Dictionary) -> int:
-	return library.realm_price_for(item)
-
-
 # --- tiles -----------------------------------------------------------------
 
 ## Everything the ground passes ask of a tile, resolved once: its texture, the

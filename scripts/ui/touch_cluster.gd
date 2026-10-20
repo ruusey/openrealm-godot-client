@@ -32,8 +32,6 @@ signal bag
 signal menu
 signal chat
 signal nexus
-signal add_fame
-signal economy
 signal companion
 
 ## True while the thumb is on Attack.
@@ -51,10 +49,6 @@ var _nexus: Button
 var _companion: Button
 var _companion_sweep: CooldownSweep
 var _panels: BoxContainer
-## Economy entry points; kept so refresh() can hide them when the account's
-## economy_enabled gate is off. Add Fame exists on web only.
-var _add_fame_btn: Button
-var _economy_btn: Button
 ## A phone layout: Nexus on the bottom row and no top row (PhoneBar has it).
 var _mobile: bool
 var _drawn := ""
@@ -107,10 +101,6 @@ func _build_panels() -> void:
 	_panels.add_child(_panel_button("More", menu))
 	_panels.add_child(_panel_button("Chat", chat))
 	_panels.add_child(_panel_button("Nexus", nexus))
-	# Add Fame pays via Phantom in-page (web only); Economy shows on all builds.
-	if OS.has_feature("web"):
-		_add_fame_btn = _panel_button("Add Fame", add_fame); _panels.add_child(_add_fame_btn)
-	_economy_btn = _panel_button("Economy", economy); _panels.add_child(_economy_btn)
 	add_child(_panels)
 
 
@@ -152,11 +142,6 @@ func refresh(content: GameData, state: RealmState) -> void:
 		_show_count(_mp, "MP", state.local.inventory.mp_potions)
 		for slot in _sweeps.size():
 			_sweeps[slot].fraction = state.abilities.cooldown_fraction(slot)
-		# Economy entry points follow the account's economy_enabled gate.
-		if _economy_btn != null:
-			_economy_btn.visible = state.progress.economy_enabled
-		if _add_fame_btn != null:
-			_add_fame_btn.visible = state.progress.economy_enabled
 		if _nexus != null and content != null:
 			_nexus.disabled = content.maps.is_nexus(state.tiles.map_id)
 		if _companion.visible:

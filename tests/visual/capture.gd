@@ -167,7 +167,7 @@ func capture(scenario: String, output: String, content: GameData) -> bool:
 	forge.setup(state, content, ForgeActions.new(state, null, content))
 	stage.add_child(forge)
 	var market := ExchangeMarketPanel.new()
-	market.setup(state, content, shop, InventoryActions.new(state, null, content))
+	market.setup(state, content, shop)
 	stage.add_child(market)
 	var trade := TradePanel.new()
 	trade.setup(state, content, TradeActions.new(state, null))

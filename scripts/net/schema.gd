@@ -74,8 +74,6 @@ const PACKET_NAMES := {
 	51: "OpenGuildEditorPacket",
 	52: "GuildInvitePacket",
 	53: "GuildInviteResponsePacket",
-	54: "SellItemForPointsPacket",
-	55: "SendPointsPacket",
 	56: "CompanionActionPacket",
 	57: "CompanionRosterPacket",
 	58: "PartyVitalsPacket",
@@ -130,8 +128,6 @@ const PACKET_IDS := {
 	"QuestStatePacket": 46,
 	"RealmPurificationPacket": 42,
 	"RequestTradePacket": 16,
-	"SellItemForPointsPacket": 54,
-	"SendPointsPacket": 55,
 	"SkillsPacket": 43,
 	"SplitStackPacket": 37,
 	"TestPacket": 101,
@@ -379,14 +375,6 @@ const PACKETS := {
 	"RequestTradePacket": [
 		["requestingPlayerName", "string", false],
 	],
-	"SellItemForPointsPacket": [
-		["inventorySlotIndex", "int", false],
-	],
-	"SendPointsPacket": [
-		["playerId", "long", false],
-		["newTotalPoints", "long", false],
-		["pointsAwarded", "long", false],
-	],
 	"SkillsPacket": [
 		["playerId", "long", false],
 		["xp0", "long", false],
@@ -579,7 +567,6 @@ const ENTITIES := {
 		["gemPixelX", "byte", false],
 		["gemPixelY", "byte", false],
 		["gemPixelColor", "int", false],
-		["earnedDuringMembership", "bool", false],
 	],
 	"NetGameItemRef": [
 		["itemId", "int", false],

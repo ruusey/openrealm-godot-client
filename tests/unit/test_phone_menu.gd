@@ -18,7 +18,7 @@ func test_an_item_shows_only_while_its_test_passes():
 	var menu: PhoneMenu = add_child_autofree(PhoneMenu.new())
 	var gate := [false]
 	menu.set_items([["Options", func() -> void: pass],
-		["Economy", func() -> void: pass, func() -> bool: return gate[0]]])
+		["Companion", func() -> void: pass, func() -> bool: return gate[0]]])
 	menu.open()
 	assert_true(menu.item(0).visible)
 	assert_false(menu.item(1).visible)

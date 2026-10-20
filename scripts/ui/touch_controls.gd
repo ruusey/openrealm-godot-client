@@ -39,8 +39,6 @@ var _bar: PhoneBar
 var _phone_menu: PhoneMenu
 var _open_chat := Callable()   # the Chat button's; wired by `link`
 var _escape := Callable()      # the Nexus button's; wired by `set_escape`
-var _add_fame := Callable()    # the Add Fame button's; wired by `set_add_fame`
-var _economy := Callable()     # the Economy button's; wired by `set_economy`
 var _companion := Callable()   # the companion button's; wired by `set_companion`
 var _aim := TouchAim.new()
 
@@ -73,8 +71,6 @@ func _ready() -> void:
 	_cluster.menu.connect(_menu.toggle)
 	_cluster.chat.connect(func() -> void: if _open_chat.is_valid(): _open_chat.call())
 	_cluster.nexus.connect(func() -> void: if _escape.is_valid(): _escape.call())
-	_cluster.add_fame.connect(func() -> void: if _add_fame.is_valid(): _add_fame.call())
-	_cluster.economy.connect(func() -> void: if _economy.is_valid(): _economy.call())
 	_cluster.companion.connect(func() -> void: if _companion.is_valid(): _companion.call())
 	add_child(_cluster)
 	add_child(_menu)
@@ -164,25 +160,12 @@ func link(panels: Array, open_chat: Callable) -> void:
 	_menu.set_items(panels)
 	_open_chat = open_chat
 	if _phone_menu != null:
-		var economy_on := func() -> bool: return state != null and state.progress.economy_enabled
-		_phone_menu.set_items(panels + [
-			["Economy", func() -> void: if _economy.is_valid(): _economy.call(),
-				func() -> bool: return _economy.is_valid() and economy_on.call()],
-			["Add Fame", func() -> void: if _add_fame.is_valid(): _add_fame.call(),
-				func() -> bool: return _add_fame.is_valid() and economy_on.call()]])
+		_phone_menu.set_items(panels)
 
 
 ## What the Nexus (escape to safety) button runs -- PortalInput.to_nexus.
 func set_escape(escape: Callable) -> void:
 	_escape = escape
-
-
-func set_add_fame(open: Callable) -> void:
-	_add_fame = open
-
-
-func set_economy(open: Callable) -> void:
-	_economy = open
 
 
 func set_companion(toggle: Callable) -> void:
