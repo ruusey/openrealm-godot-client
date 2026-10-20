@@ -40,6 +40,8 @@ var _phone_menu: PhoneMenu
 var _open_chat := Callable()   # the Chat button's; wired by `link`
 var _escape := Callable()      # the Nexus button's; wired by `set_escape`
 var _companion := Callable()   # the companion button's; wired by `set_companion`
+var _buy_fame := Callable()    # opens the Buy Fame panel; wired by `set_buy_fame`
+var _buy_fame_shown := Callable()
 var _aim := TouchAim.new()
 
 
@@ -72,6 +74,7 @@ func _ready() -> void:
 	_cluster.chat.connect(func() -> void: if _open_chat.is_valid(): _open_chat.call())
 	_cluster.nexus.connect(func() -> void: if _escape.is_valid(): _escape.call())
 	_cluster.companion.connect(func() -> void: if _companion.is_valid(): _companion.call())
+	_cluster.buy_fame.connect(_open_buy_fame)
 	add_child(_cluster)
 	add_child(_menu)
 	if _phone:
@@ -119,6 +122,7 @@ func _process(_delta: float) -> void:
 			_phone_menu.close()
 		return
 	_cluster.refresh(content, state)
+	_cluster.show_buy_fame(_buy_fame_available())
 	if _phone:
 		var bounds := _cluster.bounds()
 		PhoneLayout.thumbs = Rect2(bounds.position * scale.x, bounds.size * scale.x)
@@ -160,7 +164,7 @@ func link(panels: Array, open_chat: Callable) -> void:
 	_menu.set_items(panels)
 	_open_chat = open_chat
 	if _phone_menu != null:
-		_phone_menu.set_items(panels)
+		_phone_menu.set_items(panels + [["Buy Fame", _open_buy_fame, _buy_fame_available]])
 
 
 ## What the Nexus (escape to safety) button runs -- PortalInput.to_nexus.
@@ -170,6 +174,21 @@ func set_escape(escape: Callable) -> void:
 
 func set_companion(toggle: Callable) -> void:
 	_companion = toggle
+
+
+## What Buy Fame opens, and whether it shows (only while packages are on sale).
+func set_buy_fame(open: Callable, shown: Callable) -> void:
+	_buy_fame = open
+	_buy_fame_shown = shown
+
+
+func _open_buy_fame() -> void:
+	if _buy_fame.is_valid():
+		_buy_fame.call()
+
+
+func _buy_fame_available() -> bool:
+	return _buy_fame.is_valid() and _buy_fame_shown.is_valid() and _buy_fame_shown.call()
 
 
 ## Where a basic shot goes: see the header.

@@ -36,7 +36,7 @@ const SQUARE_WALL_TILE := 184
 
 static func names() -> Array:
 	return ["terrain", "entities", "ysort", "bullets", "collision", "overlap",
-		"walk_left", "walk_right", "walk_up", "walk_down", "walls", "feather", "effects", "walldepth", "shadows", "attack_left", "attack_right", "attack_up", "spin", "portals", "transition", "transition_named", "damage", "damage_fading", "chat", "death", "wading", "inventory", "abilities", "potion_storage", "fame_store", "forge", "minimap", "trails", "login", "exchange_market", "wall_bands", "effects_cast", "effects_generic", "effects_holy", "effects_dark", "effects_arcane", "effects_knight", "effects_rogue", "effects_trapper", "effects_heavy", "trade", "player_hud", "party", "nearby", "item_card", "options", "options_controls", "masteries", "dev_overlay", "blind", "dyes", "quests", "quest_stars", "login_delete", "login_stats", "terms", "how_to", "leaderboard", "loot_preview", "minimap_hop", "billboards", "chunk_seams", "shores", "vault", "touch_phone", "quest_complete", "companions", "phone_play", "phone_bag", "phone_menu", "phone_chat", "phone_map", "login_account", "wall_plus"]
+		"walk_left", "walk_right", "walk_up", "walk_down", "walls", "feather", "effects", "walldepth", "shadows", "attack_left", "attack_right", "attack_up", "spin", "portals", "transition", "transition_named", "damage", "damage_fading", "chat", "death", "wading", "inventory", "abilities", "potion_storage", "fame_store", "forge", "minimap", "trails", "login", "exchange_market", "wall_bands", "effects_cast", "effects_generic", "effects_holy", "effects_dark", "effects_arcane", "effects_knight", "effects_rogue", "effects_trapper", "effects_heavy", "trade", "player_hud", "party", "nearby", "item_card", "options", "options_controls", "masteries", "dev_overlay", "blind", "dyes", "quests", "quest_stars", "login_delete", "login_stats", "terms", "how_to", "leaderboard", "loot_preview", "minimap_hop", "billboards", "chunk_seams", "shores", "vault", "touch_phone", "quest_complete", "companions", "phone_play", "phone_bag", "phone_menu", "phone_chat", "phone_map", "login_account", "wall_plus", "buy_fame", "buy_fame_waiting"]
 
 
 ## A second step, applied after the first rendered frame, for scenarios whose
@@ -121,6 +121,7 @@ static func apply(name: String, state: RealmState) -> void:
 		"billboards": _billboards(state)
 		"chunk_seams": _chunk_seams(state)
 		"shores": _shores(state)
+		"buy_fame", "buy_fame_waiting": _entities(state)
 		# The login screen: no realm at all, the capture raises the screen itself.
 		"login", "login_account", "login_delete", "login_stats", "terms", "how_to", "leaderboard": pass
 		_: push_error("unknown scenario '%s'" % name)
@@ -135,6 +136,15 @@ static func account() -> Array:
 		{"characterUuid": "a4", "characterClass": 3, "stats": {"hp": 300, "spd": 20},
 			"deleted": "2026-09-20T18:00:00Z"},
 	]
+
+
+## What the data service's /data/fame/packages answers, as Buy Fame lists it.
+static func fame_packages() -> Dictionary:
+	return {"enabled": true, "currency": "usd", "packages": [
+		{"id": "fame_1k", "fame": 1000, "priceCents": 99, "label": "1,000 Fame"},
+		{"id": "fame_5k", "fame": 5000, "priceCents": 499, "label": "5,000 Fame", "tag": "Popular"},
+		{"id": "fame_12k", "fame": 12000, "priceCents": 999, "label": "12,000 Fame"},
+		{"id": "fame_30k", "fame": 30000, "priceCents": 1999, "label": "30,000 Fame", "tag": "Best Value"}]}
 
 
 ## The game servers the sign-in's picker lists.

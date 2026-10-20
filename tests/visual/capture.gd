@@ -245,6 +245,23 @@ func capture(scenario: String, output: String, content: GameData) -> bool:
 		login = LoginScreen.new(service, content)
 		stage.add_child(login)
 
+	# Buy Fame over a realm, its packages scripted: browsing, or waiting on a checkout.
+	if scenario.begins_with("buy_fame"):
+		var fame_service := DataService.new()
+		fame_service.backend = FakeHttpBackend.new()
+		fame_service.account = {"accountFame": 12850}
+		stage.add_child(fame_service)
+		var buy_fame := FamePurchasePanel.new()
+		buy_fame.data_service = fame_service
+		buy_fame.open_url = func(_url: String) -> bool: return true
+		buy_fame.show_catalogue(VisualScenarios.fame_packages())
+		stage.add_child(buy_fame)
+		buy_fame.open()
+		if scenario == "buy_fame_waiting":
+			buy_fame.phase = FamePurchasePanel.Phase.WAITING
+			buy_fame.checkout_url = "https://checkout.stripe.com/c/pay/cs_test"
+			buy_fame._show_waiting(true)
+
 	var camera := Camera2D.new()
 	camera.zoom = Vector2(CAMERA_ZOOM, CAMERA_ZOOM)
 	camera.position = state.local.centre() if state.local.is_present() else Vector2.ZERO

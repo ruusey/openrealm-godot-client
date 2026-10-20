@@ -33,6 +33,7 @@ signal menu
 signal chat
 signal nexus
 signal companion
+signal buy_fame
 
 ## True while the thumb is on Attack.
 var attacking := false
@@ -49,6 +50,8 @@ var _nexus: Button
 var _companion: Button
 var _companion_sweep: CooldownSweep
 var _panels: BoxContainer
+## On the top row only while fame packages are on sale.
+var _buy_fame: Button
 ## A phone layout: Nexus on the bottom row and no top row (PhoneBar has it).
 var _mobile: bool
 var _drawn := ""
@@ -101,6 +104,9 @@ func _build_panels() -> void:
 	_panels.add_child(_panel_button("More", menu))
 	_panels.add_child(_panel_button("Chat", chat))
 	_panels.add_child(_panel_button("Nexus", nexus))
+	_buy_fame = _panel_button("Buy Fame", buy_fame)
+	_buy_fame.visible = false
+	_panels.add_child(_buy_fame)
 	add_child(_panels)
 
 
@@ -164,6 +170,11 @@ func _potion(colour: Color, hp: bool) -> Button:
 	button.pressed.connect(func() -> void: drink.emit(hp))
 	add_child(button)
 	return button
+
+
+func show_buy_fame(on: bool) -> void:
+	if _buy_fame != null and _buy_fame.visible != on:
+		_buy_fame.visible = on
 
 
 ## Attack and the abilities: with touch controls only.

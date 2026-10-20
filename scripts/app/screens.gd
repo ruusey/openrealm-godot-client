@@ -39,6 +39,7 @@ var guild_invite: GuildInvitePopup
 var nearby: NearbyPanel
 var options: OptionsPanel
 var leaderboard: LeaderboardWindow
+var buy_fame: FamePurchasePanel
 var transition: TransitionScreen
 var death: DeathScreen
 var login: LoginScreen
@@ -159,6 +160,10 @@ func build(state: RealmState, game_data: GameData, client: OpenRealmClient,
 		touch.set_companion(func() -> void:
 			if not companion_actions.toggle_summon(state.companions):
 				companions.toggle())
+	buy_fame = FamePurchasePanel.new()
+	buy_fame.data_service = data_service
+	add_child(buy_fame)
+	touch.set_buy_fame(buy_fame.open, buy_fame.available)
 	touch.link(menu_buttons, chat.toggle_line)
 	party.buttons_bottom = touch.row_bottom
 	store = ItemStorePanel.new()
@@ -190,7 +195,8 @@ func build(state: RealmState, game_data: GameData, client: OpenRealmClient,
 func captures_mouse() -> bool:
 	return [inventory, abilities, skills, masteries, quests, store, fame, forge, minimap, minimap_expanded, market, trade,
 		trade_request, party, party_invite, pvp_challenge, guild_dialog, guild_roster, guild_invite,
-		nearby, options, chat, player, prompt, loot, leaderboard, touch, tutorial_exit, vault, companions].any(func(panel) -> bool: return panel.captures_mouse())
+		nearby, options, chat, player, prompt, loot, leaderboard, touch, tutorial_exit, vault, companions,
+		buy_fame].any(func(panel) -> bool: return panel.captures_mouse())
 
 func captures_keyboard() -> bool:
 	return chat.is_typing() or options.capturing() or guild_dialog.is_typing() \

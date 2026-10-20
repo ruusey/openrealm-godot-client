@@ -109,6 +109,7 @@ Companions loot gear upgrades and potions near you on their own; spend their ski
 	"Quests & Stars": "Take on [b]quests[/b] for goals that span a character or your whole account; completing them for the first time awards [b]stars[/b]. Your star total shows under your name and on the public scoreboard — a quick read of how far someone has come.",
 	"Fame & the Fame Store": """[ul]
 [b]Fame[/b] is a soft currency. You bank it when a character dies (based on its XP).
+You can also buy fame from the [b]Buy Fame[/b] button.
 Spend fame at the [b]Fame Store[/b] (a nexus tile): cosmetic [b]dyes[/b], [b]stat crystals[/b] and [b]dungeon keys[/b]. Gems are not sold -- they only drop.
 [b]Vault chests[/b] cost 7,500 fame each; the button shows the price and asks before it spends.
 [/ul]""",

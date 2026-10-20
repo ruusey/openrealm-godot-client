@@ -13,6 +13,8 @@ extends Node
 ##   POST /admin/account/register {email, password, accountName, guest, ...}
 ##   GET  /data/stats/top?count=N  -> [LeaderboardEntryDto]  (LeaderboardRequest)
 ##   GET  /admin/account/terms, POST /admin/account/terms/accept  (AccountTerms)
+##   GET  /data/fame/packages, POST /data/account/{guid}/fame/checkout,
+##   GET  /data/account/{guid}/fame/purchases/{sessionId}  (FamePurchasePanel)
 ##
 ## The Authorization header carries the raw token, with no Bearer prefix.
 
@@ -123,6 +125,46 @@ func register(email: String, password: String, account_name: String, guest: bool
 	var response := await send(HTTPClient.METHOD_POST, "/admin/account/register", body, false)
 	if not response["ok"]:
 		return {"success": false, "result": response["error"]}
+	return {"success": true, "result": response["body"]}
+
+
+## The fame packages on sale, {enabled, currency, packages}; {} on failure.
+func fame_packages() -> Dictionary:
+	if token == "":
+		return {}
+	var response := await send(HTTPClient.METHOD_GET, "/data/fame/packages", "", true)
+	if response["ok"] and response["body"] is Dictionary:
+		return response["body"]
+	return {}
+
+
+## Starts a Stripe Checkout for one package. Returns {success, result}; result
+## is {sessionId, url} on success, the service's reason otherwise (a 503 when
+## purchases are switched off).
+func fame_checkout(package_id: String) -> Dictionary:
+	if token == "" or account_guid == "":
+		return {"success": false, "result": "not signed in"}
+	var body := JSON.stringify({"packageId": package_id})
+	var response := await send(HTTPClient.METHOD_POST,
+		"/data/account/%s/fame/checkout" % account_guid, body, true)
+	if not response["ok"]:
+		return {"success": false, "result": response["error"]}
+	if not response["body"] is Dictionary:
+		return {"success": false, "result": "unexpected checkout response: %s" % str(response["body"])}
+	return {"success": true, "result": response["body"]}
+
+
+## Where a checkout stands: {sessionId, status, fame, packageId, accountFame}.
+## Returns {success, result}.
+func fame_purchase_status(session_id: String) -> Dictionary:
+	if token == "" or account_guid == "":
+		return {"success": false, "result": "not signed in"}
+	var response := await send(HTTPClient.METHOD_GET,
+		"/data/account/%s/fame/purchases/%s" % [account_guid, session_id.uri_encode()], "", true)
+	if not response["ok"]:
+		return {"success": false, "result": response["error"]}
+	if not response["body"] is Dictionary:
+		return {"success": false, "result": "unexpected status response: %s" % str(response["body"])}
 	return {"success": true, "result": response["body"]}
 
 
