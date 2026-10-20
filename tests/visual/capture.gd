@@ -315,6 +315,8 @@ func capture(scenario: String, output: String, content: GameData) -> bool:
 		login._backdrop.set_process(false)
 	# Signed in, the list as it first opens.
 	if scenario == "login_account":
+		login.data_service.account = {"accountFame": 12450}
+		login.buy_fame_shown = func() -> bool: return true
 		login._listed({"success": true, "characters": VisualScenarios.account()})
 	# Signed in, the second character picked and Delete pressed once.
 	if scenario == "login_delete":

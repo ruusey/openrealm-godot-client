@@ -130,9 +130,9 @@ static func apply(name: String, state: RealmState) -> void:
 ## An account as the character picker lists it: three living, one fallen.
 static func account() -> Array:
 	return [
-		{"characterUuid": "a1", "characterClass": 0, "stats": {"hp": 720, "spd": 50}},
-		{"characterUuid": "a2", "characterClass": 2, "stats": {"hp": 540, "spd": 45}},
-		{"characterUuid": "a3", "characterClass": 1, "stats": {"hp": 610, "spd": 55}},
+		{"characterUuid": "a1", "characterClass": 0, "stats": {"hp": 720, "spd": 50, "xp": 3250000}},
+		{"characterUuid": "a2", "characterClass": 2, "stats": {"hp": 540, "spd": 45, "xp": 640000}},
+		{"characterUuid": "a3", "characterClass": 1, "stats": {"hp": 610, "spd": 55, "xp": 42000}},
 		{"characterUuid": "a4", "characterClass": 3, "stats": {"hp": 300, "spd": 20},
 			"deleted": "2026-09-20T18:00:00Z"},
 	]

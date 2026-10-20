@@ -85,7 +85,7 @@ static func package_label(package: Dictionary) -> String:
 
 
 func _ready() -> void:
-	layer = 16
+	layer = 22   # over the home screen (20), which opens it too
 	visible = false
 	var dim := ColorRect.new()
 	dim.color = Color(0.0, 0.0, 0.0, 0.6)

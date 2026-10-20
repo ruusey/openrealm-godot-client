@@ -27,6 +27,9 @@ var last_email := LastEmail.new()
 ## the password is not retyped. Path is left empty (a no-op) on web and in tests;
 ## Main sets it only on desktop. See resume().
 var saved_session := SavedSession.new()
+## Wired by Screens: opens the Buy Fame panel, and whether fame is on sale.
+var buy_fame := Callable()
+var buy_fame_shown := Callable()
 
 var _backdrop: LoginBackdrop
 var _server_select: ServerSelect
@@ -110,7 +113,9 @@ func _ready() -> void:
 	_account = SignedInRow.new(func() -> void:
 		data_service.sign_out()
 		saved_session.forget()
-		forget_characters("Signed out."))
+		forget_characters("Signed out."), func() -> void:
+			if buy_fame.is_valid():
+				buy_fame.call())
 	column.add_child(_account)
 
 	if PhoneLayout.on:
@@ -158,6 +163,8 @@ func _phone_header(header: Container, spacer: Control) -> void:
 func _process(_delta: float) -> void:
 	if not visible:
 		return
+	_account.show_buy_fame(buy_fame_shown.is_valid() and buy_fame_shown.call())
+	_stage.refresh_fame()
 	if PhoneLayout.on:
 		var room := TouchScale.panel_view(_panel).x - PanelFit.MARGIN * 2.0
 		_panel.custom_minimum_size.x = minf(PHONE_WIDTH, room)

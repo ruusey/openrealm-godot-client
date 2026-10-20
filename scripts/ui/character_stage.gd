@@ -31,6 +31,7 @@ var stats_card: CharacterStatsCard
 
 var _characters: VBoxContainer
 var _columns: BoxContainer
+var _fame_label: Label
 var _vault_label: Label
 var _add_chest_button: Button
 ## One add at a time -- rapid clicks each read a stale count, all pass the cap and
@@ -110,6 +111,9 @@ func _ready() -> void:
 	var vault_row := HBoxContainer.new()
 	vault_row.add_theme_constant_override("separation", 12)
 	(_characters if PhoneLayout.on else self).add_child(vault_row)
+	_fame_label = Label.new()
+	_fame_label.add_theme_color_override("font_color", PlayerHud.GOLD)
+	vault_row.add_child(_fame_label)
 	_vault_label = Label.new()
 	_vault_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vault_row.add_child(_vault_label)
@@ -126,6 +130,13 @@ func _ready() -> void:
 
 	get_viewport().size_changed.connect(_fit)
 	_fit.call_deferred()
+
+
+## The account's fame; LoginScreen re-reads it every frame it is up, so a
+## purchase made from the home screen lands while it is open.
+func refresh_fame() -> void:
+	if visible and _fame_label != null and data_service != null:
+		_fame_label.text = "Fame: %s" % Mastery.thousands(int(data_service.account.get("accountFame", 0)))
 
 
 func _refresh_vault() -> void:

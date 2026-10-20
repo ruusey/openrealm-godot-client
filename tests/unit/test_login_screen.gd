@@ -423,3 +423,14 @@ func test_stats_read_as_whole_numbers_as_the_service_sends_them():
 	assert_eq(CharacterPicker.stat_text(539.6), "540", "rounded, not truncated")
 	assert_eq(CharacterPicker.stat_text(null), "?", "left out by the service")
 	assert_eq(CharacterPicker.stat_text("fast"), "?", "and anything that is not a number")
+
+
+func test_living_characters_show_the_fame_they_would_bank():
+	var content := GameData.new()
+	content.levels.parse({"levelExperienceMap": {"1": "0-999", "2": "1000-101482"}})
+	var alive := {"characterUuid": "c1", "characterClass": 0, "stats": {"hp": 130.0, "spd": 10.0, "xp": 3601482.0}}
+	assert_string_contains(CharacterPicker.describe(alive, content), "fame 1,400")
+	var fresh := {"characterUuid": "c2", "characterClass": 0, "stats": {"hp": 100.0, "spd": 10.0, "xp": 500.0}}
+	assert_string_contains(CharacterPicker.describe(fresh, content), "fame 0", "below max level: none yet")
+	var fallen := alive.merged({"deleted": "2026-09-20T18:00:00Z"})
+	assert_false(CharacterPicker.describe(fallen, content).contains("fame"), "the fallen show the day they fell")

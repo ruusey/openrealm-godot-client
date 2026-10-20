@@ -104,13 +104,16 @@ func _fill() -> void:
 
 
 ## One line per character: class, the two stats that matter at the door,
-## and for the fallen the day they fell -- the native client's "Died:".
+## then for the living the fame it would bank on death now, and for the
+## fallen the day they fell -- the native client's "Died:".
 static func describe(character: Dictionary, content: GameData) -> String:
 	var stats: Dictionary = character.get("stats", {})
-	var line := "%s   hp %s  spd %s" % [class_label(character, content),
+	var line := "%s  hp %s  spd %s" % [class_label(character, content),
 		stat_text(stats.get("hp")), stat_text(stats.get("spd"))]
 	if is_dead(character):
-		line += "   died %s" % String(character.get("deleted", "")).substr(0, 10)
+		line += "  died %s" % String(character.get("deleted", "")).substr(0, 10)
+	elif content != null:
+		line += "  fame %s" % Mastery.thousands(content.levels.fame_for(int(stats.get("xp", 0))))
 	return line
 
 

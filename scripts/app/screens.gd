@@ -184,6 +184,8 @@ func build(state: RealmState, game_data: GameData, client: OpenRealmClient,
 	death = DeathScreen.new()
 	add_child(death)
 	login = LoginScreen.new(data_service, game_data)
+	login.buy_fame = buy_fame.open
+	login.buy_fame_shown = buy_fame.available
 	add_child(login)
 
 	loading = LoadingScreen.new()
