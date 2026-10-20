@@ -40,12 +40,13 @@ static func build(shot_number: int, group_id: int, definitions: Array, base_angl
 	var index := 0
 	for definition in definitions:
 		var definition_angle: float = base_angle + float(definition.get("angle", 0.0))
+		var spawn := origin + ProjectileAngle.spawn_offset(definition, base_angle)
 		for i in count:
 			var offset := (float(i) - float(count - 1) * 0.5) * spread
 			# Negative ids keep predictions out of the server id space.
 			var local_id := -(shot_number * 100 + index)
 			index += 1
-			built[local_id] = Projectile.predicted_shot(local_id, group_id, origin,
+			built[local_id] = Projectile.predicted_shot(local_id, group_id, spawn,
 				definition_angle + offset, definition, now_ms, range_multiplier, extra_flags)
 	return built
 

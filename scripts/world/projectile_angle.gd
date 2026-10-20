@@ -61,3 +61,10 @@ static func direction(angle: float) -> Vector2:
 ## The axis 90 degrees from travel, used by the parametric wave.
 static func perpendicular(angle: float) -> Vector2:
 	return Vector2(cos(angle), -sin(angle))
+
+
+## A player shot's authored spawn offset for a shot fired at `angle`: X to
+## the shooter's right, Y behind -- the server's Projectile.aimedSpawnOffset.
+static func spawn_offset(definition: Dictionary, angle: float) -> Vector2:
+	return -perpendicular(angle) * float(definition.get("spawnOffsetX", 0.0)) \
+		- direction(angle) * float(definition.get("spawnOffsetY", 0.0))
