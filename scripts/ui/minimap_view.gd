@@ -43,6 +43,46 @@ static func to_world(panel_point: Vector2, window: Rect2, panel_px: float) -> Ve
 	return (window.position + panel_point / panel_px * window.size) * TILE
 
 
+## The other player nearest `point` on a panel `panel_px` wide, within
+## `radius_sq` -- never `local_id`, who is not a destination.
+static func player_at(players: Array, local_id: int, point: Vector2, window: Rect2,
+		panel_px: float, radius_sq: float) -> Dictionary:
+	var best := {}
+	var best_distance := radius_sq
+	for player in players:
+		if int(player["id"]) == local_id:
+			continue
+		var distance := to_panel(player["position"], window, panel_px).distance_squared_to(point)
+		if distance < best_distance:
+			best = player
+			best_distance = distance
+	return best
+
+
+## The focus that `window` really ends up centred on: a focus near the edge
+## is pushed back inside the map, so a pan past it does not build up.
+static func settled_focus(map_size: Vector2i, zoom: float, focus_tile: Vector2) -> Vector2:
+	return window(map_size, zoom, focus_tile).get_center()
+
+
+## The focus after zooming from `zoom` to `next_zoom` that keeps the tile
+## under `point` (on a panel `panel_px` wide) under it.
+static func focus_zoomed_about(map_size: Vector2i, focus_tile: Vector2, zoom: float, next_zoom: float,
+		point: Vector2, panel_px: float) -> Vector2:
+	var before := window(map_size, zoom, focus_tile)
+	var fraction := point / panel_px
+	var held := before.position + fraction * before.size
+	var extent := Vector2(map_size) * next_zoom
+	return held - fraction * extent + extent * 0.5
+
+
+## The focus after a finger moves `moved` panel pixels: the map follows it.
+static func focus_dragged(map_size: Vector2i, focus_tile: Vector2, zoom: float, moved: Vector2,
+		panel_px: float) -> Vector2:
+	var shown := window(map_size, zoom, focus_tile)
+	return shown.get_center() - moved / panel_px * shown.size
+
+
 static func initial_zoom(map_size: Vector2i) -> float:
 	var longest := maxi(map_size.x, map_size.y)
 	if longest <= 0:

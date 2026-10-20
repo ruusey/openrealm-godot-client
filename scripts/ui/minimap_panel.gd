@@ -10,7 +10,10 @@ extends CanvasLayer
 ## would be refused is greyed and ignored. M hides it. In an admin's hop
 ## mode -- /hop in the chat, answered "Hop mode: ON" -- a click anywhere
 ## sends `/hop x y` with the world point under it instead, and a HOP badge
-## says so, as both references do.
+## says so, as both references do. On a phone, too small to aim a tap at,
+## a tap asks for the opened map (MinimapExpanded) instead.
+
+signal expand_requested
 
 const SIDE := MinimapCanvas.SIDE
 const MARGIN := 10.0
@@ -99,17 +102,7 @@ func _process(_delta: float) -> void:
 ## The other player nearest the point, within the hit radius -- never
 ## ourselves, who are not a destination.
 func player_under(point: Vector2) -> Dictionary:
-	var best := {}
-	var best_distance := HOVER_RADIUS_SQ
-	for player in state.minimap.players:
-		if int(player["id"]) == state.local.id:
-			continue
-		var distance: float = MinimapView.to_panel(player["position"], _canvas.window, SIDE) \
-			.distance_squared_to(point)
-		if distance < best_distance:
-			best = player
-			best_distance = distance
-	return best
+	return MinimapView.player_at(state.minimap.players, state.local.id, point, _canvas.window, SIDE, HOVER_RADIUS_SQ)
 
 
 ## Sends the teleport, and says whether it did.
@@ -142,7 +135,11 @@ func _on_gui_input(event: InputEvent) -> void:
 		match event.button_index:
 			MOUSE_BUTTON_WHEEL_UP: zoom = MinimapView.step(zoom, -1)
 			MOUSE_BUTTON_WHEEL_DOWN: zoom = MinimapView.step(zoom, 1)
-			MOUSE_BUTTON_LEFT: _click()
+			MOUSE_BUTTON_LEFT:
+				if PhoneLayout.on:
+					expand_requested.emit()
+				else:
+					_click()
 
 
 ## A click on the map is a look at it, not a shot at the world behind it.

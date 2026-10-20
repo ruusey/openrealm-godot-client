@@ -20,6 +20,7 @@ var forge: ForgePanel
 var market: ExchangeMarketPanel
 var prompt: InteractPrompt
 var minimap: MinimapPanel
+var minimap_expanded: MinimapExpanded
 var player: PlayerHud
 var vault: VaultPanel
 var banner: RealmBanner
@@ -88,6 +89,10 @@ func build(state: RealmState, game_data: GameData, client: OpenRealmClient,
 	minimap = MinimapPanel.new()
 	minimap.setup(state, chat_actions)
 	add_child(minimap)
+	minimap_expanded = MinimapExpanded.new()
+	minimap_expanded.setup(state, chat_actions)
+	add_child(minimap_expanded)
+	minimap.expand_requested.connect(func() -> void: minimap_expanded.open(minimap.zoom))
 	player = PlayerHud.new()
 	player.setup(state, game_data)
 	player.below = minimap.bottom
@@ -183,7 +188,7 @@ func build(state: RealmState, game_data: GameData, client: OpenRealmClient,
 
 ## A click on the bag, the bar or the sheet is a gesture on it, not a shot.
 func captures_mouse() -> bool:
-	return [inventory, abilities, skills, masteries, quests, store, fame, forge, minimap, market, trade,
+	return [inventory, abilities, skills, masteries, quests, store, fame, forge, minimap, minimap_expanded, market, trade,
 		trade_request, party, party_invite, pvp_challenge, guild_dialog, guild_roster, guild_invite,
 		nearby, options, chat, player, prompt, loot, leaderboard, touch, tutorial_exit, vault, companions].any(func(panel) -> bool: return panel.captures_mouse())
 

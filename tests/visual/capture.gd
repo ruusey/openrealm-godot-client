@@ -215,6 +215,9 @@ func capture(scenario: String, output: String, content: GameData) -> bool:
 	map.setup(state, null)
 	map.shown = scenario in ["minimap", "minimap_hop"] or phone
 	stage.add_child(map)
+	var opened_map := MinimapExpanded.new()
+	opened_map.setup(state, null)
+	stage.add_child(opened_map)
 	# The whole phone screen: the touch layer over the HUD, as Main builds it.
 	var touch: TouchControls = null
 	if phone:
@@ -263,6 +266,9 @@ func capture(scenario: String, output: String, content: GameData) -> bool:
 		chat._input.text = "on my way, hold the portal"
 	if scenario == "phone_menu":
 		touch._phone_menu.open()
+	if scenario == "phone_map":
+		opened_map._canvas.clock = map._canvas.clock
+		opened_map.open(0.5)
 	if scenario == "death":
 		grave.fell("Ruu")
 	# The card over the second cell, pinned where a cursor would be: the bar

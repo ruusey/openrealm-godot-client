@@ -29,6 +29,10 @@ var state: RealmState
 ## Set by the panel every frame, in tiles.
 var window := Rect2()
 var hovered := {}
+## How wide it draws: the corner map at SIDE, the phone's opened map larger.
+var side := SIDE
+## Under a teleportable player's name.
+var tp_hint := "click to tp"
 ## What the pulse and the pins are timed from; pinned by a scripted render.
 var clock: Callable = func() -> int: return Time.get_ticks_msec()
 ## What the last frame drew, for the tests: dots, pins, arrows off the edge.
@@ -41,7 +45,13 @@ var _painted := -1
 func _ready() -> void:
 	texture_filter = TEXTURE_FILTER_NEAREST
 	mouse_filter = MOUSE_FILTER_IGNORE
-	custom_minimum_size = Vector2(SIDE, SIDE)
+	custom_minimum_size = Vector2(side, side)
+	size = custom_minimum_size
+
+
+func resize(new_side: float) -> void:
+	side = new_side
+	custom_minimum_size = Vector2(side, side)
 	size = custom_minimum_size
 
 
@@ -50,14 +60,14 @@ func _draw() -> void:
 	if state == null or state.minimap.image == null:
 		return
 	_refresh_texture()
-	draw_texture_rect_region(_texture, Rect2(Vector2.ZERO, Vector2(SIDE, SIDE)), window)
+	draw_texture_rect_region(_texture, Rect2(Vector2.ZERO, Vector2(side, side)), window)
 	for player in state.minimap.players:
 		# Ours is drawn below from the live predicted position: this
 		# snapshot steps at the server's rate while the map scrolls under it.
 		if int(player["id"]) == state.local.id:
 			continue
-		var at := MinimapView.to_panel(player["position"], window, SIDE)
-		if not Rect2(-5, -5, SIDE + 10, SIDE + 10).has_point(at):
+		var at := MinimapView.to_panel(player["position"], window, side)
+		if not Rect2(-5, -5, side + 10, side + 10).has_point(at):
 			continue
 		CircleStamp.disc(self, at, DOT_RADIUS, OTHER if player["teleportable"] else OTHER_HIDDEN)
 		draw_stats["dots"] += 1
@@ -65,13 +75,13 @@ func _draw() -> void:
 		_draw_pin(marker)
 	if state.local.is_present():
 		draw_colored_polygon(MinimapView.arrow(
-			MinimapView.to_panel(state.local.render_position(), window, SIDE),
+			MinimapView.to_panel(state.local.render_position(), window, side),
 			MinimapView.heading(state.local.facing, state.local.facing_left)), LOCAL)
 	if not hovered.is_empty():
-		_draw_name(MinimapView.to_panel(hovered["position"], window, SIDE), hovered)
+		_draw_name(MinimapView.to_panel(hovered["position"], window, side), hovered)
 	if state.minimap.hop:
 		_draw_hop_badge()
-	draw_rect(Rect2(0.5, 0.5, SIDE - 1.0, SIDE - 1.0), BORDER, false)
+	draw_rect(Rect2(0.5, 0.5, side - 1.0, side - 1.0), BORDER, false)
 
 
 func _draw_hop_badge() -> void:
@@ -94,10 +104,10 @@ func _refresh_texture() -> void:
 ## A pulsing red ring and the event's name under it, or a red arrow at the
 ## edge pointing toward one that is out of the window.
 func _draw_pin(marker: Dictionary) -> void:
-	var at := MinimapView.to_panel(marker["position"], window, SIDE)
+	var at := MinimapView.to_panel(marker["position"], window, side)
 	var pulse := 0.55 + 0.45 * sin(float(clock.call()) * 0.005)
-	if not Rect2(0, 0, SIDE, SIDE).has_point(at):
-		var edge := at.clamp(Vector2(EDGE_INSET, EDGE_INSET), Vector2(SIDE - EDGE_INSET, SIDE - EDGE_INSET))
+	if not Rect2(0, 0, side, side).has_point(at):
+		var edge := at.clamp(Vector2(EDGE_INSET, EDGE_INSET), Vector2(side - EDGE_INSET, side - EDGE_INSET))
 		var angle := (at - edge).angle()
 		var tip := PackedVector2Array()
 		for corner in [Vector2(7, 0), Vector2(-3, -5), Vector2(-3, 5)]:
@@ -123,5 +133,5 @@ func _draw_name(at: Vector2, player: Dictionary) -> void:
 	draw_string(font, Vector2(at.x + 8.0, at.y - 1.0).round(), player["name"],
 		HORIZONTAL_ALIGNMENT_LEFT, -1, 10, OTHER if player["teleportable"] else HINT)
 	if player["teleportable"]:
-		draw_string(font, Vector2(at.x + 8.0, at.y + 9.0).round(), "click to tp",
+		draw_string(font, Vector2(at.x + 8.0, at.y + 9.0).round(), tp_hint,
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 8, HINT)
