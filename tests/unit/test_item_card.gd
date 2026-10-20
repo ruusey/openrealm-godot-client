@@ -74,6 +74,15 @@ func test_dps_in_the_viewers_hands():
 	assert_eq(_text(_item(101, {"gemstoneType": 10}), "DPS", viewer), "DPS: 243 (6 shots - 3/s)",
 		"a scaling gem is already in the stats")
 	assert_eq(_line(_item(101), "DPS"), [], "no viewer: no DPS")
+
+
+func test_a_melee_swing_counts_its_bolts_at_the_servers_share():
+	var viewer := {"class_id": BARBARIAN, "stats": {"str": 10, "dex": 25}}
+	var archetype_id := WeaponDps.archetype_id({}, content.item_definition(101))
+	content.library.weapon_archetypes[archetype_id]["melee"] = true
+	# The 3-hit volley is the cone, the group's second projectile a bolt at 40%:
+	# 13.5 x (3 + 0.4) x 3/s.
+	assert_eq(_text(_item(101), "DPS", viewer), "DPS: 138 (6 shots - 3/s)")
 	assert_eq(WeaponDps.of(_item(200), {}, {}, content), {}, "a potion deals nothing")
 
 

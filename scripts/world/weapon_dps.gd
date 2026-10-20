@@ -7,7 +7,9 @@ extends RefCounted
 ## times the archetype's damage multiplier, times whatever a combat gem
 ## adds (crushing +15% damage, crit +15% as an expected value). The shots
 ## per attack are the projectile group's count times the archetype's
-## projectiles, plus a multishot gem's; attacks per second are the
+## projectiles, plus a multishot gem's -- except a melee swing, which is one
+## cone hit (repeated per multishot) plus the group's other projectiles as bolts
+## at the server's MELEE_BURST_DAMAGE_SCALE; attacks per second are the
 ## server's DEX formula times the archetype's speed (AttackRate, with no
 ## status effects -- the card describes the weapon, not this moment).
 
@@ -16,6 +18,9 @@ const STAT_KEYS := ["vit", "wis", "hp", "mp", "str", "def", "spd", "dex"]
 const STR := 4
 const WIS := 1
 const DEX := 7
+## ServerGameLogic.MELEE_BURST_DAMAGE_SCALE: a melee weapon's bolts hit for this
+## share of the swing.
+const MELEE_BURST_SCALE := 0.4
 
 
 ## The stat a weapon scales with: its own, the catalog's, or its archetype
@@ -54,9 +59,13 @@ static func of(item: Dictionary, definition: Dictionary, stats: Dictionary, cont
 	per_shot *= 1.0 + float(gem.get("damage_pct", 0)) / 100.0
 	per_shot *= 1.0 + float(gem.get("crit_pct", 0)) / 100.0
 	var group := 0 if content == null else content.projectiles_in_group(int(damage.get("projectileGroupId", -1))).size()
-	var bullets := maxi(group, 1) * maxi(1, projectiles + int(gem.get("extra_projectiles", 0)))
+	var volley := maxi(1, projectiles + int(gem.get("extra_projectiles", 0)))
+	var bullets := maxi(group, 1) * volley
+	var hits := float(bullets)
+	if bool(archetype.get("melee", false)):
+		hits = volley + MELEE_BURST_SCALE * maxi(group - 1, 0)
 	var per_second := AttackRate.per_second(int(stats.get("dex", 0)), speed_mul, [])
-	return {"dps": roundi(per_shot * bullets * per_second), "per_shot": roundi(per_shot),
+	return {"dps": roundi(per_shot * hits * per_second), "per_shot": roundi(per_shot),
 		"bullets": bullets, "per_second": snappedf(per_second, 0.01)}
 
 
