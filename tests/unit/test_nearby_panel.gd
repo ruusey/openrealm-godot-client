@@ -80,7 +80,9 @@ func test_lists_the_others_with_their_role_colour_and_tooltip():
 	var name: Label = rows[0].get_child(1)
 	assert_eq(name.text, "Mingau")
 	assert_eq(name.get_theme_color("font_color"), Color("4080e0"))
-	assert_eq(rows[0].tooltip_text.split("\n")[0], "Mingau  [admin]")
+	rows[0].mouse_entered.emit()
+	assert_true(panel._inspect.visible, "a hover brings up the inspect card")
+	assert_eq(panel._inspect._name.text, "Mingau  [admin]")
 
 
 func test_rebuilds_only_when_who_is_listed_changes():

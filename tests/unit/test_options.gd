@@ -136,7 +136,7 @@ func test_the_panel_has_a_box_a_setting_and_a_click_flips_it():
 	panel.setup(state.settings, null)
 	add_child_autofree(panel)
 	await wait_process_frames(1)
-	assert_eq(panel.boxes.size(), GameSettings.DISPLAY.size() + GameSettings.GRAPHICS.size())
+	assert_eq(panel.boxes.size(), GameSettings.DISPLAY.size() + GameSettings.GRAPHICS.size() + GameSettings.AUDIO.size())
 	assert_true(panel.boxes["vsync"].button_pressed)
 	panel.boxes["vsync"].button_pressed = false
 	assert_false(state.settings.is_on("vsync"), "the click is the setting")

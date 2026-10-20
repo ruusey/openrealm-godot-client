@@ -128,7 +128,7 @@ func test_the_panel_lists_the_cards_and_sends_the_command():
 	_snapshot(3, [_quest(1, "ACTIVE"), _quest(6, "AVAILABLE", false)])
 	panel._process(0.0)
 	assert_true(panel.visible)
-	assert_eq(panel.chip.text, "★ 3 Stars")
+	assert_eq(panel.chip.text, "3 Stars")
 	assert_false(panel._dialog.visible, "the log is shut until asked for")
 	panel.chip.pressed.emit()
 	panel._process(0.0)
@@ -151,7 +151,7 @@ func test_the_panel_lists_the_cards_and_sends_the_command():
 	panel._process(0.0)
 	await wait_process_frames(1)
 	assert_eq(panel._cards.get_child_count(), 1)
-	assert_eq((panel._cards.get_child(0) as Label).text, "No quests available yet.")
+	assert_eq((panel._cards.get_child(0) as Label).text, "No active quests.")
 
 
 func test_l_opens_the_log_in_a_realm_and_can_be_rebound():

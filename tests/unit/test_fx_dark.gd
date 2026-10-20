@@ -62,7 +62,7 @@ func test_the_poison_cloud_bubbles_sit_inside_and_swell():
 	assert_eq(FxPoisonCloud.bubble_distance(100.0, 0), 20.0)
 	assert_almost_eq(FxPoisonCloud.bubble_distance(100.0, 1), 22.585, 0.001)
 	assert_eq(FxPoisonCloud.bubble_px(0, 0), 4.0)
-	assert_almost_eq(FxPoisonCloud.bubble_px(0, 1), 4.0 + 2.0 * sin(4.137), 0.001)
+	assert_almost_eq(FxPoisonCloud.bubble_px(0, 1), 4.0 + 2.2 * sin(1.4), 0.001, "each index a beat further on")
 
 
 func test_the_life_drain_streams_wind_inward():

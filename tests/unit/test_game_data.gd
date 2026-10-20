@@ -21,7 +21,7 @@ func test_loads_every_content_file():
 	assert_eq(data.tiles.size(), 12)
 	assert_eq(data.enemies.size(), 2)
 	assert_eq(data.library.classes.size(), 2)
-	assert_eq(data.library.animations.size(), 2, "only objectType == player entries are animation sets")
+	assert_eq(data.library.animations.size(), 3, "player and enemy entries are animation sets, nothing else")
 
 
 func test_summary_reports_what_was_loaded():
@@ -32,8 +32,7 @@ func test_summary_reports_what_was_loaded():
 
 func test_missing_root_is_reported_not_fatal():
 	assert_false(await data.load_from(FileContentSource.new("/no/such/directory")))
-	assert_eq(data.errors.size(), 1)
-	assert_string_contains(data.errors[0], "data root not found")
+	assert_string_contains(data.errors[0], "data root not found", "said first; the shared crack sheet is still looked for")
 
 
 func test_malformed_content_file_is_reported():

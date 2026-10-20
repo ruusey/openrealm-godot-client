@@ -88,7 +88,7 @@ func test_the_panel_shows_both_pages_and_lights_what_is_on_the_table():
 	assert_eq(int(panel._mine[0].item.get("itemId", -1)), 310)
 	assert_eq(int(panel._theirs[0].item.get("itemId", -1)), 105)
 	assert_eq(int(panel._theirs[2].item.get("itemId", -1)), 300)
-	assert_eq(panel._theirs[0].mouse_filter, Control.MOUSE_FILTER_IGNORE, "theirs are read-only")
+	assert_eq(panel._theirs[0].mouse_filter, Control.MOUSE_FILTER_PASS, "theirs are read-only but still hover for the tooltip")
 	assert_eq(panel._mine[0].self_modulate, Color.WHITE)
 	state.apply_packet("UpdateTradePacket", {"selections": {
 		"player0Selection": {"playerId": 9, "selection": [true], "itemRefs": [], "confirmed": false},

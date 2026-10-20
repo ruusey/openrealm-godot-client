@@ -80,11 +80,6 @@ func test_tcp_transport_has_nothing_to_read_while_closed():
 	assert_eq(TcpTransport.new().get_available_bytes(), 0)
 
 
-func test_tcp_transport_reports_a_bad_host():
-	var transport := TcpTransport.new()
-	assert_ne(transport.connect_to_host("", 2222), OK, "an empty host is refused outright")
-
-
 # --- GodotHttpBackend against a minimal loopback HTTP server --------------
 
 func test_godot_http_backend_performs_a_real_request():

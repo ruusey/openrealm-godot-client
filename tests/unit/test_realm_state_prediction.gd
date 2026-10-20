@@ -23,6 +23,14 @@ func before_each():
 	state.local.stats = {"spd": 75}
 
 
+## Where the player stands with its hitbox flush against the near edge of
+## tile column (or row) 1. The hitbox is centred on the sprite, as the
+## server's TileManager has it: inset by half the slack on each side.
+func _flush() -> float:
+	var hit := floorf(GameConstants.PLAYER_SIZE * GameConstants.COLLISION_HITBOX_SCALE)
+	return GameConstants.TILE_SIZE - (GameConstants.PLAYER_SIZE - hit) * 0.5 - hit
+
+
 func _step_px() -> float:
 	var tiles_per_second := 4.0 + 5.6 * (float(state.local.stats["spd"]) / 75.0)
 	return tiles_per_second * float(RealmState.TILE_SIZE) / GameConstants.TICK_RATE
@@ -101,33 +109,33 @@ func test_facing_follows_the_dominant_axis():
 
 func test_collision_blocks_movement_into_a_wall():
 	state.apply_packet("LoadMapPacket", {"realmId": 1, "tiles": [WireHelper.tile(2, GameConstants.COLLISION_LAYER, 1, 0)]})
-	state.local.position = Vector2(9.0, 0.0)  # hitbox ends exactly at the tile edge
+	state.local.position = Vector2(_flush(), 0.0)  # hitbox ends exactly at the tile edge
 	state.movement.predict(TICK, Vector2.RIGHT)
-	assert_eq(state.local.position.x, 9.0, "blocked on x")
+	assert_eq(state.local.position.x, _flush(), "blocked on x")
 
 
 func test_collision_resolves_axes_independently():
 	# Sliding along a wall: x is blocked, y still moves.
 	state.apply_packet("LoadMapPacket", {"realmId": 1, "tiles": [WireHelper.tile(2, GameConstants.COLLISION_LAYER, 1, 0)]})
-	state.local.position = Vector2(9.0, 0.0)
+	state.local.position = Vector2(_flush(), 0.0)
 	state.movement.predict(TICK, Vector2(1, 1).normalized())
-	assert_eq(state.local.position.x, 9.0, "x stays blocked")
+	assert_eq(state.local.position.x, _flush(), "x stays blocked")
 	assert_gt(state.local.position.y, 0.0, "y still advances")
 
 
 func test_non_colliding_tiles_do_not_block():
 	# Decoration tiles live in the collision layer with hasCollision = 0.
 	state.apply_packet("LoadMapPacket", {"realmId": 1, "tiles": [WireHelper.tile(1, GameConstants.COLLISION_LAYER, 1, 0)]})
-	state.local.position = Vector2(9.0, 0.0)
+	state.local.position = Vector2(_flush(), 0.0)
 	state.movement.predict(TICK, Vector2.RIGHT)
-	assert_gt(state.local.position.x, 9.0, "hasCollision = 0 is walkable")
+	assert_gt(state.local.position.x, _flush(), "hasCollision = 0 is walkable")
 
 
 func test_tiles_on_other_layers_do_not_block():
 	state.apply_packet("LoadMapPacket", {"realmId": 1, "tiles": [WireHelper.tile(2, 0, 1, 0)]})
-	state.local.position = Vector2(9.0, 0.0)
+	state.local.position = Vector2(_flush(), 0.0)
 	state.movement.predict(TICK, Vector2.RIGHT)
-	assert_gt(state.local.position.x, 9.0, "only the collision layer blocks")
+	assert_gt(state.local.position.x, _flush(), "only the collision layer blocks")
 
 
 func test_movement_is_unobstructed_without_content():
@@ -170,15 +178,16 @@ func test_a_corner_blocks_the_smaller_axis_and_slides_along_the_larger():
 	# axis (y here, with |dx| == |dy|) rather than cutting the corner. The
 	# old X-then-Y resolution moved x and then found y clear too.
 	state.apply_packet("LoadMapPacket", {"realmId": 1, "tiles": [WireHelper.tile(2, GameConstants.COLLISION_LAYER, 1, 1)]})
-	state.local.position = Vector2(9, 9)
+	var corner := Vector2(_flush(), _flush())
+	state.local.position = corner
 	state.movement.predict(TICK, Vector2(1, 1).normalized())
-	assert_almost_eq(state.local.position.x, 9.0 + _step_px() * sqrt(0.5), 0.0001, "slides along x")
-	assert_eq(state.local.position.y, 9.0, "y gave way")
+	assert_almost_eq(state.local.position.x, corner.x + _step_px() * sqrt(0.5), 0.0001, "slides along x")
+	assert_eq(state.local.position.y, corner.y, "y gave way")
 	# Mostly downward: now x is the smaller axis and gives way instead.
-	state.local.position = Vector2(9, 9)
+	state.local.position = corner
 	state.movement.predict(TICK, Vector2(0.5, 1.0).normalized())
-	assert_eq(state.local.position.x, 9.0, "x gave way")
-	assert_almost_eq(state.local.position.y, 9.0 + _step_px() / sqrt(1.25), 0.0001, "slides along y")
+	assert_eq(state.local.position.x, corner.x, "x gave way")
+	assert_almost_eq(state.local.position.y, corner.y + _step_px() / sqrt(1.25), 0.0001, "slides along y")
 
 
 func test_each_axis_is_tested_from_where_the_tick_started():
@@ -187,9 +196,9 @@ func test_each_axis_is_tested_from_where_the_tick_started():
 	# whereas testing y from the already-moved x would find y clear.
 	state.apply_packet("LoadMapPacket", {"realmId": 1, "tiles": [WireHelper.tile(2, GameConstants.COLLISION_LAYER, 1, 0),
 		WireHelper.tile(2, GameConstants.COLLISION_LAYER, 0, 1)]})
-	state.local.position = Vector2(9, 9)
+	state.local.position = Vector2(_flush(), _flush())
 	state.movement.predict(TICK, Vector2(1, 1).normalized())
-	assert_eq(state.local.position, Vector2(9, 9))
+	assert_eq(state.local.position, Vector2(_flush(), _flush()))
 
 
 func test_the_map_edge_and_the_void_block():
@@ -240,9 +249,9 @@ func test_the_speed_effects_the_server_applies():
 
 func test_unknown_tile_id_is_not_solid():
 	state.apply_packet("LoadMapPacket", {"realmId": 1, "tiles": [WireHelper.tile(999, GameConstants.COLLISION_LAYER, 1, 0)]})
-	state.local.position = Vector2(9.0, 0.0)
+	state.local.position = Vector2(_flush(), 0.0)
 	state.movement.predict(TICK, Vector2.RIGHT)
-	assert_gt(state.local.position.x, 9.0)
+	assert_gt(state.local.position.x, _flush())
 
 
 # --- reconciliation --------------------------------------------------------
@@ -358,15 +367,17 @@ func test_a_visible_correction_is_absorbed_into_the_render_offset():
 	var seq: int = state.movement.input_seq
 	var predicted: Vector2 = state.local.position
 	var drawn_before := state.local.render_position()
-	var server := predicted + Vector2(8.0, 0.0)
+	# Bigger than the cap, so part of it shows.
+	var jump := LocalPlayer.SMOOTHING_CAP_PX + 4.0
+	var server := predicted + Vector2(jump, 0.0)
 	_ack(seq, server)
 
 	assert_eq(state.local.position, server, "logical position follows the server")
 	assert_eq(state.movement.corrections, 1)
-	assert_almost_eq(state.movement.last_correction_px, 8.0, 0.001)
+	assert_almost_eq(state.movement.last_correction_px, jump, 0.001)
 	assert_ne(state.local.smooth_offset, Vector2.ZERO,
 		"the jump is absorbed visually rather than snapped")
-	assert_almost_eq(state.local.render_position().x, drawn_before.x + 8.0 - LocalPlayer.SMOOTHING_CAP_PX, 0.001,
+	assert_almost_eq(state.local.render_position().x, drawn_before.x + jump - LocalPlayer.SMOOTHING_CAP_PX, 0.001,
 		"drawn where it was, plus only what the cap could not hide of the jump")
 
 
@@ -377,8 +388,9 @@ func test_smoothing_is_capped_and_decays_to_nothing():
 		"a large jump is only partly hidden")
 
 	var anchored: Vector2 = state.local.position
-	# 50ms half-life from a 6px cap: a little over half a second to vanish.
-	for i in 40:
+	# Half-lives from the cap down to the 0.05px floor, plus a tick to spare.
+	var half_lives := log(LocalPlayer.SMOOTHING_CAP_PX / 0.05) / log(2.0)
+	for i in ceili(half_lives * LocalPlayer.SMOOTHING_HALF_LIFE / RealmState.TICK_DELTA) + 1:
 		state.advance(RealmState.TICK_DELTA, Vector2.ZERO, 0.0)
 	assert_eq(state.local.smooth_offset, Vector2.ZERO, "the offset unwinds")
 	assert_eq(state.local.position, anchored, "and never moved the real position")

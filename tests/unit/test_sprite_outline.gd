@@ -5,8 +5,7 @@ extends GutTest
 
 
 func test_the_ring_covers_every_direction():
-	assert_eq(SpriteOutline.OFFSETS.size(), 8,
-		"four cardinals plus four diagonals; the diagonals fill concave corners")
+	assert_eq(SpriteOutline.OFFSETS.size(), 4, "the four cardinals; diagonals were cut for draw cost")
 
 
 func test_the_ring_is_symmetric():

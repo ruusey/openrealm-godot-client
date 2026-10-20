@@ -133,14 +133,17 @@ func test_the_card_describes_a_cell():
 	bar._process(0.0)
 	var lines := bar.describe(1)
 	assert_eq(lines[0][0], "Fire Breath")
-	assert_eq(lines[1][0], "MP 60 - Cooldown 2.3s - Range 352")
+	assert_eq(lines[1][0], "Active - Key 1")
 	assert_eq(lines[2][0], "A cone of flame.")
-	assert_eq(lines[3][0], "Level 1/5")
+	assert_eq(lines[3][0], "MP 60 - Cooldown 2.3s - Instant - Range 352")
+	assert_eq(lines[-1][0], "Level 1/5")
 	assert_eq(bar.describe(0)[0][0], "Arcane Well")
 	assert_eq(bar.describe(0)[1][0], "Class passive - always on")
 	state.local.class_id = 0
 	bar._process(0.0)
-	assert_eq(bar.describe(3)[1][0], "MP 60 - Cooldown 12.0s - Self")
+	var texts := bar.describe(3).map(func(line: Array) -> String: return line[0])
+	assert_eq(texts[1], "Active - Key 3")
+	assert_true(texts.any(func(text: String) -> bool: return text.begins_with("MP 60 - Cooldown 12.0s")))
 	assert_eq(bar.describe(2), [], "an empty slot")
 
 

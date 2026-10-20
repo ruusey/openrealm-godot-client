@@ -41,15 +41,16 @@ func _in_game() -> void:
 
 func test_dev_toggles_the_readout_says_so_and_sends_nothing():
 	_in_game()
+	assert_true(dev.shown, "on by default, as on the web")
 	assert_true(actions.say("/dev"))
-	assert_true(dev.shown)
+	assert_false(dev.shown)
 	assert_eq(transport.sent_packets(), [], "a client command never goes on the wire")
 	var said: Dictionary = state.chat.lines[-1]
 	assert_eq(said["from"], "SYSTEM")
-	assert_eq(said["message"], "Dev overlay ON (FPS / ping / jitter / res / draw)")
+	assert_eq(said["message"], "Dev overlay OFF (FPS / ping / jitter / res / draw)")
 	actions.say("/DEV")
-	assert_false(dev.shown, "any case, as the web lower-cases it")
-	assert_string_contains(state.chat.lines[-1]["message"], "OFF")
+	assert_true(dev.shown, "any case, as the web lower-cases it")
+	assert_string_contains(state.chat.lines[-1]["message"], "ON")
 
 
 func test_debug_brings_back_the_diagnostics_and_clear_empties_the_log():
@@ -69,7 +70,7 @@ func test_any_other_command_still_goes_to_the_server():
 	var sent := transport.sent_packets()
 	assert_eq(sent.size(), 1)
 	assert_eq(sent[0]["name"], "CommandPacket")
-	assert_false(dev.shown)
+	assert_true(dev.shown, "left as it was")
 	assert_false(ClientCommands.new(state, dev, hud).run("/"), "a bare slash is not ours")
 
 

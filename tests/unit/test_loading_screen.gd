@@ -16,7 +16,7 @@ func before_each():
 func test_covers_the_screen_until_the_content_is_ready():
 	screen._process(0.0)
 	assert_true(screen.visible)
-	assert_eq(screen._progress.text, "content ...", "no tables yet, so no count to give")
+	assert_eq(screen._progress.text, "sprites 0 / 1", "no tables yet: only the shared wall-crack sheet")
 	await data.load_from(FileContentSource.new(ProjectSettings.globalize_path("res://tests/fixtures/datadir")))
 	assert_true(data.ready)
 	assert_true(screen.is_processing(), "still waiting")
@@ -28,13 +28,14 @@ func test_covers_the_screen_until_the_content_is_ready():
 func test_counts_the_sheets_as_they_land():
 	assert_eq(LoadingScreen.caption(0, 0), "content ...")
 	assert_eq(LoadingScreen.caption(12, 51), "sprites 12 / 51")
-	# The fixture names two sheets; one is deliberately broken and still counts.
+	# Two sheets named by tiles plus the shared wall-crack sheet; one is
+	# deliberately broken and still counts.
 	data.library.tiles = {1: {"spriteKey": "entity/atlas.png"}, 2: {"spriteKey": "nope.png"}}
 	screen._process(0.0)
-	assert_eq(screen._progress.text, "sprites 0 / 2")
+	assert_eq(screen._progress.text, "sprites 0 / 3")
 	await data.sprites.preload_sheets(FileContentSource.new(ProjectSettings.globalize_path("res://tests/fixtures/datadir")), data.library.sheet_keys())
 	screen._process(0.0)
-	assert_eq(screen._progress.text, "sprites 2 / 2")
+	assert_eq(screen._progress.text, "sprites 3 / 3")
 
 
 func test_does_nothing_without_content():

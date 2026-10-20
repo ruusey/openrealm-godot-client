@@ -123,9 +123,8 @@ func test_after_a_death_the_account_comes_back_without_signing_in_again():
 		{"characterUuid": "c2", "characterClass": 0, "stats": {"classId": 0}}]})
 	await screen.return_after_death()
 	var sent: Array = backend.requests.slice(before)
-	assert_eq(sent.size(), 2, "the account and the leaderboard, no second sign-in")
+	assert_eq(sent.size(), 1, "the account alone, no second sign-in")
 	assert_string_ends_with(sent[0]["url"], "/data/account/g")
-	assert_string_ends_with(sent[1]["url"], "/data/stats/top?count=25")
 	assert_eq(sent[0]["method"], HTTPClient.METHOD_GET)
 	assert_true(screen.visible)
 	assert_eq(screen._stage.picker.alive_count(), 1, "the living one to pick")
@@ -296,8 +295,7 @@ func test_play_as_guest_registers_signs_in_and_shows_the_credentials_once():
 	screen._form.guest_button.pressed.emit()
 	await wait_process_frames(1)
 	var urls: Array = backend.requests.map(func(r: Dictionary) -> String: return r["url"].trim_prefix("http://data.test"))
-	assert_eq(urls, ["/admin/account/register", "/admin/account/login", "/admin/account/terms", "/data/account/g",
-		"/data/stats/top?count=25"], "the leaderboard loads with the characters")
+	assert_eq(urls, ["/admin/account/register", "/admin/account/login", "/admin/account/terms", "/data/account/g"])
 	var made: Dictionary = screen._form.guest.saved()
 	assert_eq(screen._form.email_text(), made["email"], "the form now holds the guest")
 	assert_eq(screen._form.password_text(), made["password"])
@@ -358,8 +356,7 @@ func test_registering_signs_straight_in_to_the_new_accounts_characters():
 	form.button.pressed.emit()
 	await wait_process_frames(1)
 	var urls: Array = backend.requests.map(func(r: Dictionary) -> String: return r["url"].trim_prefix("http://data.test"))
-	assert_eq(urls, ["/admin/account/register", "/admin/account/login", "/admin/account/terms", "/data/account/g",
-		"/data/stats/top?count=25"], "the leaderboard loads with the characters")
+	assert_eq(urls, ["/admin/account/register", "/admin/account/login", "/admin/account/terms", "/data/account/g"])
 	var body: Dictionary = JSON.parse_string(backend.requests[0]["body"])
 	assert_eq([body["email"], body["password"], body["accountName"], body["guest"]],
 		["new@example.com", "hunter2", "Newbie", false], "a normal account, not a guest")
@@ -397,23 +394,6 @@ func test_a_refused_registration_says_why_and_stays_on_the_form():
 	assert_true(form.visible, "still on the form to fix it")
 	assert_false(form.button.disabled)
 	assert_eq(backend.requests.size(), 1, "no sign-in attempted")
-
-
-func test_signing_in_loads_the_leaderboard_beside_the_characters():
-	backend.push_json(200, {"accountGuid": "g", "token": "t"})
-	backend.push_json(200, ACCEPTED)
-	backend.push_json(200, {"characters": []})
-	backend.push_json(200, [{"accountName": "Top", "className": "Wizard", "characterClass": 2,
-		"level": 9, "fame": 0, "equipment": [], "stats": {}}])
-	assert_false(screen._board.visible, "nothing before sign-in")
-	screen.prefill("me@example.com", "pw")
-	await screen._on_login_pressed()
-	assert_eq(backend.requests.size(), 4, "login, terms, the account, the board")
-	assert_eq(backend.requests[3]["url"], "http://data.test/data/stats/top?count=25")
-	assert_true(screen._board.visible)
-	assert_eq(screen._board.rows.get_child_count(), 1)
-	screen.forget_characters("signed out")
-	assert_false(screen._board.visible, "gone with the account")
 
 
 func test_stats_read_as_whole_numbers_as_the_service_sends_them():

@@ -33,28 +33,34 @@ func test_every_type_the_server_names_has_a_drawer():
 
 func test_every_drawer_draws_without_error_through_the_renderer():
 	# Every named type, early, mid and late in its life and at its end, as
-	# an area and as a line to a far end at radius 0. The count proves each
+	# an area and as a line to a far end at radius 0 -- one type at a time,
+	# since the state keeps only the newest MAX_EFFECTS. The counts prove each
 	# was visited; the log is what proves none of them errored.
+	var log := ErrorLog.new()
+	OS.add_logger(log)
 	for kind in EffectType.NAMES:
+		state.abilities.effects.clear()
 		for progress in [0.0, 0.3, 0.7, 1.0]:
 			_cast(kind, Vector2.ZERO, 40.0, Vector2(30, 10), 3)
 			state.abilities.effects[-1]["started"] = 500 - int(progress * 1000)
 			_cast(kind, Vector2(5, 5), 0.0, Vector2(60, 0), 6)
 			state.abilities.effects[-1]["started"] = 500 - int(progress * 1000)
+		assert_gt(await _drawn(), 0, EffectType.NAMES[kind])
 	# The melee swing's four weapon archetypes ride in the tier byte.
+	state.abilities.effects.clear()
 	for archetype in [FxMeleeSwing.SWORD, FxMeleeSwing.AXE, FxMeleeSwing.HAMMER, FxMeleeSwing.DAGGER]:
 		for progress in [0.0, 0.5, 0.8]:
 			_cast(EffectType.MELEE_SWING, Vector2(10, 10), 24.0, Vector2.ZERO, archetype)
 			state.abilities.effects[-1]["started"] = 500 - int(progress * 1000)
-	var log := ErrorLog.new()
-	OS.add_logger(log)
+	assert_eq(await _drawn(), 12, "the four swings at three points in their stroke")
+	OS.remove_logger(log)
+	assert_eq(log.errors, [], "no drawer errored")
+
+
+func _drawn() -> int:
 	renderer.queue_redraw()
 	await wait_process_frames(2)
-	OS.remove_logger(log)
-	# 59 types x 8 casts, blade orbit and blender kept to their newest, and
-	# the four swings at three points in their stroke.
-	assert_eq(renderer.draw_stats["effects"], 486)
-	assert_eq(log.errors, [], "no drawer errored")
+	return renderer.draw_stats["effects"]
 
 
 func test_a_beam_is_drawn_while_it_crosses_the_view_from_off_screen():

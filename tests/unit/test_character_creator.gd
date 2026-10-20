@@ -34,7 +34,7 @@ func test_lists_every_shipped_class_in_id_order_with_its_art():
 	assert_not_null(creator.options[0].icon, "the idle_front frame stands beside the name")
 	assert_eq(creator.options[0].icon.get_size(), Vector2(32, 32), "blown up ahead of time, not by the button")
 	assert_null(creator.options[2].icon, "the fixture wizard has no frames")
-	assert_eq(creator.grid.columns, 4, "the native client's four columns")
+	assert_eq(creator.grid.columns, CharacterCreator.COLUMNS, "three columns, beside the list")
 
 
 func test_a_missing_frame_has_no_icon():

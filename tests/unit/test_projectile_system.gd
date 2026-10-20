@@ -82,7 +82,7 @@ func test_unload_also_removes_the_prediction_that_claimed_that_id():
 	system.fire_basic_attack(Vector2(200, 100))
 	var local_id: int = system.bullets.keys()[0]
 	system.apply_load({"bullets": [_wire_bullet(555, {
-		"angle": system.bullets[local_id]["angle"],
+		"angle": system.bullets[local_id]["angle"], "srcEntityId": player.id,
 		"flags": [ProjectileKind.PLAYER_PROJECTILE]})]})
 	assert_eq(system.bullets.size(), 1, "the server copy was recognised as ours")
 	system.apply_unload({"bullets": [555]})
@@ -97,9 +97,19 @@ func test_advance_moves_bullets():
 	assert_almost_eq(system.bullets[1]["pos"].y, 4.0, 0.001)
 
 
-func test_advance_drops_expired_bullets():
+func test_advance_drops_our_own_shots_at_their_range():
+	system.apply_load({"bullets": [_wire_bullet(1, {"range": 5.0, "magnitude": 10.0, "srcEntityId": player.id})]})
+	system.advance(RealmState.TICK_DELTA)
+	assert_eq(system.bullets.size(), 0)
+
+
+func test_an_enemy_shot_past_its_range_waits_for_the_server():
+	# Server-authoritative: a client-side range guess once hid a bullet the
+	# server kept flying (the invisible projectile that still killed).
 	system.apply_load({"bullets": [_wire_bullet(1, {"range": 5.0, "magnitude": 10.0})]})
 	system.advance(RealmState.TICK_DELTA)
+	assert_eq(system.bullets.size(), 1)
+	system.apply_unload({"bullets": [1]})
 	assert_eq(system.bullets.size(), 0)
 
 
@@ -135,7 +145,7 @@ func test_firing_returns_the_shoot_packet():
 	assert_false(shot.has("entityId"), "v0.9.0 takes the shooter from the connection")
 	assert_eq(shot["projectileGroupId"], 10)
 	assert_almost_eq(shot["destX"], 200.0, 0.001)
-	assert_almost_eq(shot["srcX"], 100.0, 0.001)
+	assert_almost_eq(shot["srcX"], player.centre().x, 0.001, "from the body centre, as the server fires")
 	assert_eq(shot["projectileId"], 1, "shot numbers increase per shot")
 
 
