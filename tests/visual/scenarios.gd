@@ -141,10 +141,10 @@ static func account() -> Array:
 ## What the data service's /data/fame/packages answers, as Buy Fame lists it.
 static func fame_packages() -> Dictionary:
 	return {"enabled": true, "currency": "usd", "packages": [
-		{"id": "fame_1k", "fame": 1000, "priceCents": 99, "label": "1,000 Fame"},
-		{"id": "fame_5k", "fame": 5000, "priceCents": 499, "label": "5,000 Fame", "tag": "Popular"},
-		{"id": "fame_12k", "fame": 12000, "priceCents": 999, "label": "12,000 Fame"},
-		{"id": "fame_30k", "fame": 30000, "priceCents": 1999, "label": "30,000 Fame", "tag": "Best Value"}]}
+		{"id": "fame_5k", "fame": 5000, "priceCents": 499, "label": "5,000 Fame"},
+		{"id": "fame_15k", "fame": 15000, "priceCents": 999, "label": "15,000 Fame", "tag": "Popular"},
+		{"id": "fame_40k", "fame": 40000, "priceCents": 2499, "label": "40,000 Fame"},
+		{"id": "fame_100k", "fame": 100000, "priceCents": 4999, "label": "100,000 Fame", "tag": "Best value"}]}
 
 
 ## The game servers the sign-in's picker lists.
