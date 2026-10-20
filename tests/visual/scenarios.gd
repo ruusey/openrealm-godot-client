@@ -36,7 +36,7 @@ const SQUARE_WALL_TILE := 184
 
 static func names() -> Array:
 	return ["terrain", "entities", "ysort", "bullets", "collision", "overlap",
-		"walk_left", "walk_right", "walk_up", "walk_down", "walls", "feather", "effects", "walldepth", "shadows", "attack_left", "attack_right", "attack_up", "spin", "portals", "transition", "transition_named", "damage", "damage_fading", "chat", "death", "wading", "inventory", "abilities", "potion_storage", "fame_store", "forge", "minimap", "trails", "login", "exchange_market", "wall_bands", "effects_cast", "effects_generic", "effects_holy", "effects_dark", "effects_arcane", "effects_knight", "effects_rogue", "effects_trapper", "effects_heavy", "trade", "player_hud", "party", "nearby", "item_card", "options", "options_controls", "masteries", "dev_overlay", "blind", "dyes", "quests", "quest_stars", "login_delete", "login_stats", "terms", "how_to", "leaderboard", "loot_preview", "minimap_hop", "billboards", "chunk_seams", "shores", "vault", "touch_phone", "quest_complete", "companions", "phone_play", "phone_bag", "phone_menu", "phone_chat", "phone_map", "login_account"]
+		"walk_left", "walk_right", "walk_up", "walk_down", "walls", "feather", "effects", "walldepth", "shadows", "attack_left", "attack_right", "attack_up", "spin", "portals", "transition", "transition_named", "damage", "damage_fading", "chat", "death", "wading", "inventory", "abilities", "potion_storage", "fame_store", "forge", "minimap", "trails", "login", "exchange_market", "wall_bands", "effects_cast", "effects_generic", "effects_holy", "effects_dark", "effects_arcane", "effects_knight", "effects_rogue", "effects_trapper", "effects_heavy", "trade", "player_hud", "party", "nearby", "item_card", "options", "options_controls", "masteries", "dev_overlay", "blind", "dyes", "quests", "quest_stars", "login_delete", "login_stats", "terms", "how_to", "leaderboard", "loot_preview", "minimap_hop", "billboards", "chunk_seams", "shores", "vault", "touch_phone", "quest_complete", "companions", "phone_play", "phone_bag", "phone_menu", "phone_chat", "phone_map", "login_account", "wall_plus"]
 
 
 ## A second step, applied after the first rendered frame, for scenarios whose
@@ -71,6 +71,7 @@ static func apply(name: String, state: RealmState) -> void:
 		"feather": _feather(state)
 		"effects": _effects(state)
 		"walldepth": _wall_depth(state)
+		"wall_plus": _wall_plus(state)
 		"shadows": _shadows(state)
 		"attack_left": _attacking(state, Vector2.LEFT)
 		"attack_right": _attacking(state, Vector2.RIGHT)
@@ -963,6 +964,26 @@ static func _enemy(id: int, enemy_id: int, position: Vector2, health: int, maxim
 ## while the one in front -- overlapping only the south-spilling front face --
 ## must still draw over the wall. Get the occlusion pass wrong in either
 ## direction and exactly one of these two reads incorrectly.
+## A plus of tall vine walls copied cell for cell from a live map (JosephTest
+## around 257, 238): the top wall's front face spills into the empty cell at
+## the origin, between the two walls beside it.
+static func _wall_plus(state: RealmState) -> void:
+	var ground: Array = [[3, 24, 14, 14, 5, 5, 5, 5, 5, 5, 5], [3, 24, 5, 14, 5, 5, 5, 5, 5, 5, 5], [24, 24, 14, 5, 24, 5, 5, 5, 5, 5, 5], [3, 5, 14, 24, 24, 24, 24, 5, 5, 5, 5], [5, 14, 14, 24, 24, 24, 24, 5, 5, 5, 5], [5, 14, 24, 24, 24, 24, 24, 24, 5, 5, 5], [5, 14, 24, 24, 24, 24, 24, 5, 5, 5, 5], [5, 14, 24, 24, 24, 24, 24, 5, 5, 5, 5], [5, 14, 5, 5, 24, 4, 5, 5, 5, 5, 5], [5, 14, 5, 5, 4, 4, 4, 5, 5, 5, 5]]
+	var walls: Array = [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 423, 0, 0, 414, 0, 0, 0, 0, 0], [0, 0, 0, 0, 414, 0, 414, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 414, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 414, 0, 0, 0, 0]]
+	var tiles: Array = []
+	for row in ground.size():
+		for col in ground[row].size():
+			tiles.append({"tileId": ground[row][col], "layer": 0, "xIndex": row + 234, "yIndex": col + 252})
+			if walls[row][col] > 0:
+				tiles.append({"tileId": walls[row][col], "layer": 1, "xIndex": row + 234, "yIndex": col + 252})
+	state.apply_packet("LoadMapPacket", {"realmId": 1, "mapId": 38, "mapWidth": 600, "mapHeight": 600, "tiles": tiles})
+	var at := Vector2(254 * 32, 238 * 32 + 16)
+	state.local.id = 1
+	state.local.name = "ruusey"
+	state.local.position = at
+	state.apply_packet("LoadPacket", {"players": [_player(1, "ruusey", at, 0)], "enemies": [], "containers": [], "portals": []})
+
+
 static func _wall_depth(state: RealmState) -> void:
 	var tiles: Array = []
 	for x in range(-4, 5):

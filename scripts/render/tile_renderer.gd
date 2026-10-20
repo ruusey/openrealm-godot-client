@@ -79,7 +79,10 @@ func paint_cells(canvas: CanvasItem, own: Rect2i) -> Dictionary:
 	if state == null or content == null:
 		return {}
 	var tiles := state.tiles
-	var first := own.position - Vector2i.ONE
+	# Two rows north, not one: the ring's floor is painted over whatever the chunk
+	# above put there, so a wall two rows up must be drawn again here or its front
+	# face, which spills into the ring row, is covered.
+	var first := own.position - Vector2i(1, 2)
 	var last := own.end
 	var drawn := 0
 	billboards.ringed = 0
