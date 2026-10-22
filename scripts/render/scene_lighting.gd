@@ -33,9 +33,10 @@ const BULLET_LIGHT_ENERGY := 1.6
 const MAX_TILE_LIGHTS := 24
 ## Lava/water glow reaches farther but dimmer. The pooled tile light sat right on the
 ## liquid shader's own moving highlights and blew out its bright sine-wave spots up
-## close; spreading the light over a wider radius at -15% energy softens that overlap.
+## close; spreading the light over a wider radius at lower energy softens that overlap.
+## Only lava tiles carry a data.light, so this is the lava glow and its bloom.
 const LIQUID_GLOW_RANGE_MUL := 1.5
-const LIQUID_GLOW_ENERGY_MUL := 0.85
+const LIQUID_GLOW_ENERGY_MUL := 0.57
 ## Shadow casting is per-platform (see _shadow_casters): a shadow pass runs per
 ## caster per frame, so web casts none and native casts from every visible light.
 ## The merge collapses wall runs into a handful of rects, so this cap is only ever
