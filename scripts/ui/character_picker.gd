@@ -16,12 +16,22 @@ signal stats_requested(character: Dictionary)
 const PAGES := ["Characters", "Graveyard"]
 const ALIVE := 0
 const GRAVEYARD := 1
+## A finger that moves this far down the list is scrolling it, not picking a row.
+const DRAG_SCROLL_START := 8.0
+## A tap this soon after a drag is not the second half of a double-tap.
+const ACTIVATE_AFTER_DRAG_MS := 500
 
 var game_data: GameData
 var tabs: TabBar
 var list: ItemList
 
 var _pages: Array = [[], []]
+var _drag_travel := 0.0
+var _drag_scrolling := false
+var _drag_ended_ms := -ACTIVATE_AFTER_DRAG_MS
+## The row picked before the current touch: the press that starts a drag also
+## selects the row under the finger, so a drag puts this one back.
+var _resting_selection := -1
 
 
 func _ready() -> void:
@@ -36,7 +46,8 @@ func _ready() -> void:
 	list.custom_minimum_size = Vector2(0, TouchSize.PHONE_ROW * 3 if PhoneLayout.on else TouchSize.ROW * 5)
 	list.add_theme_font_size_override("font_size", TouchSize.FONT)
 	list.add_theme_constant_override("v_separation", 12 if PhoneLayout.on else 22)
-	list.item_activated.connect(func(_index: int) -> void: activated.emit())
+	list.item_activated.connect(_on_activated)
+	list.gui_input.connect(_on_list_input)
 	list.allow_rmb_select = true
 	list.item_clicked.connect(_on_clicked)
 	add_child(list)
@@ -79,6 +90,37 @@ func select_newest() -> void:
 	tabs.current_tab = ALIVE
 	if list.item_count > 0:
 		list.select(list.item_count - 1)
+		_resting_selection = list.item_count - 1
+
+
+func _on_activated(_index: int) -> void:
+	if Time.get_ticks_msec() - _drag_ended_ms < ACTIVATE_AFTER_DRAG_MS:
+		return
+	activated.emit()
+
+
+## Touch drags scroll the rows directly; the list's scrollbar is too thin for a thumb.
+func _on_list_input(event: InputEvent) -> void:
+	if event is InputEventScreenTouch:
+		if event.pressed:
+			_drag_travel = 0.0
+			_drag_scrolling = false
+		elif _drag_scrolling:
+			_drag_scrolling = false
+			_drag_ended_ms = Time.get_ticks_msec()
+		else:
+			var picked := list.get_selected_items()
+			_resting_selection = picked[0] if not picked.is_empty() else -1
+	elif event is InputEventScreenDrag:
+		_drag_travel += absf(event.relative.y)
+		if not _drag_scrolling:
+			if _drag_travel < DRAG_SCROLL_START:
+				return
+			_drag_scrolling = true
+			if _resting_selection >= 0 and _resting_selection < list.item_count:
+				list.select(_resting_selection)
+		list.get_v_scroll_bar().value -= event.relative.y
+		list.accept_event()
 
 
 func _on_clicked(index: int, _at: Vector2, button: int) -> void:
@@ -99,8 +141,10 @@ func _fill() -> void:
 	list.clear()
 	for character in _pages[tabs.current_tab]:
 		list.add_item(describe(character, game_data))
+	_resting_selection = -1
 	if list.item_count > 0:
 		list.select(0)
+		_resting_selection = 0
 
 
 ## One line per character: class, the two stats that matter at the door,
