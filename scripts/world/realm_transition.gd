@@ -89,7 +89,7 @@ func begin() -> void:
 ##
 ## And it has to be addressed to us. `onPlayerJoin` sets `to` to the player's
 ## name, while the global announcements that land in the same window -- a
-## player joining or leaving, an amulet shattering -- are broadcast with `to`
+## player joining or leaving, a crown shattering -- are broadcast with `to`
 ## empty, and a line addressed to someone else is about them. The web client
 ## reads any SYSTEM line at all here and takes whichever arrives first.
 func apply_text(data: Dictionary) -> void:
