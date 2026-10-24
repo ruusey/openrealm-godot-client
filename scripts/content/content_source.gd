@@ -10,7 +10,7 @@ extends RefCounted
 ##
 ## One flat namespace either way. On disk that means trying data/, entity/ and
 ## ui/ in turn; the service's /game-data handler is configured with the same
-## fallback, so "tiles.json" or "rotmg-misc.png" resolves identically through
+## fallback, so "tiles.json" or "realm-misc.png" resolves identically through
 ## both and nothing above here has to know which is in use.
 ##
 ## `read` is declared as an ordinary function but every caller awaits it: the

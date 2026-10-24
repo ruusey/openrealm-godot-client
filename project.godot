@@ -35,6 +35,10 @@ window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 window/handheld/orientation=4
 
+[gui]
+
+theme/custom_font="res://assets/fonts/game_font.tres"
+
 [input]
 
 move_up={

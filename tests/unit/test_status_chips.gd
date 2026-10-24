@@ -13,7 +13,7 @@ func test_the_labels_are_the_web_clients():
 	assert_eq(StatusChips.label_for(0), "Hide")
 	assert_eq(StatusChips.label_for(41), "DEATH")
 	assert_eq(StatusChips.label_for(99), "", "an id the table does not know")
-	assert_eq(StatusChips.DEFS.size(), 31)
+	assert_eq(StatusChips.DEFS.size(), 36)
 
 
 func test_chips_come_in_table_order_not_wire_order():

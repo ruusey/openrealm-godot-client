@@ -23,7 +23,8 @@ const DEFS := [
 	[29, "Ward", Color("c8c0ff")], [30, "MP+", Color("4080ff")], [31, "Vuln", Color("cc4080")],
 	[32, "Grnd", Color("806040")], [33, "Mark", Color("ffd840")], [34, "Atk+", Color("ffaa44")],
 	[35, "Dex+", Color("ffd060")], [41, "DEATH", Color("ff0000")], [42, "Sac", Color("b03060")],
-	[43, "Downed", Color("9999a0")],
+	[43, "Downed", Color("9999a0")], [36, "Bleed", Color("b01818")], [37, "Drink", Color("8a1030")],
+	[38, "Wither", Color("7a6a8a")], [39, "Venom", Color("70d040")], [40, "Dodge", Color("d0e8ff")],
 ]
 
 ## The chips an entity earns, in table order: [label, colour] pairs.

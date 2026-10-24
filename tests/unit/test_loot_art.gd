@@ -32,13 +32,13 @@ func test_the_table_is_loaded_by_tier_and_its_sheets_preloaded():
 
 func test_a_tier_the_table_lacks_falls_back_as_the_web_does():
 	var bag := LootArt.definition(content.library, 3, false)
-	assert_eq([bag["spriteKey"], bag["row"], bag["col"]], ["rotmg-misc.png", 9, 3], "row 9, a column a tier")
+	assert_eq([bag["spriteKey"], bag["row"], bag["col"]], ["realm-misc.png", 9, 3], "row 9, a column a tier")
 	var odd := LootArt.definition(content.library, 7, false)
 	assert_eq(odd["col"], 0, "past the fifth column, the first")
 	var chest := LootArt.definition(content.library, 9, true)
-	assert_eq([chest["spriteKey"], chest["col"], chest["row"]], ["rotmg-projectiles.png", 2, 0])
+	assert_eq([chest["spriteKey"], chest["col"], chest["row"]], ["realm-projectiles.png", 2, 0])
 	var empty := ContentLibrary.new()
-	assert_eq(LootArt.definition(empty, -1, false)["spriteKey"], "rotmg-projectiles.png", "tier -1 is a chest")
+	assert_eq(LootArt.definition(empty, -1, false)["spriteKey"], "realm-projectiles.png", "tier -1 is a chest")
 
 
 func test_a_chest_fills_its_tile_and_a_bag_sits_in_the_middle():

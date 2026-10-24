@@ -247,5 +247,5 @@ func test_an_entry_nothing_needs_any_more_is_stale():
 
 
 func test_anything_else_is_unknown():
-	assert_false(ContentGaps.is_known("rotmg-misc.png"))
-	assert_eq(ContentGaps.reason("rotmg-misc.png"), "")
+	assert_false(ContentGaps.is_known("realm-misc.png"))
+	assert_eq(ContentGaps.reason("realm-misc.png"), "")

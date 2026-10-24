@@ -12,8 +12,8 @@ extends RefCounted
 ## tier. Only the tier and the chest flag travel on the wire.
 
 const CHEST_TIER := -1
-const CHEST_FALLBACK := {"spriteKey": "rotmg-projectiles.png", "col": 2, "row": 0, "fullSize": true}
-const BAG_SHEET := "rotmg-misc.png"
+const CHEST_FALLBACK := {"spriteKey": "realm-projectiles.png", "col": 2, "row": 0, "fullSize": true}
+const BAG_SHEET := "realm-misc.png"
 const BAG_ROW := 9
 const BAG_COLUMNS := 5
 

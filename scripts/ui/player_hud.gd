@@ -4,12 +4,12 @@ extends CanvasLayer
 ## Who you are and how you are doing: the web client's HUD column under
 ## the minimap, in Godot's own controls.
 ##
-## The identity line -- name, level, class -- then HP, MP and XP bars with
-## their numbers on them, then the six stats in a grid of three by two,
-## each with the equipment's part beside it in green or red. The numbers
-## are the wire's computed stats; the bonus is EquipmentBonus taken back
-## off them, and a stat whose BASE is at the class cap reads gold, which is
-## the server's own isStatMaxed. The XP bar counts within the level and,
+## The identity line -- name and class; the level is on the XP bar -- then
+## HP, MP and XP bars with their numbers on them, then the six stats in a
+## grid of three by two, each with the equipment's part beside it in green
+## or red. The numbers are the wire's computed stats; the bonus is
+## EquipmentBonus taken back off them, and a stat whose BASE is at the
+## class cap reads gold, which is the server's own isStatMaxed. The XP bar counts within the level and,
 ## past the last level, turns gold and counts fame.
 
 const MARGIN := 8
@@ -35,6 +35,7 @@ var fold: PanelFold
 
 var _root: PanelContainer
 var _identity: Label
+var _chip_room: Control
 var _bars := {}   # "hp" / "mp" / "xp" -> [ProgressBar, Label]
 var _cells := {}  # stat -> [value Label, bonus Label]
 var _grid: GridContainer
@@ -64,8 +65,12 @@ func _ready() -> void:
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 4)
 	margin.add_child(column)
-	_identity = HudWidgets.label("", 13, GOLD)
-	column.add_child(_identity)
+	var heading := HBoxContainer.new()
+	column.add_child(heading)
+	_identity = HudWidgets.label("", 12, GOLD)
+	_identity.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_identity.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	heading.add_child(_identity)
 	_bars["hp"] = HudWidgets.bar(column, HP_FILL)
 	_bars["mp"] = HudWidgets.bar(column, MP_FILL)
 	_bars["xp"] = HudWidgets.bar(column, XP_FILL)
@@ -76,6 +81,10 @@ func _ready() -> void:
 		_cells[stat] = HudWidgets.stat_cell(_grid, stat.to_upper())
 	fold = PanelFold.new(self, "Stats", "stats", state.settings if state != null else null,
 		func(folded: bool) -> void: _grid.visible = not folded)
+	# The fold chip sits over the heading's right end; keep the name clear of it.
+	_chip_room = Control.new()
+	_chip_room.custom_minimum_size.x = fold.chip.get_combined_minimum_size().x
+	heading.add_child(_chip_room)
 	if PhoneLayout.on:
 		_compact()
 	TouchFrame.adopt(self)
@@ -89,6 +98,7 @@ func _compact() -> void:
 	_root.offset_top = PhoneLayout.MARGIN
 	_grid.visible = false
 	fold.chip.visible = false
+	_chip_room.visible = false
 
 
 func _process(_delta: float) -> void:
@@ -119,8 +129,7 @@ func refresh() -> void:
 	var bonus := EquipmentBonus.of(local.inventory)
 	var base := EquipmentBonus.base(computed, bonus)
 	var caps: Dictionary = content.library.classes.get(local.class_id, {}).get("maxStats", {})
-	var level := content.levels.level_for(local.inventory.experience)
-	_identity.text = "%s  Lv. %d  %s" % [local.name, level, content.classes_art.display_name(local.class_id)]
+	_identity.text = "%s  %s" % [local.name, content.classes_art.display_name(local.class_id)]
 	_fill("hp", local.health, int(computed.get("hp", 0)), maxed(base, caps, "hp"))
 	_fill("mp", local.mana, int(computed.get("mp", 0)), maxed(base, caps, "mp"))
 	var xp := xp_line(content.levels, local.inventory.experience)

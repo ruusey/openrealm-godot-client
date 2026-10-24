@@ -372,7 +372,7 @@ func test_the_nexus_and_the_vault_are_known_by_name():
 
 
 func test_a_sheet_only_portals_refer_to_is_still_preloaded():
-	# In the shipped content rotmg-tiles-2.png is named by portals and by
+	# In the shipped content realm-tiles-2.png is named by portals and by
 	# nothing else, and it carries the vault, exit and nexus portals. Leave
 	# the portal table out of sheet_keys() and all three become invisible
 	# doorways, with the unit suite and check-content.sh both green -- so the

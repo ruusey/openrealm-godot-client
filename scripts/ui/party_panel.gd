@@ -62,10 +62,12 @@ func _ready() -> void:
 	var column := InventoryLayout.column(_root)
 	var heading := HBoxContainer.new()
 	column.add_child(heading)
-	_count = HudWidgets.label("Party", 13, HEADING_COLOUR)
+	_count = HudWidgets.label("Party", 12, HEADING_COLOUR)
 	_count.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_count.clip_text = true
 	heading.add_child(_count)
 	_leave = InventoryLayout.button(heading, "Leave", func() -> void: if actions != null: actions.leave())
+	_leave.add_theme_font_size_override("font_size", 12)
 	_rows_box = VBoxContainer.new()
 	_rows_box.add_theme_constant_override("separation", 4)
 	column.add_child(_rows_box)

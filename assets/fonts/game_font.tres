@@ -1,0 +1,10 @@
+[gd_resource type="FontVariation" load_steps=3 format=3]
+
+[ext_resource type="FontFile" path="res://assets/fonts/oryx-simplex.ttf" id="1_oryx"]
+
+[sub_resource type="SystemFont" id="SystemFont_fallback"]
+
+[resource]
+fallbacks = Array[Font]([SubResource("SystemFont_fallback")])
+base_font = ExtResource("1_oryx")
+spacing_space = -5

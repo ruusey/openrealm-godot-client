@@ -36,7 +36,7 @@ func test_a_short_line_is_one_row_tall_on_the_frame_it_appears():
 	var first: Vector2 = stack._bubble.size
 	var settled: Vector2 = await _settled("hi")
 	assert_eq(first, settled, "no taller on its first frame than once laid out")
-	assert_eq(settled.y, 27.0, "one 12px row (17) in a box padded 5 top and bottom")
+	assert_eq(settled.y, 28.0, "one 12px row (18) in a box padded 5 top and bottom")
 
 
 func test_a_long_line_wraps_at_180_on_the_frame_it_appears():

@@ -47,7 +47,7 @@ func test_hidden_until_there_is_a_player_and_pinned_under_the_minimap():
 
 func test_identity_bars_and_level_read_the_wire():
 	_arrive({"hp": 340, "mp": 120, "str": 18}, 210, 30, 200)
-	assert_eq(hud._identity.text, "Ruu  Lv. 2  Barbarian")
+	assert_eq(hud._identity.text, "Ruu  Barbarian")
 	assert_eq(hud._bars["hp"][1].text, "210/340")
 	assert_almost_eq(hud._bars["hp"][0].value, 210.0 / 340.0, 0.001)
 	assert_eq(hud._bars["mp"][1].text, "30/120")
@@ -61,7 +61,6 @@ func test_the_xp_bar_becomes_fame_past_the_table():
 	_arrive({"hp": 1}, 1, 0, 600 + 2500 * 3)
 	assert_eq(hud._bars["xp"][1].text, "Lv 4  Fame: 3")
 	assert_eq(hud._bars["xp"][0].value, 1.0, "full, and gold")
-	assert_eq(hud._identity.text, "Ruu  Lv. 4  Barbarian")
 
 
 func test_the_bonus_shows_beside_the_value_and_the_cap_is_judged_on_the_base():
