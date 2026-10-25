@@ -14,6 +14,8 @@ const BUTTON_HEIGHT := 56.0
 const CHEST_REACH := 32.0
 const CHEST_COLUMNS := 5
 const VAULT_OBJECTIVE := "STORE_IN_VAULT"
+## Beside the bag only while that leaves it at least this big; else over the bag.
+const MIN_BESIDE_SCALE := 0.75
 
 var state: RealmState
 var content: GameData
@@ -108,10 +110,22 @@ func _process(delta: float) -> void:
 		_rescan()
 	if not visible:
 		return
-	_root.position = at.call()
-	PanelFit.shrink(_root, Vector2.ZERO)   # about its top-left, where it is pinned
+	_place()
 	if _tooltip.visible:
 		_tooltip.follow(_root.get_global_mouse_position())
+
+
+## Pinned by its top-left and shrunk to the screen left of and below that
+## corner, not to the whole screen: a phone's bag leaves little room beside it.
+func _place() -> void:
+	var view := TouchScale.view_size(_root)
+	var corner: Vector2 = at.call()
+	var room := view - corner - Vector2.ONE * PanelFit.MARGIN
+	if PanelFit.factor(_root.size, room) < MIN_BESIDE_SCALE:
+		corner.x = PanelFit.MARGIN
+		room = view - corner - Vector2.ONE * PanelFit.MARGIN
+	_root.position = corner
+	PanelFit.shrink(_root, Vector2.ZERO, PanelFit.MARGIN, room)
 
 
 ## Re-finds the bag at the player's feet and refreshes the strip if it changed.

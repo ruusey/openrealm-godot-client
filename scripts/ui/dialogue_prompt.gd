@@ -13,10 +13,13 @@ const MARGIN_TOP := 40.0
 const WIDTH := 520.0
 const HEADER_SIZE := 18
 const BODY_SIZE := 14
+## On a phone the tip sits between the vitals and Menu when this fits there.
+const PHONE_MIN_WIDTH := 280.0
 
 var state: RealmState
 var content: GameData
 
+var _top: CenterContainer
 var _panel: PanelContainer
 var _header: Label
 var _body: Label
@@ -36,11 +39,11 @@ func _ready() -> void:
 	# Above the world, alongside the realm banner (which sits at the very top).
 	layer = 11
 	visible = false
-	var top := CenterContainer.new()
-	top.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	top.offset_top = MARGIN_TOP
-	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(top)
+	_top = CenterContainer.new()
+	_top.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	_top.offset_top = MARGIN_TOP
+	_top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_top)
 	_panel = PanelContainer.new()
 	_panel.custom_minimum_size = Vector2(WIDTH, 0)
 	_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -51,7 +54,7 @@ func _ready() -> void:
 	style.set_corner_radius_all(8)
 	style.set_content_margin_all(12)
 	_panel.add_theme_stylebox_override("panel", style)
-	top.add_child(_panel)
+	_top.add_child(_panel)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 4)
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -103,7 +106,29 @@ func _process(_delta: float) -> void:
 		_header.visible = _header.text != ""
 		_body.text = String(trigger.get("text", ""))
 		_body.visible = _body.text != ""
+	if PhoneLayout.on:
+		_fit_phone()
 	visible = true
+
+
+## Clear of the Menu, Bag and Chat column: between it and the vitals, or
+## under the map and the stars when that gap is too narrow.
+func _fit_phone() -> void:
+	var screen := TouchScale.view_size(_top)
+	var left := PhoneLayout.MARGIN + PhoneLayout.VITALS_WIDTH + PhoneLayout.GAP
+	var right := PhoneLayout.buttons_at(screen).x - PhoneLayout.GAP
+	var width := minf(WIDTH, right - left)
+	_top.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	if width >= PHONE_MIN_WIDTH:
+		_top.position = Vector2(left, PhoneLayout.MARGIN)
+		_top.size = Vector2(right - left, 0.0)
+	else:
+		width = minf(WIDTH, screen.x - PhoneLayout.MARGIN * 2.0)
+		_top.position = Vector2(PhoneLayout.MARGIN, PhoneLayout.under_map() + PhoneLayout.CHIP_ROW * 2.0)
+		_top.size = Vector2(screen.x - PhoneLayout.MARGIN * 2.0, 0.0)
+	_panel.custom_minimum_size.x = width
+	_header.custom_minimum_size.x = width - 24.0
+	_body.custom_minimum_size.x = width - 24.0
 
 
 ## The index of the trigger the player is inside, skipping spent `once` ones, or -1.

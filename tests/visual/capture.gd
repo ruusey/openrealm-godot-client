@@ -129,7 +129,7 @@ func capture(scenario: String, output: String, content: GameData) -> bool:
 	stage.add_child(bag)
 	chat.avoid = bag.covered
 	# The chest at our feet: only for its scenario, as the bag is.
-	if scenario == "vault":
+	if scenario == "vault" or scenario.begins_with("phone_loot"):
 		var loot := LootWindow.new()
 		loot.setup(state, content, InventoryActions.new(state, null, content), bag.beside)
 		stage.add_child(loot)
@@ -226,7 +226,7 @@ func capture(scenario: String, output: String, content: GameData) -> bool:
 		stage.add_child(touch)
 		touch.pixel_ratio = 2.0
 		touch.enable(true)
-		bag.shown = scenario == "phone_bag"
+		bag.shown = scenario in ["phone_bag", "phone_loot_bag"]
 		var none := func() -> void: pass
 		touch.link([["Character", none], ["Skills", none], ["Quests", none], ["Leaderboard", none],
 			["Options", none], ["Companion", none]], chat.toggle_line)

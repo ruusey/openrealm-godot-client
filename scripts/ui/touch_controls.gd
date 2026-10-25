@@ -35,8 +35,10 @@ var _cluster := TouchCluster.new()
 var _menu := TouchMenu.new()
 ## With the phone layout Menu, Bag and Chat sit by the map and Menu opens a grid.
 var _phone := PhoneLayout.on
-var _bar: PhoneBar
-var _phone_menu: PhoneMenu
+## Built with the layer, not in _ready: `link` fills the menu before the
+## screens join the tree.
+var _bar: PhoneBar = PhoneBar.new() if _phone else null
+var _phone_menu: PhoneMenu = PhoneMenu.new() if _phone else null
 var _open_chat := Callable()   # the Chat button's; wired by `link`
 var _escape := Callable()      # the Nexus button's; wired by `set_escape`
 var _companion := Callable()   # the companion button's; wired by `set_companion`
@@ -78,8 +80,6 @@ func _ready() -> void:
 	add_child(_cluster)
 	add_child(_menu)
 	if _phone:
-		_bar = PhoneBar.new()
-		_phone_menu = PhoneMenu.new()
 		_bar.menu.connect(_phone_menu.toggle)
 		_bar.bag.connect(func() -> void: inventory.toggle())
 		_bar.chat.connect(func() -> void: if _open_chat.is_valid(): _open_chat.call())

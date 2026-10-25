@@ -53,7 +53,11 @@ func _init(quest: Dictionary, content: GameData, act: Callable) -> void:
 	category.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	line.add_child(category)
 	if int(quest.get("stars", 0)) > 0:
-		line.add_child(HudWidgets.label("★ %d" % int(quest.get("stars", 0)), 11, TagStyles.STAR_GOLD))
+		var star := TextureRect.new()
+		star.texture = HudWidgets.star_icon(11)
+		star.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+		line.add_child(star)
+		line.add_child(HudWidgets.label(str(int(quest.get("stars", 0))), 11, TagStyles.STAR_GOLD))
 	column.add_child(_wrapped(String(quest.get("desc", "")), 13, Color("b9c2d4")))
 
 	for objective in quest.get("objectives", []):

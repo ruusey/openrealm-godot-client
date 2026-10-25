@@ -37,6 +37,7 @@ window/handheld/orientation=4
 
 [gui]
 
+theme/custom="res://assets/fonts/ui_theme.tres"
 theme/custom_font="res://assets/fonts/game_font.tres"
 
 [input]

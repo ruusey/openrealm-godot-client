@@ -13,6 +13,8 @@ const BAR_BACK := Color(0.08, 0.08, 0.1, 0.9)
 const TEXT_SIZE := 12
 const CAPTION := Color(0.7, 0.7, 0.75)
 const STAR_GOLD := Color("ffd34d")
+## The plain font, for prose and anything typed: the game font has ASCII only.
+const TEXT_FONT := preload("res://assets/fonts/open-sans-semibold.woff2")
 
 ## Cached star textures, keyed by size and colour.
 static var _star_icons := {}

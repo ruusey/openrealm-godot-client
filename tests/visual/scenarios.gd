@@ -36,7 +36,7 @@ const SQUARE_WALL_TILE := 184
 
 static func names() -> Array:
 	return ["terrain", "entities", "ysort", "bullets", "collision", "overlap",
-		"walk_left", "walk_right", "walk_up", "walk_down", "walls", "feather", "effects", "walldepth", "shadows", "attack_left", "attack_right", "attack_up", "spin", "portals", "transition", "transition_named", "damage", "damage_fading", "chat", "death", "wading", "inventory", "abilities", "potion_storage", "fame_store", "forge", "minimap", "trails", "login", "exchange_market", "wall_bands", "effects_cast", "effects_generic", "effects_holy", "effects_dark", "effects_arcane", "effects_knight", "effects_rogue", "effects_trapper", "effects_heavy", "trade", "player_hud", "party", "nearby", "item_card", "options", "options_controls", "masteries", "dev_overlay", "blind", "dyes", "quests", "quest_stars", "login_delete", "login_stats", "terms", "how_to", "leaderboard", "loot_preview", "minimap_hop", "billboards", "chunk_seams", "shores", "vault", "touch_phone", "quest_complete", "companions", "phone_play", "phone_bag", "phone_menu", "phone_chat", "phone_map", "login_account", "wall_plus", "buy_fame", "buy_fame_waiting"]
+		"walk_left", "walk_right", "walk_up", "walk_down", "walls", "feather", "effects", "walldepth", "shadows", "attack_left", "attack_right", "attack_up", "spin", "portals", "transition", "transition_named", "damage", "damage_fading", "chat", "death", "wading", "inventory", "abilities", "potion_storage", "fame_store", "forge", "minimap", "trails", "login", "exchange_market", "wall_bands", "effects_cast", "effects_generic", "effects_holy", "effects_dark", "effects_arcane", "effects_knight", "effects_rogue", "effects_trapper", "effects_heavy", "trade", "player_hud", "party", "nearby", "item_card", "options", "options_controls", "masteries", "dev_overlay", "blind", "dyes", "quests", "quest_stars", "login_delete", "login_stats", "terms", "how_to", "leaderboard", "loot_preview", "minimap_hop", "billboards", "chunk_seams", "shores", "vault", "touch_phone", "quest_complete", "companions", "phone_play", "phone_bag", "phone_menu", "phone_chat", "phone_map", "phone_loot", "phone_loot_bag", "login_account", "wall_plus", "buy_fame", "buy_fame_waiting"]
 
 
 ## A second step, applied after the first rendered frame, for scenarios whose
@@ -116,6 +116,7 @@ static func apply(name: String, state: RealmState) -> void:
 		"companions": _companions(state)
 		"phone_play", "phone_bag", "phone_menu", "phone_chat": _phone_play(state)
 		"phone_map": _minimap(state)
+		"phone_loot", "phone_loot_bag": _phone_loot(state)
 		"quest_complete": _quest_complete(state)
 		"trails": _trails(state)
 		"billboards": _billboards(state)
@@ -864,6 +865,14 @@ static func _phone_play(state: RealmState) -> void:
 	_said(state, "Mingau", "anyone running the beach?", "mod")
 	_said(state, "Ruu", "give me a sec, swapping my ring")
 	_said(state, "SYSTEM", "Mingau has entered the realm and this line is long enough to wrap")
+
+
+## A phone standing on a bag of three.
+static func _phone_loot(state: RealmState) -> void:
+	_phone_play(state)
+	state.apply_packet("LoadPacket", {"containers": [{"lootContainerId": 9, "tier": 1,
+		"isChest": false, "items": [_item(51), _item(846), _item(3012)],
+		"pos": {"x": state.local.position.x, "y": state.local.position.y}}]})
 
 
 ## Two companions on the bench, one out, with gear, stats short of the caps

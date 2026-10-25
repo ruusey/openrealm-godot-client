@@ -9,7 +9,7 @@ extends RefCounted
 
 const TITLE := "Terms of Use & Privacy Policy"
 const SUBTITLE := "Please read the terms below. The I Agree button unlocks once you've scrolled to the end."
-const SCROLL_HINT := "Scroll down to read all terms ↓"
+const SCROLL_HINT := "Scroll down to read all terms"
 
 const BODY := """[color=#8a8078]Copyright © 2024–2026 Robert Usey <ruusey@gmail.com>. All Rights Reserved.[/color]
 

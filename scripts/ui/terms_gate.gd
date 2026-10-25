@@ -60,6 +60,8 @@ func _ready() -> void:
 	body.selection_enabled = true
 	body.focus_mode = Control.FOCUS_ALL
 	body.custom_minimum_size = Vector2(WIDTH - 24, BODY_HEIGHT)
+	body.add_theme_font_override("normal_font", HudWidgets.TEXT_FONT)
+	body.add_theme_font_override("bold_font", HudWidgets.TEXT_FONT)
 	body.add_theme_font_size_override("normal_font_size", 13)
 	body.add_theme_font_size_override("bold_font_size", 13)
 	body.add_theme_stylebox_override("normal", _box(Color(0.05, 0.04, 0.06), 8))

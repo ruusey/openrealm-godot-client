@@ -12,7 +12,7 @@ extends RefCounted
 
 const KEY_COLOUR := "#ffe9a8"
 const KEY_BACK := "#2a2430"
-const REBIND := "Keys can be rebound under [b]Esc → Options → Controls[/b]."
+const REBIND := "Keys can be rebound under [b]Esc > Options > Controls[/b]."
 
 
 ## [what, keys] in the order the table lists them: the touch buttons with
