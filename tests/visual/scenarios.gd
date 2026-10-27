@@ -122,9 +122,9 @@ static func apply(name: String, state: RealmState) -> void:
 		"billboards": _billboards(state)
 		"chunk_seams": _chunk_seams(state)
 		"shores": _shores(state)
-		"buy_fame", "buy_fame_waiting": _entities(state)
+		"buy_fame", "buy_fame_waiting", "leaderboard": _entities(state)
 		# The login screen: no realm at all, the capture raises the screen itself.
-		"login", "login_account", "login_delete", "login_stats", "terms", "how_to", "leaderboard": pass
+		"login", "login_account", "login_delete", "login_stats", "terms", "how_to": pass
 		_: push_error("unknown scenario '%s'" % name)
 
 
@@ -1252,14 +1252,8 @@ static func _shores(state: RealmState) -> void:
 
 ## The server's top five as the Menu's Leaderboard lists them, fame and
 
-## The account signed in, as the leaderboard scenario lays it out: two of its
-## own characters beside the server's top five, fame and pre-fame both, one
-## in a dye, and a gap in the gear for the card's "Empty".
-static func leaderboard_characters() -> Array:
-	return [{"characterUuid": "c1", "characterClass": 2, "stats": {"hp": 540, "spd": 42}},
-		{"characterUuid": "c2", "characterClass": 0, "stats": {"hp": 210, "spd": 12}}]
-
-
+## The server's top five, fame and pre-fame both, one in a dye, and a gap in
+## the gear for the card's "Empty".
 static func leaderboard_entries() -> Array:
 	var gear := [{"itemId": 3507, "slotIdx": 0}, {"itemId": 3512, "slotIdx": 1},
 		{"itemId": 844, "slotIdx": 2}, {"itemId": 850, "slotIdx": 3}]

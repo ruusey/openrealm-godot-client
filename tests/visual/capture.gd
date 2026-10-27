@@ -77,6 +77,21 @@ func _ready() -> void:
 
 ## One scenario, built under a stage of its own so the next starts clean.
 func capture(scenario: String, output: String, content: GameData) -> bool:
+	# A phone scenario is laid out as a phone in any window, so the desktop run
+	# has its references too; the next scenario gets the run's layout back.
+	var run_layout := [PhoneLayout.on, PanelFold.short_screen, TouchScale.panel_factor]
+	if scenario.begins_with("phone_"):
+		PhoneLayout.on = true
+		PanelFold.short_screen = true
+		TouchScale.panel_factor = 2.0
+	var captured: bool = await _capture(scenario, output, content)
+	PhoneLayout.on = run_layout[0]
+	PanelFold.short_screen = run_layout[1]
+	TouchScale.panel_factor = run_layout[2]
+	return captured
+
+
+func _capture(scenario: String, output: String, content: GameData) -> bool:
 	var stage := Node.new()
 	# Deferred + a frame's wait: on some platforms the root is still setting up
 	# its own children when the first scenario is built, and a direct add_child
@@ -93,6 +108,8 @@ func capture(scenario: String, output: String, content: GameData) -> bool:
 	# differently on every capture. Pin it, as RealmState's clock already is.
 	# Non-zero, or a spin scenario would have nothing to show.
 	renderer.bullets.clock = func() -> int: return CAPTURE_TIME_MS
+	# Water and lava move on the shader's own clock, so it is held the same way.
+	renderer.liquid.material.set_shader_parameter("pinned_time", CAPTURE_TIME_MS / 1000.0)
 	renderer.show_collision = scenario == "collision"
 	stage.add_child(renderer)
 
@@ -234,7 +251,7 @@ func capture(scenario: String, output: String, content: GameData) -> bool:
 	# The sign-in screen, torches burning: only for its own scenario, since
 	# in the client it covers everything until a character is chosen.
 	var login: LoginScreen = null
-	if scenario.begins_with("login") or scenario in ["terms", "how_to", "leaderboard"]:
+	if scenario.begins_with("login") or scenario in ["terms", "how_to"]:
 		# A service that answers from a script: the server list, then nothing,
 		# so the picker shows and nothing reaches the network.
 		var service := DataService.new()
@@ -244,6 +261,13 @@ func capture(scenario: String, output: String, content: GameData) -> bool:
 		stage.add_child(service)
 		login = LoginScreen.new(service, content)
 		stage.add_child(login)
+
+	# The Menu's leaderboard over a realm, its entries scripted.
+	var board: LeaderboardWindow = null
+	if scenario == "leaderboard":
+		board = LeaderboardWindow.new(state, content, null)
+		board.shown = true
+		stage.add_child(board)
 
 	# Buy Fame over a realm, its packages scripted: browsing, or waiting on a checkout.
 	if scenario.begins_with("buy_fame"):
@@ -337,14 +361,12 @@ func capture(scenario: String, output: String, content: GameData) -> bool:
 	# How to Play as the "?" leaves it: open at the top.
 	if scenario == "how_to":
 		login._how_to.open()
-	# Signed in, the account's characters beside the server's best, and the
-	# first row's card open where a hover would leave it.
+	# The server's best, and the first row's card open where a hover would leave it.
 	if scenario == "leaderboard":
-		login._stage.show_account(VisualScenarios.leaderboard_characters())
-		login._board.show_entries(VisualScenarios.leaderboard_entries())
+		board.panel.show_entries(VisualScenarios.leaderboard_entries())
 		var card := LeaderboardCard.build(VisualScenarios.leaderboard_entries()[0], content)
 		card.position = Vector2(860, 560)
-		login.add_child(card)
+		board.add_child(card)
 	# The options as Escape leaves them. It shows only in a realm, and a
 	# capture has no client, so it is raised by hand.
 	if scenario.begins_with("options"):

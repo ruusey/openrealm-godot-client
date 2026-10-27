@@ -27,6 +27,9 @@ uniform float lip_depth : hint_range(0.0, 16.0) = 3.0;
 uniform float corner_radius : hint_range(0.0, 32.0) = 14.0;
 uniform float foam_strength : hint_range(0.0, 1.0) = 0.38;
 uniform vec3 foam_colour : source_color = vec3(0.86, 0.95, 1.0);
+// Seconds to hold the motion at instead of TIME; negative leaves it running.
+// A capture pins it, as it pins every other clock.
+uniform float pinned_time = -1.0;
 
 const float CELL = 32.0;
 
@@ -106,16 +109,17 @@ void fragment() {
 	float warm = clamp((base.r - base.b) * 3.0, 0.0, 1.0);   // lava ~1, water ~0
 	// World-space (camera-independent), matched to the old screen-space frequency.
 	vec2 p = world_pos * 0.08;
+	float t = pinned_time >= 0.0 ? pinned_time : TIME;
 
 	// Water: the darker moving ripple bands only. (A brighter scrolling caustic
 	// streak used to ride on top but read as distracting, so it's gone.)
-	float ripple = sin(p.x * 1.3 + p.y * 0.7 + TIME * water_speed)
-		+ sin(p.x * 0.6 - p.y * 1.1 - TIME * water_speed * 0.7);
+	float ripple = sin(p.x * 1.3 + p.y * 0.7 + t * water_speed)
+		+ sin(p.x * 0.6 - p.y * 1.1 - t * water_speed * 0.7);
 	vec3 water = base.rgb + 0.14 * ripple * vec3(0.3, 0.6, 1.0);
 
 	// Lava: strong glow pulse plus moving hot cracks pushing toward yellow.
-	float flow = sin(p.x * 0.8 + TIME * lava_speed) + sin(p.y * 1.2 - TIME * lava_speed * 0.8);
-	float pulse = 0.5 + 0.5 * sin(TIME * lava_speed * 1.5 + (p.x + p.y) * 0.4);
+	float flow = sin(p.x * 0.8 + t * lava_speed) + sin(p.y * 1.2 - t * lava_speed * 0.8);
+	float pulse = 0.5 + 0.5 * sin(t * lava_speed * 1.5 + (p.x + p.y) * 0.4);
 	// CLAMP, not max(): flow*0.5+0.5 reaches 1.5, so pow(_,3) spiked hot to ~3.4 and the
 	// yellow additive below blew past 1.0 into a bloom-amplified yellow oval. Capped at 1.0.
 	float hot = pow(clamp(flow * 0.5 + 0.5, 0.0, 1.0), 3.0);
@@ -141,16 +145,16 @@ void fragment() {
 		coast = min(coast, max(tips, 0.001));
 		// Two moving noises: one frays the foam, one staggers the waves along the
 		// shore so no two stretches of beach move together.
-		float fray = noise(snapped * 0.11 + vec2(TIME * 0.2, -TIME * 0.13));
+		float fray = noise(snapped * 0.11 + vec2(t * 0.2, -t * 0.13));
 		float stagger = noise(snapped * 0.025 + 17.0);
 
 		// Shallows in three flat bands, lighter and greener toward the shore.
 		float shallow = floor((1.0 - clamp(coast / shore_reach, 0.0, 1.0)) * 3.0 + 0.5) / 3.0;
 		water = mix(water, water * 1.15 + vec3(0.05, 0.15, 0.13), shallow * 0.6);
 		// Foam that laps up the coast and back, and a broken swell rolling in to it.
-		float lap = 1.0 + 3.5 * (0.5 + 0.5 * sin(TIME * 1.7 + stagger * 6.2832));
+		float lap = 1.0 + 3.5 * (0.5 + 0.5 * sin(t * 1.7 + stagger * 6.2832));
 		float foam = step(coast, lap) * step(0.3, fray);
-		float swell_t = fract(TIME * 0.3 + stagger * 2.0);
+		float swell_t = fract(t * 0.3 + stagger * 2.0);
 		float swell_at = mix(shore_reach, lap, swell_t);
 		float swell = step(abs(coast - swell_at), shore_pixel * 0.5) * step(0.45, fray)
 			* sin(swell_t * 3.14159);
