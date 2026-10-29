@@ -73,17 +73,6 @@ func is_present() -> bool:
 	return id != 0
 
 
-## Movement speed in pixels per 64Hz tick, from the server's own formula,
-## with the effects it applies on top: SPEEDY is half again, SLOWED is half.
-func speed_per_tick() -> float:
-	var tiles_per_second := 4.0 + 5.6 * (float(stats.get("spd", 15)) / 75.0)
-	if effects.has(SPEEDY):
-		tiles_per_second *= 1.5
-	if effects.has(SLOWED):
-		tiles_per_second *= 0.5
-	return tiles_per_second * float(GameConstants.TILE_SIZE) / GameConstants.TICK_RATE
-
-
 func centre() -> Vector2:
 	return position + Vector2(size, size) * 0.5
 

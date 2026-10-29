@@ -18,6 +18,8 @@ const LOOK_SLOWS := 4
 const LOOK_LIQUID := 8
 const LOOK_NO_BLEND := 16
 const NO_LOOK: Array = []
+## StatusEffectType.SLOWED.
+const SLOWED_EFFECT := 21
 
 var library := ContentLibrary.new()
 var sprites := SpriteCache.new()
@@ -56,6 +58,8 @@ var _data_by_id := {}
 ## group id -> {color: Color, radius, flickers}, the resolved projectile light the
 ## 2D/3D lighting scans read per bullet; the hex is parsed once here, not per frame.
 var _proj_light_by_group := {}
+## group id -> how long its shots slow a player they hit, in ms (0: they don't).
+var _slow_ms_by_group := {}
 ## tile id -> tile_look(), read directly by the ground passes (a call per cell into
 ## another script costs more than the cell's draw).
 var tile_looks := {}
@@ -288,6 +292,27 @@ func projectile_texture(group_id: int) -> AtlasTexture:
 	if ready:
 		_proj_tex_by_group[group_id] = texture
 	return texture
+
+
+## How long a shot from this group slows the player it hits, in ms, or 0. The
+## wire names a bullet's group, not which of the group's projectiles it is, so a
+## group whose projectiles disagree counts as slowing only if most of them do.
+func slow_ms(group_id: int) -> int:
+	if _slow_ms_by_group.has(group_id):
+		return _slow_ms_by_group[group_id]
+	var projectiles: Array = library.projectile_groups.get(group_id, {}).get("projectiles", [])
+	var slowing := 0
+	var longest := 0
+	for definition in projectiles:
+		for effect in definition.get("effects", []):
+			if int(effect.get("effectId", -1)) == SLOWED_EFFECT:
+				slowing += 1
+				longest = maxi(longest, int(effect.get("duration", 0)))
+				break
+	var result := longest if slowing * 2 > projectiles.size() else 0
+	if ready:
+		_slow_ms_by_group[group_id] = result
+	return result
 
 
 ## The projectiles a group fires, with angles resolved from their string form.

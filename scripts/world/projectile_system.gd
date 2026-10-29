@@ -26,6 +26,9 @@ const CONSUME_LINGER_MS := 50
 ## wall's life at 10s, so this never fires during a live one.
 const WALL_FALLBACK_LIFETIME_MS := 30_000
 const NO_TILES := {}
+## The server re-applies a LINE_SEGMENT wall's hit to a player still touching it
+## this often (ServerCombatHelper.HAZARD_HIT_INTERVAL_TICKS).
+const HAZARD_HIT_INTERVAL_TICKS := 16
 ## Traits that need more than the inlined motion in advance().
 const TRACKED_MOTION := ProjectileKind.TRAIT_SPEED_CURVE | ProjectileKind.TRAIT_HOMING \
 	| ProjectileKind.TRAIT_ANCHORED
@@ -44,6 +47,11 @@ var _shot_counter := 0
 ## Live local predictions (id -> bullet), the only bullets a server copy can claim
 ## or an Unload can reach through server_id; kept so neither scans every bullet.
 var _predictions := {}
+## Enemy shots that slow on hit (id -> slow ms), so the movement predictor's
+## per-tick test walks these and not every bullet; and the ones already seen to
+## hit us (id -> input seq), so each lands once and a wall once per interval.
+var _slowing := {}
+var _slow_hits := {}
 ## tile id -> whether it stops a bullet, once the content has loaded.
 var _tile_stops := {}
 ## Scratch lists reused every frame: what advance() drops, and the own shots that
@@ -81,6 +89,8 @@ func _init(player: LocalPlayer, content: GameData,
 func clear() -> void:
 	bullets.clear()
 	_predictions.clear()
+	_slowing.clear()
+	_slow_hits.clear()
 
 
 ## A locally predicted bullet, registered so its server copy can claim it.
@@ -109,6 +119,59 @@ func apply_load(data: Dictionary) -> void:
 		ProjectileMotion.catch_up(bullet, _catchup_latency * 0.5, now)
 		bullets[id] = bullet
 		_note_shooter(wire)
+		_note_slowing(bullet)
+
+
+func _note_slowing(bullet: Projectile) -> void:
+	if _content == null or bullet.src_entity_id == _player.id:
+		return
+	if _entities != null and _entities.players.has(bullet.src_entity_id):
+		return
+	var slow_ms := _content.slow_ms(bullet.group_id)
+	if slow_ms > 0:
+		_slowing[bullet.id] = slow_ms
+
+
+## How long the enemy shot touching a player whose top-left is `position` slows
+## them, in ms, or 0 -- the server's own tests, at the instant input `seq` was
+## predicted. The server judges an enemy shot where this client saw it (rewound by
+## half the round trip, the same half our catch-up runs bullets ahead), so a shot
+## touching the predicted player here is the one the server lands on that input:
+## a swept circle over the shot's last tick, or a wall's capsule.
+func slowing_hit_ms(position: Vector2, size: int, seq: int) -> int:
+	if _slowing.is_empty():
+		return 0
+	var centre := position + Vector2(size, size) * 0.5
+	var body := size * HIT_RADIUS_FACTOR
+	var longest := 0
+	for id in _slowing.keys():
+		var bullet: Projectile = bullets.get(id)
+		if bullet == null:
+			_slowing.erase(id)
+			_slow_hits.erase(id)
+			continue
+		var reach := bullet.size * HIT_RADIUS_FACTOR + body
+		var half := bullet.size * 0.5
+		var bullet_centre := bullet.pos + Vector2(half, half)
+		var start: Vector2
+		var end: Vector2
+		if bullet.flag_bits & (1 << ProjectileKind.LINE_SEGMENT):
+			if seq - int(_slow_hits.get(id, -HAZARD_HIT_INTERVAL_TICKS)) < HAZARD_HIT_INTERVAL_TICKS:
+				continue
+			var across := Vector2(cos(bullet.angle), -sin(bullet.angle)) * bullet.length * 0.5
+			start = bullet_centre + across
+			end = bullet_centre - across
+		else:
+			if _slow_hits.has(id):
+				continue
+			start = bullet_centre - Vector2(sin(bullet.angle), cos(bullet.angle)) * bullet.magnitude
+			end = bullet_centre
+		if Geometry2D.get_closest_point_to_segment(centre, start, end).distance_squared_to(centre) \
+				>= reach * reach:
+			continue
+		_slow_hits[id] = seq
+		longest = maxi(longest, int(_slowing[id]))
+	return longest
 
 
 ## A bullet carries the id of whoever fired it, which is the only way a
